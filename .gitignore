@@ -1,0 +1,72 @@
+# =========================
+# Node / Express
+# =========================
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+package-lock.json
+yarn.lock
+pnpm-lock.yaml
+
+# =========================
+# Environment variables
+# =========================
+.env
+.env.local
+.env.development
+.env.test
+.env.production
+
+# =========================
+# Logs
+# =========================
+logs/
+*.log
+
+# =========================
+# Build outputs
+# =========================
+dist/
+build/
+client/build/
+server/build/
+
+# =========================
+# React
+# =========================
+client/node_modules/
+client/.env
+client/.env.local
+client/.env.production
+client/.env.development
+
+# =========================
+# MongoDB
+# =========================
+data/
+dump/
+*.mongodb
+
+# =========================
+# OS / Editor files
+# =========================
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# =========================
+# Coverage / Testing
+# =========================
+coverage/
+.nyc_output/
+
+# =========================
+# Misc
+# =========================
+.cache/
+.eslintcache
