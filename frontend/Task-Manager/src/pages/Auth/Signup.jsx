@@ -8,6 +8,7 @@ import axiosInstance from '../../utils/axiosInstance';
 import { API_PATHS } from '../../utils/apiPaths';
 import { UserContext } from '../../context/userContext';
 import uploadImage from '../../utils/uploadImage';
+import { validateEmail } from '../../utils/helper';
 
 const Signup = () => {
 
@@ -19,7 +20,7 @@ const Signup = () => {
 
   const [error, setError] = useState(null);
 
-  const updateUser = useContext(UserContext);
+  const {updateUser} = useContext(UserContext);
   const navigate = useNavigate();
 
   // Handle signup From Submit 
@@ -58,9 +59,11 @@ const Signup = () => {
       });
 
       const { token, role } = response.data;
-
+      
+      
       if (token) {
         localStorage.setItem("token", token);
+        console.log(token)
         updateUser(response.data);
 
         // Redirect based on role
