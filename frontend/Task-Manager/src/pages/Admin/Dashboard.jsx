@@ -13,7 +13,7 @@ import TaskListTable from "../../components/Layouts/TaskListTable";
 import CustomPieChart from "../../components/Charts/CustomPieChart";
 import CustomBarChart from "../../components/Charts/CustomBarChart";
 
-const COLORS= ['#8D51FF, #00B8D8, #7BCE00'];
+const COLORS = ['#8D51FF, #00B8D8, #7BCE00'];
 
 
 const Dashboard = () => {
@@ -29,24 +29,24 @@ const Dashboard = () => {
 
   //Prepare chart data 
   const prepareChartData = (data) => {
-  const taskDistribution = data?.taskDistribution || null;
-  const taskPriorityLevels = data?.taskPriorityLevels || null;
+    const taskDistribution = data?.taskDistribution || null;
+    const taskPriorityLevels = data?.taskPriorityLevels || null;
 
-  const taskDistributionData = [
-    { status: "Pending", count: taskDistribution?.Pending || 0 },
-    { status: "In Progress", count: taskDistribution?.InProgress || 0 },
-    { status: "Completed", count: taskDistribution?.Completed || 0 },
-  ];
-  const PriorityLevelData = [
-    { priority: "Low", count: taskPriorityLevels?.Low || 0 },
-    { priority: "Medium", count: taskPriorityLevels?.Medium || 0 },
-    { priority: "High", count: taskPriorityLevels?.High || 0 },
-  ];
+    const taskDistributionData = [
+      { status: "Pending", count: taskDistribution?.Pending || 0 },
+      { status: "In Progress", count: taskDistribution?.InProgress || 0 },
+      { status: "Completed", count: taskDistribution?.Completed || 0 },
+    ];
+    const PriorityLevelData = [
+      { priority: "Low", count: taskPriorityLevels?.Low || 0 },
+      { priority: "Medium", count: taskPriorityLevels?.Medium || 0 },
+      { priority: "High", count: taskPriorityLevels?.High || 0 },
+    ];
 
-  setBarChartData(PriorityLevelData);
-}
+    setBarChartData(PriorityLevelData);
+    setPieChartData(taskDistributionData);
+  }
 
-  setPieChartData(taskDistributionData);
 
   const getDashboardData = async () => {
     try {
@@ -119,33 +119,33 @@ const Dashboard = () => {
 
     <div className="grid grid-cols-1 md:grid-cols-2 gap-6 my-4 md:my-6">
 
-    <div>
-      <div className="card">
-      <div className="flex items-center justify-between">
-      <h5 className="font-medium">Task Distribution</h5>
+      <div>
+        <div className="card">
+          <div className="flex items-center justify-between">
+            <h5 className="font-medium">Task Distribution</h5>
+          </div>
+
+          <CustomPieChart
+            data={pieChartData}
+            colors={COLORS}
+          />
+        </div>
       </div>
 
-      <CustomPieChart
-      data = {pieChartData}
-      colors= {COLORS}
-     />
-    </div>
-    </div>
 
 
+      <div>
+        <div className="card">
+          <div className="flex items-center justify-between">
+            <h5 className="font-medium">Task Priority Levels</h5>
+          </div>
 
-  <div>
-      <div className="card">
-      <div className="flex items-center justify-between">
-      <h5 className="font-medium">Task Priority Levels</h5>
+          <CustomBarChart
+            data={barChartData}
+
+          />
+        </div>
       </div>
-
-      <CustomBarChart
-      data = {barChartData}
-      
-     />
-    </div>
-    </div>
 
       <div className="md:col-span-2">
         <div className="card">
@@ -157,7 +157,7 @@ const Dashboard = () => {
             </button> */}
           </div>
 
-          <TaskListTable tableData={dashboardData?.recentTasks || []} /> 
+          <TaskListTable tableData={dashboardData?.recentTasks || []} />
         </div>
       </div>
     </div>
