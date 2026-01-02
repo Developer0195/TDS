@@ -20,7 +20,24 @@ const ManageTasks = () => {
 
   // download task report
   const handleDownloadReport = async () => {
+    try {
+      const response = await axiosInstance.get(API_PATHS.REPORTS.EXPORT_USERS, {
+        responseType: "blob",
+      });
+
+      // Create a URL for the blob
+      const url = window.URL.createObjectURL(new Blob([response.data]));
+      const link = document.createElement("a");
+      link.href = url;
+      link.setAttribute("download", "user_details.xlsx");
+      document.body.appendChild(link);
+      link.click();
+      link.parentNode.removeChild(link);
+    } catch (error) {
+      console.error("Error downloading report:", error);
+    }
   };
+
 
   useEffect(() => {
     getAllTasks(filterStatus);
@@ -89,27 +106,27 @@ const ManageTasks = () => {
 
         </div>
 
-<div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-4">
-  {allTasks?.map((item, index) => (
-    <TaskCard
-      key={item._id}
-      title={item.title}
-      description={item.description}
-      priority={item.priority}
-      status={item.status}
-      progress={item.progress}
-      createdAt={item.createdAt}
-      dueDate={item.dueDate}
-      assignedTo={item.assignedTo?.map((item) => item.profileImageUrl)}
-      attachmentCount={item.attachments?.length || 0}
-      completedTodoCount= {item.completedTodoCount || 0}
-      todoChecklist= {item.todoChecklist || []}
-        onClick={()=>{
-          handleClick(item);
-        }}
-        />
-      ))}
-      </div>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-4">
+          {allTasks?.map((item, index) => (
+            <TaskCard
+              key={item._id}
+              title={item.title}
+              description={item.description}
+              priority={item.priority}
+              status={item.status}
+              progress={item.progress}
+              createdAt={item.createdAt}
+              dueDate={item.dueDate}
+              assignedTo={item.assignedTo?.map((item) => item.profileImageUrl)}
+              attachmentCount={item.attachments?.length || 0}
+              completedTodoCount={item.completedTodoCount || 0}
+              todoChecklist={item.todoChecklist || []}
+              onClick={() => {
+                handleClick(item);
+              }}
+            />
+          ))}
+        </div>
       </div>
     </DashboardLayout>
 

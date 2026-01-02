@@ -35,28 +35,28 @@ const TodoListInput = ({ todoList, setTodoList }) => {
                         className="cursor-pointer"
                         onClick={() => {
                             handleDeleteOption(index);
-          }}
-          >
-                    <HiOutlineTrash className='text-lg text-red-500' />
+                        }}
+                    >
+                        <HiOutlineTrash className='text-lg text-red-500' />
+                    </button>
+                </div>
+            ))}
+            <div className='flex-items-center gap-5 mt-4'>
+                <input
+                    type='text'
+                    placeholder='Enter Task'
+                    value={option}
+                    onChange={({ target }) => setOption(target.value)}
+                    className="w-full text-[13px] text-black outline-none bg-white border border-gray-100 px-3 py-2 rounded-md "
+                />
+                <button className="card-btn text-nowrap" onClick={handleAddOption}>
+                    <HiMiniPlus className="text-lg" /> Add
                 </button>
             </div>
-            ))}
-          <div className='flex-items-center gap-5 mt-4'> 
-          <input
-          type='text'
-          placeholder='Enter Task'
-          value={option}
-          onChange={({target}) => setOption(target.value)}
-className = "w-full text-[13px] text-black outline-none bg-white border border-gray-100 px-3 py-2 rounded-md " 
-/>
-    <button className="card-btn text-nowrap" onClick={handleAddOption}>
-        <HiMiniPlus className="text-lg" /> Add
-    </button>
-</div>
-</div>
+        </div>
 
 
-)
+    )
 }
 
 
