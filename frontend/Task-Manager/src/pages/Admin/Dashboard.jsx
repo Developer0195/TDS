@@ -9,7 +9,7 @@ import { addThousandsSeparator } from "../../utils/helper";
 import { API_PATHS } from "../../utils/apiPaths";
 import axiosInstance from "../../utils/axiosInstance";
 import InfoCard from "../../components/Cards/InfoCards";
-import TaskListTable from "../../components/Layouts/TaskListTable";
+import TaskListTable from "../../components/TaskListTable";
 import CustomPieChart from "../../components/Charts/CustomPieChart";
 import CustomBarChart from "../../components/Charts/CustomBarChart";
 

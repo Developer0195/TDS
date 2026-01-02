@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react";
 import axiosInstance from "../../utils/axiosInstance";
-import Model from "../Layouts/Model";
-import AvatarGroup from "../Layouts/AvatarGroup";
+import Modal from "../Modal";
+import AvatarGroup from "../AvatarGroup";
 import { LuUser } from "react-icons/lu";
 import { API_PATHS } from "../../utils/apiPaths";
 
@@ -67,7 +67,7 @@ const SelectUsers = ({ selectedUsers, setSelectedUsers }) => {
             )}
 
 
-            <Model
+            <Modal
                 isOpen={isModalOpen}
                 onClose={() => setIsModalOpen(false)}
                 title="Select users"
@@ -111,7 +111,7 @@ const SelectUsers = ({ selectedUsers, setSelectedUsers }) => {
                 </div>
 
 
-            </Model>
+            </Modal>
         </div>
     );
 
