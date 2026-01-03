@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import React, { useEffect, useState } from 'react'
 import DashboardLayout from '../../components/Layouts/DashboardLayout'
 import { PRIORITY_DATA } from '../../utils/data';
 import axiosInstance from '../../utils/axiosInstance';
@@ -13,6 +13,7 @@ import AddAttachmentsInput from '../../components/Inputs/AddAttachmentsInput';
 import SelectUsers from '../../components/Inputs/SelectUsers';
 import Input from '../../components/Inputs/Input';
 import Modal from '../../components/Modal';
+import DeleteAlert from '../../components/DeleteAlert'
 
 const CreateTask = () => {
 
@@ -58,7 +59,7 @@ const CreateTask = () => {
     setLoading(true);
 
     try {
-      const todolist = taskData.todoChecklist.map((item) => ({
+      const todolist = taskData.todoCheckList.map((item) => ({
         text: item,
         completed: false,
       }));
@@ -66,7 +67,7 @@ const CreateTask = () => {
       const response = await axiosInstance.post(API_PATHS.TASKS.CREATE_TASK, {
         ...taskData,
         dueDate: new Date(taskData.dueDate).toISOString(),
-        todoChecklist: todolist,
+        todoCheckList: todolist,
       });
 
       toast.success("Task Created Successfully");
@@ -86,9 +87,9 @@ const CreateTask = () => {
     setLoading(true);
 
     try {
-      const todolist = taskData.todoChecklist?.map((item) => {
-        const prevTodoChecklist = currentTask?.todoChecklist || [];
-        const matchedTask = prevTodoChecklist.find(
+      const todolist = taskData.todoCheckList?.map((item) => {
+        const prevTodoCheckList = currentTask?.todoCheckList || [];
+        const matchedTask = prevTodoCheckList.find(
           (task) => task.text === item
         );
 
@@ -103,7 +104,7 @@ const CreateTask = () => {
         {
           ...taskData,
           dueDate: new Date(taskData.dueDate).toISOString(),
-          todoChecklist: todolist,
+          todoCheckList: todolist,
         }
       );
 
@@ -141,7 +142,7 @@ const CreateTask = () => {
       return;
     }
 
-    if (taskData.todoChecklist?.length === 0) {
+    if (taskData.todoCheckList?.length === 0) {
       setError("Add at least one todo task");
       return;
     }
@@ -175,7 +176,7 @@ const CreateTask = () => {
             ? moment(taskInfo.dueDate).format("YYYY-MM-DD")
             : null,
           assignedTo: taskInfo?.assignedTo?.map((item) => item?._id) || [],
-          todoChecklist: taskInfo?.todoChecklist?.map((item) => item?.text) || [],
+          todoCheckList: taskInfo?.todoCheckList?.map((item) => item?.text) || [],
           attachments: taskInfo?.attachments || [],
         }));
       }

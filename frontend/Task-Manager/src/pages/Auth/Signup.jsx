@@ -20,7 +20,7 @@ const Signup = () => {
 
   const [error, setError] = useState(null);
 
-  const {updateUser} = useContext(UserContext);
+  const { updateUser } = useContext(UserContext);
   const navigate = useNavigate();
 
   // Handle signup From Submit 
@@ -55,12 +55,13 @@ const Signup = () => {
         name: fullName,
         email,
         password,
+        profileImageUrl: profileImageUrl,
         adminInviteToken
       });
 
       const { token, role } = response.data;
-      
-      
+
+
       if (token) {
         localStorage.setItem("token", token);
         console.log(token)

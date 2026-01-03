@@ -5,6 +5,7 @@ import { API_PATHS } from '../../utils/apiPaths';
 import axiosInstance from '../../utils/axiosInstance';
 import { LuFileSpreadsheet } from 'react-icons/lu';
 import TaskCard from '../../components/Cards/TaskCard';
+import TaskStatusTabs from '../../components/TaskStatusTabs';
 
 const Mytasks = () => {
 
