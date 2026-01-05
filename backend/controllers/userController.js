@@ -52,9 +52,56 @@ const getUserById = async (req, res) => {
     }
 };
 
-// @desc Delete a user(Admin only)
-// @route DELETE /api/users/: id
+// @desc Delete a user (Admin only)
+// @route DELETE /api/users/:id
 // @access Private (Admin)
-const deleteUser = async (req, res) => { };
+const deleteUser = async (req, res) => {
+    try {
+        const userId = req.params.id;
+
+        // Find user
+        const user = await User.findById(userId);
+        if (!user) {
+            return res.status(404).json({ message: "User not found" });
+        }
+
+        // Prevent deleting admin users
+        if (user.role === "admin") {
+            return res.status(400).json({
+                message: "Admin users cannot be deleted",
+            });
+        }
+
+        // ❗ Check if user has any task in progress
+        const inProgressTaskExists = await Task.exists({
+            assignedTo: userId,
+            status: "In Progress",
+        });
+
+        if (inProgressTaskExists) {
+            return res.status(400).json({
+                message:
+                    "User cannot be deleted because they have tasks in progress",
+            });
+        }
+
+        // Optional: delete user's tasks (Pending / Completed only)
+        // await Task.deleteMany({ assignedTo: userId });
+
+        // Delete user
+        await user.deleteOne();
+
+        res.json({
+            message: "User deleted successfully",
+        });
+
+    } catch (error) {
+        res.status(500).json({
+            message: "Server error",
+            error: error.message,
+        });
+    }
+};
+
 
 module.exports = { getUsers, getUserById, deleteUser };

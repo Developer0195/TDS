@@ -50,9 +50,10 @@ const ManageTasks = () => {
     try {
       const response = await axiosInstance.get(API_PATHS.TASKS.GET_ALL_TASKS, {
         params: {
-          status: filterStatus === "ALL" ? "" : filterStatus
+          status: filterStatus === "All" || filterStatus === "ALL" ? "" : filterStatus
         }
       });
+      console.log(filterStatus)
       setAllTasks(response.data?.tasks?.length > 0 ? response.data?.tasks : []);
 
       //Map statusSummary data with fixed labels and order
