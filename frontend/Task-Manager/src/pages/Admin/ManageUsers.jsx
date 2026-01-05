@@ -4,10 +4,14 @@ import axiosInstance from '../../utils/axiosInstance';
 import DashboardLayout from '../../components/Layouts/DashboardLayout';
 import { LuFileSpreadsheet } from 'react-icons/lu';
 import UserCard from '../../components/Cards/UserCard'
+import DeleteAlert from '../../components/DeleteAlert';
 
 const ManageUsers = () => {
 
   const [allUsers, setAllUsers] = useState([]);
+  const [showDeleteAlert, setShowDeleteAlert] = useState(false);
+  const [selectedUserId, setSelectedUserId] = useState(null);
+  const [deleteError, setDeleteError] = useState("");
 
   const getAllUsers = async () => {
     try {
@@ -20,6 +24,33 @@ const ManageUsers = () => {
     }
   };
 
+  // OPEN DELETE POPUP
+  const confirmDeleteUser = (userId) => {
+    setSelectedUserId(userId);
+    setDeleteError("");
+    setShowDeleteAlert(true);
+  };
+
+  // DELETE USER
+  const deleteUser = async () => {
+    try {
+      await axiosInstance.delete(
+        API_PATHS.USERS.DELETE_USER(selectedUserId)
+      );
+
+
+      setShowDeleteAlert(false);
+      setSelectedUserId(null);
+      getAllUsers();
+
+    } catch (error) {
+      setDeleteError(
+        error.response?.data?.message ||
+        "Failed to delete user"
+      );
+    }
+  };
+
   // download task report
   const handleDownloadReport = async () => {
     try {
@@ -27,7 +58,6 @@ const ManageUsers = () => {
         responseType: "blob",
       });
 
-      // Create a URL for the blob
       const url = window.URL.createObjectURL(new Blob([response.data]));
       const link = document.createElement("a");
       link.href = url;
@@ -35,27 +65,21 @@ const ManageUsers = () => {
       document.body.appendChild(link);
       link.click();
       link.parentNode.removeChild(link);
-      window.URL.revokeObejectURL(url);
+      window.URL.revokeObjectURL(url);
     } catch (error) {
       console.error("Error downloading expense details:", error);
-      toast.error("Failed to download the expense details. Please try again.")
     }
   };
 
-
   useEffect(() => {
     getAllUsers();
-
-    return () => { };
   }, []);
 
   return (
     <DashboardLayout activeMenu="Team Members">
       <div className="mt-5 mb-10">
         <div className="flex md:flex-row md:items-center justify-between">
-          <h2 className="text-xl md:text-xl font-medium">
-            Team Members
-          </h2>
+          <h2 className="text-xl font-medium">Team Members</h2>
 
           <button
             className="flex md:flex download-btn"
@@ -68,14 +92,43 @@ const ManageUsers = () => {
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-4">
           {allUsers?.map((user) => (
-            <UserCard key={user._id} userInfo={user} />
+            <div key={user._id}>
+              <UserCard userInfo={user} />
+
+              <button
+                onClick={() => confirmDeleteUser(user._id)}
+                className="mt-2 w-full text-sm bg-red-500 hover:bg-red-600 text-white py-1 rounded"
+              >
+                Delete User
+              </button>
+            </div>
           ))}
         </div>
       </div>
+
+      {/* ✅ DELETE CONFIRMATION POPUP */}
+      {showDeleteAlert && (
+        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-5 w-[90%] max-w-sm">
+            <DeleteAlert
+              content={
+                deleteError ||
+                "Are you sure you want to delete this user?"
+              }
+              onDelete={deleteUser}
+            />
+
+            <button
+              className="text-xs text-gray-500 mt-3"
+              onClick={() => setShowDeleteAlert(false)}
+            >
+              Cancel
+            </button>
+          </div>
+        </div>
+      )}
     </DashboardLayout>
   );
+};
 
-
-}
-
-export default ManageUsers
+export default ManageUsers;
