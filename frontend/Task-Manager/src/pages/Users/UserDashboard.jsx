@@ -13,7 +13,7 @@ import TaskListTable from "../../components/TaskListTable";
 import CustomPieChart from "../../components/Charts/CustomPieChart";
 import CustomBarChart from "../../components/Charts/CustomBarChart";
 
-const COLORS = ['#8D51FF, #00B8D8, #7BCE00'];
+const COLORS = ['#8D51FF', '#00B8D8', '#7BCE00'];
 
 
 const UserDashboard = () => {
@@ -53,6 +53,7 @@ const UserDashboard = () => {
       const response = await axiosInstance.get(
         API_PATHS.TASKS.GET_USER_DASHBOARD_DATA
       );
+      console.log(response)
       if (response.data) {
         setDashboardData(response.data);
         prepareChartData(response.data?.charts || null)
@@ -98,7 +99,7 @@ const UserDashboard = () => {
           value={addThousandsSeparator(
             dashboardData?.charts?.taskDistribution?.Pending || 0
           )}
-          color="bg-voilet-500"
+          color="bg-[#8D51FF]"
         />
         <InfoCard
           label="In Progress Tasks "

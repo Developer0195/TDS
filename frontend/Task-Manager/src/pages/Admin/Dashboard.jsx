@@ -13,7 +13,7 @@ import TaskListTable from "../../components/TaskListTable";
 import CustomPieChart from "../../components/Charts/CustomPieChart";
 import CustomBarChart from "../../components/Charts/CustomBarChart";
 
-const COLORS = ['#8D51FF, #00B8D8, #7BCE00'];
+const COLORS = ['#8D51FF', '#00B8D8', '#7BCE00'];
 
 
 const Dashboard = () => {
@@ -98,7 +98,7 @@ const Dashboard = () => {
           value={addThousandsSeparator(
             dashboardData?.charts?.taskDistribution?.Pending || 0
           )}
-          color="bg-voilet-500"
+          color="bg-[#8D51FF]"
         />
         <InfoCard
           label="In Progress Tasks "

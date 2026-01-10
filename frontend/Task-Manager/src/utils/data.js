@@ -4,6 +4,7 @@ import {
     LuClipboardCheck,
     LuSquarePlus,
     LuLogOut,
+    LuMapPinCheckInside,
 } from "react-icons/lu";
 
 export const SIDE_MENU_DATA = [
@@ -33,6 +34,12 @@ export const SIDE_MENU_DATA = [
     },
     {
         id: "05",
+        label: "Attendance",
+        icon: LuMapPinCheckInside,
+        path: "/attendance",
+    },
+    {
+        id: "06",
         label: "Logout",
         icon: LuLogOut,
         path: "logout",
@@ -53,12 +60,20 @@ export const SIDE_MENU_USER_DATA = [
         path: "/user/my-tasks",
     },
     {
-        id: "05",
+        id: "03",
+        label: "Attendance",
+        icon: LuMapPinCheckInside,
+        path: "/attendance",
+    },
+    {
+        id: "04",
         label: "Logout",
         icon: LuLogOut,
         path: "logout",
     },
 ];
+
+/* 🔽 THESE WERE MISSING — REQUIRED BY CreateTask.jsx */
 
 export const PRIORITY_DATA = [
     { label: "Low", value: "Low" },
@@ -71,4 +86,3 @@ export const STATUS_DATA = [
     { label: "In Progress", value: "In Progress" },
     { label: "Completed", value: "Completed" },
 ];
-

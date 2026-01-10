@@ -36,5 +36,9 @@ export const API_PATHS = {
     IMAGE: {
         UPLOAD_IMAGE: "/api/auth/upload-image",
     },
-
+    ATTENDANCE: {
+        PUNCH_IN: "/api/attendance/punch-in",
+        PUNCH_OUT: "/api/attendance/punch-out",
+        MY_ATTENDANCE: "/api/attendance/my",
+    },
 };
