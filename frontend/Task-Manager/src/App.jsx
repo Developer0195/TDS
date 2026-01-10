@@ -18,6 +18,8 @@ import PrivateRoute from './routes/PrivateRoute';
 import UserProvider, { UserContext } from './context/userContext';
 import { Toaster } from 'react-hot-toast';
 
+import UserProfile from "./pages/Profile/UserProfile";
+
 /* ✅ ROOT COMPONENT — MUST EXIST */
 const Root = () => {
   const { user, loading } = useContext(UserContext);
@@ -61,6 +63,7 @@ const App = () => {
           {/* Attendance (Admin + Member) */}
           <Route element={<PrivateRoute allowedRoles={["admin", "member"]} />}>
             <Route path="/attendance" element={<Attendance />} />
+            <Route path="/profile" element={<UserProfile />} />
           </Route>
 
           {/* Default Route */}

@@ -11,6 +11,24 @@ const UserSchema = new mongoose.Schema(
             enum: ["superadmin", "admin", "member"],
             default: "member",
         },
+        phone: { type: String, default: "" },
+        skills: { type: [String], default: [] },
+
+        experience: {
+            currentOrgYears: { type: Number, default: 0 },
+            overallYears: { type: Number, default: 0 },
+        },
+
+        analytics: {
+            tasksCompleted: { type: Number, default: 0 },
+            onTimePercentage: { type: Number, default: 0 },
+            avgDelayMinutes: { type: Number, default: 0 },
+            avgWorkingHours: {
+                weekly: { type: Number, default: 0 },
+                monthly: { type: Number, default: 0 },
+                yearly: { type: Number, default: 0 },
+            },
+        },
     },
     { timestamps: true }
 );

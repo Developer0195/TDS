@@ -7,9 +7,9 @@ const bcrypt = require("bcryptjs");
 
 const getUsers = async (req, res) => {
     try {
-        const users = await User.find({ role: "member" }).select("-password");
+        const users = await User.find({ role: "member" })
+            .select("-password");
 
-        // Add task counts to each user
         const usersWithTaskCounts = await Promise.all(
             users.map(async (user) => {
                 const pendingTasks = await Task.countDocuments({
@@ -28,17 +28,38 @@ const getUsers = async (req, res) => {
                 });
 
                 return {
-                    ...user._doc, // Include all existing user data
+                    ...user._doc,
+
+                    // existing counts (UI already uses these)
                     pendingTasks,
                     inProgressTasks,
                     completedTasks,
+
+                    // ✅ ensure analytics always exists
+                    analytics: user.analytics || {
+                        tasksCompleted: completedTasks,
+                        onTimePercentage: 0,
+                        avgDelayMinutes: 0,
+                        avgWorkingHours: {
+                            weekly: 0,
+                            monthly: 0,
+                            yearly: 0,
+                        },
+                    },
                 };
-            }));
+            })
+        );
+
         res.json(usersWithTaskCounts);
     } catch (error) {
-        res.status(500) - json({ message: "Server error", error: error.message });
+        res.status(500).json({
+            message: "Server error",
+            error: error.message,
+        });
     }
-}
+};
+
+
 // @desc Get user by ID
 // @route GET / api / users /: id
 // @access Private
@@ -103,5 +124,61 @@ const deleteUser = async (req, res) => {
     }
 };
 
+// @desc Get logged-in user's profile
+// @route GET /api/users/me/profile
+// @access Private
+const getMyProfile = async (req, res) => {
+    try {
+        const user = await User.findById(req.user._id).select("-password");
 
-module.exports = { getUsers, getUserById, deleteUser };
+        if (!user) {
+            return res.status(404).json({ message: "User not found" });
+        }
+
+        res.json(user);
+    } catch (error) {
+        res.status(500).json({
+            message: "Server error",
+            error: error.message,
+        });
+    }
+};
+
+// @desc Update logged-in user's profile (restricted fields)
+// @route PUT /api/users/me/profile
+// @access Private
+const updateMyProfile = async (req, res) => {
+    try {
+        // Only allow these fields to be updated by user
+        const allowedFields = ["name", "phone", "skills"];
+
+        const updates = {};
+        allowedFields.forEach((field) => {
+            if (req.body[field] !== undefined) {
+                updates[field] = req.body[field];
+            }
+        });
+
+        const updatedUser = await User.findByIdAndUpdate(
+            req.user._id,
+            updates,
+            { new: true }
+        ).select("-password");
+
+        res.json(updatedUser);
+    } catch (error) {
+        res.status(500).json({
+            message: "Server error",
+            error: error.message,
+        });
+    }
+};
+
+
+module.exports = {
+    getUsers,
+    getUserById,
+    deleteUser,
+    getMyProfile,
+    updateMyProfile,
+};
