@@ -7,6 +7,8 @@ import {
     LuMapPinCheckInside,
 } from "react-icons/lu";
 
+import { FaUser } from "react-icons/fa";
+
 export const SIDE_MENU_DATA = [
     {
         id: "01",
@@ -40,6 +42,12 @@ export const SIDE_MENU_DATA = [
     },
     {
         id: "06",
+        label: "Profile",
+        icon: FaUser,
+        path: "/profile",
+    },
+    {
+        id: "07",
         label: "Logout",
         icon: LuLogOut,
         path: "logout",
@@ -67,6 +75,12 @@ export const SIDE_MENU_USER_DATA = [
     },
     {
         id: "04",
+        label: "Profile",
+        icon: FaUser,
+        path: "/profile",
+    },
+    {
+        id: "05",
         label: "Logout",
         icon: LuLogOut,
         path: "logout",

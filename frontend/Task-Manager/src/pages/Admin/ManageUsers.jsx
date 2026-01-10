@@ -5,6 +5,8 @@ import DashboardLayout from '../../components/Layouts/DashboardLayout';
 import { LuFileSpreadsheet } from 'react-icons/lu';
 import UserCard from '../../components/Cards/UserCard'
 import DeleteAlert from '../../components/DeleteAlert';
+import UserAnalyticsModal from "../../components/Modals/UserAnalyticsModal";
+
 
 const ManageUsers = () => {
 
@@ -12,6 +14,9 @@ const ManageUsers = () => {
   const [showDeleteAlert, setShowDeleteAlert] = useState(false);
   const [selectedUserId, setSelectedUserId] = useState(null);
   const [deleteError, setDeleteError] = useState("");
+
+  const [selectedUser, setSelectedUser] = useState(null);
+
 
   const getAllUsers = async () => {
     try {
@@ -93,7 +98,9 @@ const ManageUsers = () => {
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-4">
           {allUsers?.map((user) => (
             <div key={user._id}>
-              <UserCard userInfo={user} />
+              <UserCard
+                userInfo={user}
+                onClick={(userData) => setSelectedUser(userData)} />
 
               <button
                 onClick={() => confirmDeleteUser(user._id)}
@@ -127,6 +134,13 @@ const ManageUsers = () => {
           </div>
         </div>
       )}
+      {selectedUser && (
+        <UserAnalyticsModal
+          user={selectedUser}
+          onClose={() => setSelectedUser(null)}
+        />
+      )}
+
     </DashboardLayout>
   );
 };

@@ -65,24 +65,45 @@ const exportTasksReport = async (req, res) => {
 // @access  Private (Admin)
 const exportUsersReport = async (req, res) => {
     try {
-        const users = await User.find().select("name email _id").lean();
+        // Fetch users with extended fields
+        const users = await User.find()
+            .select(
+                "name email phone role skills experience analytics _id"
+            )
+            .lean();
+
         const userTasks = await Task.find().populate(
             "assignedTo",
             "name email _id"
         );
 
         const userTaskMap = {};
+
         users.forEach((user) => {
             userTaskMap[user._id] = {
                 name: user.name,
                 email: user.email,
+                phone: user.phone || "",
+                role: user.role || "",
+                skills: (user.skills || []).join(", "),
+                currentOrgExperience: user.experience?.currentOrgYears || 0,
+                overallExperience: user.experience?.overallYears || 0,
+
                 taskCount: 0,
                 pendingTasks: 0,
                 inProgressTasks: 0,
                 completedTasks: 0,
+
+                tasksCompleted: user.analytics?.tasksCompleted || 0,
+                onTimePercentage: user.analytics?.onTimePercentage || 0,
+                avgDelayMinutes: user.analytics?.avgDelayMinutes || 0,
+                weeklyHours: user.analytics?.avgWorkingHours?.weekly || 0,
+                monthlyHours: user.analytics?.avgWorkingHours?.monthly || 0,
+                yearlyHours: user.analytics?.avgWorkingHours?.yearly || 0,
             };
         });
 
+        // Count tasks
         userTasks.forEach((task) => {
             if (task.assignedTo) {
                 task.assignedTo.forEach((assignedUser) => {
@@ -102,19 +123,30 @@ const exportUsersReport = async (req, res) => {
         });
 
         const workbook = new excelJS.Workbook();
-        const worksheet = workbook.addWorksheet("User Task Report");
+        const worksheet = workbook.addWorksheet("User Report");
 
         worksheet.columns = [
             { header: "User Name", key: "name", width: 30 },
             { header: "Email", key: "email", width: 40 },
-            { header: "Total Assigned Tasks", key: "taskCount", width: 20 },
-            { header: "Pending Tasks", key: "pendingTasks", width: 20 },
-            {
-                header: "In Progress Tasks",
-                key: "inProgressTasks",
-                width: 20,
-            },
+            { header: "Phone", key: "phone", width: 20 },
+            { header: "Role", key: "role", width: 15 },
+            { header: "Skills", key: "skills", width: 40 },
+
+            { header: "Current Org Exp (Years)", key: "currentOrgExperience", width: 25 },
+            { header: "Overall Exp (Years)", key: "overallExperience", width: 25 },
+
+            { header: "Total Tasks", key: "taskCount", width: 15 },
+            { header: "Pending Tasks", key: "pendingTasks", width: 18 },
+            { header: "In Progress Tasks", key: "inProgressTasks", width: 20 },
             { header: "Completed Tasks", key: "completedTasks", width: 20 },
+
+            { header: "Tasks Completed (Analytics)", key: "tasksCompleted", width: 28 },
+            { header: "On-time %", key: "onTimePercentage", width: 15 },
+            { header: "Avg Delay (mins)", key: "avgDelayMinutes", width: 20 },
+
+            { header: "Avg Weekly Hours", key: "weeklyHours", width: 20 },
+            { header: "Avg Monthly Hours", key: "monthlyHours", width: 22 },
+            { header: "Avg Yearly Hours", key: "yearlyHours", width: 22 },
         ];
 
         Object.values(userTaskMap).forEach((user) => {
@@ -131,18 +163,17 @@ const exportUsersReport = async (req, res) => {
             'attachment; filename="users_report.xlsx"'
         );
 
-        return workbook.xlsx.write(res).then(() => {
-            res.end();
-        });
-
+        await workbook.xlsx.write(res);
+        res.end();
 
     } catch (error) {
-        res
-            .status(500)
-            .json({ message: "Error exporting tasks", error: error.message });
+        res.status(500).json({
+            message: "Error exporting users",
+            error: error.message,
+        });
     }
-
 };
+
 
 module.exports = {
     exportTasksReport,
