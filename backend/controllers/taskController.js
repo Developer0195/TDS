@@ -36,8 +36,8 @@ const getTasks = async (req, res) => {
             req.user.role === "superadmin"
                 ? {}
                 : req.user.role === "admin"
-                ? { createdBy: req.user._id }
-                : { assignedTo: req.user._id };
+                    ? { createdBy: req.user._id }
+                    : { assignedTo: req.user._id };
 
         const allTasks = await Task.countDocuments(baseFilter);
 
@@ -108,44 +108,73 @@ const getTaskById = async (req, res) => {
 // ===============================
 const createTask = async (req, res) => {
     try {
-        const {
-            title,
-            description,
-            priority,
-            dueDate,
-            assignedTo,
-            attachments,
-            todoCheckList,
-        } = req.body;
-
-        if (!Array.isArray(assignedTo)) {
-            return res
-                .status(400)
-                .json({ message: "assignedTo must be an array of user IDs" });
-        }
-
-        const task = await Task.create({
-            title,
-            description,
-            priority,
-            dueDate,
-            assignedTo,
-            createdBy: req.user._id,
-            todoCheckList,
-            attachments,
+      const {
+        title,
+        description,
+        priority,
+        dueDate,
+        assignedTo,
+        attachments = [],
+        todoCheckList = [],
+      } = req.body;
+  
+      // 🔒 VALIDATIONS
+      if (!title) {
+        return res.status(400).json({ message: "Title is required" });
+      }
+  
+      if (!dueDate || isNaN(new Date(dueDate).getTime())) {
+        return res.status(400).json({ message: "Valid due date is required" });
+      }
+  
+      if (!Array.isArray(assignedTo) || assignedTo.length === 0) {
+        return res.status(400).json({
+          message: "Task must be assigned to at least one user",
         });
-
-        res.status(201).json({
-            message: "Task created successfully",
-            task,
-        });
+      }
+  
+      // ✅ NORMALIZE TODOS
+      const normalizedTodos = todoCheckList.map((item) =>
+        typeof item === "string"
+          ? { text: item, completed: false }
+          : {
+              text: item.text,
+              completed: item.completed ?? false,
+            }
+      );
+  
+      const task = await Task.create({
+        title,
+        description,
+        priority,
+        dueDate,
+        assignedTo,
+        createdBy: req.user._id,
+        todoCheckList: normalizedTodos,
+        attachments,
+      });
+  
+      res.status(201).json({
+        message: "Task created successfully",
+        task,
+      });
     } catch (error) {
-        res.status(500).json({
-            message: "Server error",
-            error: error.message,
+      console.error("🔥 CREATE TASK FAILED 🔥", error);
+  
+      if (error.name === "ValidationError") {
+        return res.status(400).json({
+          message: error.message,
+          errors: error.errors,
         });
+      }
+  
+      res.status(500).json({
+        message: "Server error",
+        error: error.message,
+      });
     }
-};
+  };
+  
 
 // ===============================
 // UPDATE TASK

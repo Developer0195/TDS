@@ -33,8 +33,16 @@ const taskSchema = new mongoose.Schema(
             ref: "User",
             required: true,
         },
-
-        attachments: [{ type: String }],
+        attachments: [
+            {
+                url: String,
+                name: String,
+                uploadedAt: {
+                    type: Date,
+                    default: Date.now,
+                },
+            },
+        ],
         todoCheckList: [todoSchema],
         progress: { type: Number, default: 0 },
     },
