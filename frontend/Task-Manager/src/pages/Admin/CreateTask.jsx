@@ -35,6 +35,7 @@ const CreateTask = () => {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const [openDeleteAlert, setOpenDeleteAlert] = useState(false);
+  const [aiLoading, setAiLoading] = useState(false);
 
   const handleValueChange = (key, value) => {
     setTaskData((prevData) => ({ ...prevData, [key]: value }));
@@ -204,6 +205,39 @@ const CreateTask = () => {
     }
   };
 
+  const handleAIGenerate = async () => {
+    if (!taskData.title.trim()) {
+      toast.error("Please enter a title first");
+      return;
+    }
+
+    try {
+      setAiLoading(true);
+
+      const response = await axiosInstance.post(
+        API_PATHS.TASKS.AI_GENERATE,
+        { title: taskData.title }
+      );
+
+      const aiTask = response.data;
+
+      setTaskData((prev) => ({
+        ...prev,
+        title: aiTask.title,
+        description: aiTask.description,
+        priority: aiTask.priority,
+        todoCheckList: aiTask.todoCheckList,
+      }));
+
+      toast.success("Task generated using AI");
+    } catch (error) {
+      toast.error("AI generation failed");
+    } finally {
+      setAiLoading(false);
+    }
+  };
+
+
 
   useEffect(() => {
     if (taskId) {
@@ -234,14 +268,24 @@ const CreateTask = () => {
               )}
             </div>
 
-            <div className='mt-4'>
-              <label className='text-xs font-medium text-slate-600'>
-                Task Title
-              </label>
+            <div className="mt-4">
+              <div className="flex items-center justify-between">
+                <label className="text-xs font-medium text-slate-600">
+                  Task Title
+                </label>
+
+                <button
+                  onClick={handleAIGenerate}
+                  disabled={aiLoading}
+                  className="text-xs font-medium text-indigo-600 hover:underline"
+                >
+                  {aiLoading ? "Generating..." : "✨ Generate with AI"}
+                </button>
+              </div>
 
               <input
-                placeholder='Create App UI '
-                className='form-input'
+                placeholder="Create App UI"
+                className="form-input mt-1"
                 value={taskData.title}
                 onChange={({ target }) =>
                   handleValueChange("title", target.value)
