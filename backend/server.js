@@ -10,6 +10,8 @@ const userRoutes = require('./routes/userRoutes')
 const taskRoutes = require('./routes/taskRoutes')
 const reportRoutes = require('./routes/reportRoutes')
 const attendanceRoutes = require("./routes/attendanceRoutes");
+const cloudinary = require("./config/cloudinary");
+const uploadRoutes = require("./routes/uploadRoutes");
 
 // Middleware to handle CORS
 app.use(
@@ -33,10 +35,23 @@ app.use("/api/users", userRoutes);
 app.use("/api/tasks", taskRoutes);
 app.use("/api/reports", reportRoutes);
 app.use("/api/attendance", attendanceRoutes);
+app.use("/api/upload", uploadRoutes);
 
 
 //Server uploads folder
-app.use("/uploads",express.static(path.join(__dirname,"uploads")))
+app.use("/uploads", express.static(path.join(__dirname, "uploads")))
+
+app.get("/test-cloudinary", async (req, res) => {
+    try {
+        const result = await cloudinary.uploader.upload(
+            "https://res.cloudinary.com/demo/image/upload/sample.jpg"
+        );
+
+        res.json({ success: true, url: result.secure_url });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
 
 //Start the server
 const PORT = process.env.PORT || 5000;

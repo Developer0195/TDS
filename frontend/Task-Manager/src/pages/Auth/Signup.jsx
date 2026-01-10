@@ -23,6 +23,19 @@ const Signup = () => {
   const { updateUser } = useContext(UserContext);
   const navigate = useNavigate();
 
+  const uploadProfileImage = async (file) => {
+    const formData = new FormData();
+    formData.append("file", file);
+
+    const response = await axiosInstance.post(
+      "/api/upload/attachment",
+      formData,
+      { headers: { "Content-Type": "multipart/form-data" } }
+    );
+
+    return response.data.url; // Cloudinary URL
+  };
+
   // Handle signup From Submit 
   const handleLogin = async (e) => {
     e.preventDefault();
@@ -47,8 +60,7 @@ const Signup = () => {
     try {
 
       if (profilePic) {
-        const imgUploadRes = await uploadImage(profilePic)
-        profileImageUrl = imgUploadRes.imageUrl || ""
+        profileImageUrl = await uploadProfileImage(profilePic);
       }
 
       const response = await axiosInstance.post(API_PATHS.AUTH.REGISTER, {

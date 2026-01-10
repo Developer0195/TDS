@@ -4,6 +4,9 @@ import { useNavigate } from "react-router-dom";
 import { SIDE_MENU_DATA, SIDE_MENU_USER_DATA } from "../../utils/data";
 
 const SideMenu = ({ activeMenu }) => {
+  const DEFAULT_AVATAR =
+    "https://ui-avatars.com/api/?name=User&background=CBD5E1&color=1E293B";
+
   const { user, clearUser } = useContext(UserContext);
   const [sideMenuData, setSideMenuData] = useState([]);
 
@@ -37,8 +40,11 @@ const SideMenu = ({ activeMenu }) => {
     <div className="flex flex-col items-center justify-center mb-7">
       <div className="relative">
         <img
-          src={user?.profileImageUrl || null}
+          src={user?.profileImageUrl || DEFAULT_AVATAR}
           alt="Profile Image"
+          onError={(e) => {
+            e.currentTarget.src = DEFAULT_AVATAR;
+          }}
           className="w-20 h-20 bg-slate-400 rounded-full"
         />
       </div>

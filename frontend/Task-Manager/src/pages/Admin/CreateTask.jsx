@@ -1,25 +1,27 @@
 import React, { useEffect, useState } from 'react'
 import DashboardLayout from '../../components/Layouts/DashboardLayout'
-import { PRIORITY_DATA } from '../../utils/data';
-import axiosInstance from '../../utils/axiosInstance';
-import { API_PATHS } from '../../utils/apiPaths';
-import toast from "react-hot-toast";
-import { useLocation, useNavigate } from "react-router-dom";
-import moment from "moment";
-import { LuTrash2 } from "react-icons/lu";
-import SelectDropdown from '../../components/Inputs/SelectDropdown';
-import TodoListInput from '../../components/Inputs/TodoListInput';
-import AddAttachmentsInput from '../../components/Inputs/AddAttachmentsInput';
-import SelectUsers from '../../components/Inputs/SelectUsers';
-import Input from '../../components/Inputs/Input';
-import Modal from '../../components/Modal';
+import { PRIORITY_DATA } from '../../utils/data'
+import axiosInstance from '../../utils/axiosInstance'
+import { API_PATHS } from '../../utils/apiPaths'
+import toast from "react-hot-toast"
+import { useLocation, useNavigate } from "react-router-dom"
+import moment from "moment"
+import { LuTrash2 } from "react-icons/lu"
+import SelectDropdown from '../../components/Inputs/SelectDropdown'
+import TodoListInput from '../../components/Inputs/TodoListInput'
+import AddAttachmentsInput from '../../components/Inputs/AddAttachmentsInput'
+import SelectUsers from '../../components/Inputs/SelectUsers'
+import Input from '../../components/Inputs/Input'
+import Modal from '../../components/Modal'
 import DeleteAlert from '../../components/DeleteAlert'
 
 const CreateTask = () => {
 
-  const location = useLocation();
-  const { taskId } = location.state || {};
-  const navigate = useNavigate();
+  const location = useLocation()
+  const { taskId } = location.state || {}
+  const navigate = useNavigate()
+
+  /* -------------------- STATE -------------------- */
 
   const [taskData, setTaskData] = useState({
     title: "",
@@ -29,20 +31,24 @@ const CreateTask = () => {
     assignedTo: [],
     todoCheckList: [],
     attachments: []
-  });
+  })
 
-  const [currentTask, setCurrentTask] = useState(null);
-  const [error, setError] = useState("");
-  const [loading, setLoading] = useState(false);
-  const [openDeleteAlert, setOpenDeleteAlert] = useState(false);
-  const [aiLoading, setAiLoading] = useState(false);
+  const [currentTask, setCurrentTask] = useState(null)
+  const [error, setError] = useState("")
+  const [loading, setLoading] = useState(false)
+  const [openDeleteAlert, setOpenDeleteAlert] = useState(false)
+
+  const [aiLoading, setAiLoading] = useState(false)
+  const [aiFile, setAiFile] = useState(null)                 // local file
+  const [aiAttachment, setAiAttachment] = useState(null)     // cloudinary file
+
+  /* -------------------- HELPERS -------------------- */
 
   const handleValueChange = (key, value) => {
-    setTaskData((prevData) => ({ ...prevData, [key]: value }));
-  };
+    setTaskData((prev) => ({ ...prev, [key]: value }))
+  }
 
   const clearData = () => {
-    //reset form 
     setTaskData({
       title: "",
       description: "",
@@ -51,175 +57,141 @@ const CreateTask = () => {
       assignedTo: [],
       todoCheckList: [],
       attachments: [],
+    })
+    setAiFile(null)
+    setAiAttachment(null)
+    setError(null)
+  }
 
-    });
-  };
+  const handleRemoveAIFile = () => {
+    setAiFile(null)
+    setAiAttachment(null)
 
-  // Create task 
+    if (!taskId) {
+      clearData()
+    }
+  }
+
+  /* -------------------- CREATE TASK -------------------- */
+
   const createTask = async () => {
-    setLoading(true);
+    setLoading(true)
 
     try {
-      const todolist = taskData.todoCheckList.map((item) => ({
-        text: item,
-        completed: false,
-      }));
+      if (!taskData.dueDate || isNaN(new Date(taskData.dueDate).getTime())) {
+        toast.error("Please select a valid due date")
+        setLoading(false)
+        return
+      }
 
-      const response = await axiosInstance.post(API_PATHS.TASKS.CREATE_TASK, {
+      const todoList = taskData.todoCheckList.map((item) =>
+        typeof item === "string"
+          ? { text: item, completed: false }
+          : { text: item.text, completed: item.completed ?? false }
+      )
+
+      const payload = {
         ...taskData,
         dueDate: new Date(taskData.dueDate).toISOString(),
-        todoCheckList: todolist,
-      });
+        todoCheckList: todoList,
+        attachments: aiAttachment ? [aiAttachment] : [],
+      }
 
-      toast.success("Task Created Successfully");
+      const response = await axiosInstance.post(
+        API_PATHS.TASKS.CREATE_TASK,
+        payload
+      )
 
-      clearData();
+      if (response.status === 201) {
+        toast.success("Task Created Successfully")
+        clearData()
+      }
     } catch (error) {
-      console.error("Error creating task:", error);
-      setLoading(false);
+      console.error("Error creating task:", error)
+      toast.error(error.response?.data?.message || "Failed to create task")
     } finally {
-      setLoading(false);
+      setLoading(false)
     }
+  }
 
-  };
+  /* -------------------- UPDATE TASK -------------------- */
 
-  //update task 
   const updateTask = async () => {
-    setLoading(true);
+    setLoading(true)
 
     try {
-      const todolist = taskData.todoCheckList?.map((item) => {
-        const prevTodoCheckList = currentTask?.todoCheckList || [];
-        const matchedTask = prevTodoCheckList.find(
-          (task) => task.text === item
-        );
+      if (!taskData.dueDate || isNaN(new Date(taskData.dueDate).getTime())) {
+        toast.error("Please select a valid due date")
+        setLoading(false)
+        return
+      }
 
-        return {
-          text: item,
-          completed: matchedTask ? matchedTask.completed : false,
-        };
-      });
+      const todoList = taskData.todoCheckList.map((item) =>
+        typeof item === "string"
+          ? { text: item, completed: false }
+          : { text: item.text, completed: item.completed ?? false }
+      )
 
-      const response = await axiosInstance.put(
+      await axiosInstance.put(
         API_PATHS.TASKS.UPDATE_TASK(taskId),
         {
           ...taskData,
           dueDate: new Date(taskData.dueDate).toISOString(),
-          todoCheckList: todolist,
+          todoCheckList: todoList,
+          attachments: aiAttachment
+            ? [...taskData.attachments, aiAttachment]
+            : taskData.attachments,
         }
-      );
+      )
 
-      toast.success("Task Updated Successfully");
+      toast.success("Task Updated Successfully")
+      clearData()
     } catch (error) {
-      console.error("Error creating task:", error);
-      setLoading(false);
+      console.error("Error updating task:", error)
+      toast.error("Failed to update task")
     } finally {
-      setLoading(false);
+      setLoading(false)
     }
-  };
+  }
 
+  /* -------------------- SUBMIT -------------------- */
 
-  const handleSubmit = async () => {
-    setError(null);
+  const handleSubmit = () => {
+    setError("")
 
-    // Input validation
-    if (!taskData.title.trim()) {
-      setError("Title is required.");
-      return;
-    }
+    if (!taskData.title.trim()) return setError("Title is required.")
+    if (!taskData.description.trim()) return setError("Description is required.")
+    if (!taskData.dueDate) return setError("Due date is required.")
+    if (taskData.assignedTo.length === 0)
+      return setError("Task not assigned to any member")
+    if (taskData.todoCheckList.length === 0)
+      return setError("Add at least one todo task")
 
-    if (!taskData.description.trim()) {
-      setError("Description is required.");
-      return;
-    }
+    taskId ? updateTask() : createTask()
+  }
 
-    if (!taskData.dueDate) {
-      setError("Due date is required.");
-      return;
-    }
-
-    if (taskData.assignedTo?.length === 0) {
-      setError("Task not assigned to any member");
-      return;
-    }
-
-    if (taskData.todoCheckList?.length === 0) {
-      setError("Add at least one todo task");
-      return;
-    }
-
-    if (taskId) {
-      updateTask();
-      return;
-    }
-
-    createTask();
-
-  };
-
-
-  // get task info by ID 
-  const getTaskDetailsByID = async () => {
-    try {
-      const response = await axiosInstance.get(
-        API_PATHS.TASKS.GET_TASK_BY_ID(taskId)
-      );
-
-      if (response.data) {
-        const taskInfo = response.data;
-        setCurrentTask(taskInfo);
-
-        setTaskData((prevState) => ({
-          title: taskInfo.title,
-          description: taskInfo.description,
-          priority: taskInfo.priority,
-          dueDate: taskInfo.dueDate
-            ? moment(taskInfo.dueDate).format("YYYY-MM-DD")
-            : null,
-          assignedTo: taskInfo?.assignedTo?.map((item) => item?._id) || [],
-          todoCheckList: taskInfo?.todoCheckList?.map((item) => item?.text) || [],
-          attachments: taskInfo?.attachments || [],
-        }));
-      }
-    } catch (error) {
-      console.error("Error fetching task details:", error);
-    }
-  };
-
-
-  //delete task 
-
-  // Delete Task
-  const deleteTask = async () => {
-    try {
-      await axiosInstance.delete(API_PATHS.TASKS.DELETE_TASK(taskId));
-
-      setOpenDeleteAlert(false);
-      toast.success("Expense details deleted successfully");
-      navigate("/admin/tasks");
-    } catch (error) {
-      console.error(
-        "Error deleting expense:",
-        error.response?.data?.message || error.message
-      );
-    }
-  };
+  /* -------------------- AI GENERATE -------------------- */
 
   const handleAIGenerate = async () => {
-    if (!taskData.title.trim()) {
-      toast.error("Please enter a title first");
-      return;
+    if (!taskData.title && !aiFile) {
+      toast.error("Enter a title or upload a file")
+      return
     }
 
     try {
-      setAiLoading(true);
+      setAiLoading(true)
+
+      const formData = new FormData()
+      formData.append("title", taskData.title)
+      if (aiFile) formData.append("file", aiFile)
 
       const response = await axiosInstance.post(
         API_PATHS.TASKS.AI_GENERATE,
-        { title: taskData.title }
-      );
+        formData,
+        { headers: { "Content-Type": "multipart/form-data" } }
+      )
 
-      const aiTask = response.data;
+      const aiTask = response.data
 
       setTaskData((prev) => ({
         ...prev,
@@ -227,25 +199,51 @@ const CreateTask = () => {
         description: aiTask.description,
         priority: aiTask.priority,
         todoCheckList: aiTask.todoCheckList,
-      }));
+      }))
 
-      toast.success("Task generated using AI");
+      if (aiTask.fileUrl) {
+        setAiAttachment({
+          url: aiTask.fileUrl,
+          name: aiFile?.name || "AI Uploaded File",
+        })
+      }
+
+      toast.success("Task generated using AI")
     } catch (error) {
-      toast.error("AI generation failed");
+      toast.error("AI generation failed")
     } finally {
-      setAiLoading(false);
+      setAiLoading(false)
     }
-  };
+  }
 
-
+  /* -------------------- LOAD TASK -------------------- */
 
   useEffect(() => {
-    if (taskId) {
-      getTaskDetailsByID(taskId);
+    if (!taskId) return
+
+    const loadTask = async () => {
+      const response = await axiosInstance.get(
+        API_PATHS.TASKS.GET_TASK_BY_ID(taskId)
+      )
+
+      const taskInfo = response.data
+      setCurrentTask(taskInfo)
+
+      setTaskData({
+        title: taskInfo.title,
+        description: taskInfo.description,
+        priority: taskInfo.priority,
+        dueDate: taskInfo.dueDate
+          ? moment(taskInfo.dueDate).format("YYYY-MM-DD")
+          : null,
+        assignedTo: taskInfo.assignedTo.map((u) => u._id),
+        todoCheckList: taskInfo.todoCheckList.map((t) => t.text),
+        attachments: taskInfo.attachments || [],
+      })
     }
 
-    return () => { };
-  }, [taskId]);
+    loadTask()
+  }, [taskId])
 
 
   return (
@@ -274,13 +272,31 @@ const CreateTask = () => {
                   Task Title
                 </label>
 
-                <button
-                  onClick={handleAIGenerate}
-                  disabled={aiLoading}
-                  className="text-xs font-medium text-indigo-600 hover:underline"
-                >
-                  {aiLoading ? "Generating..." : "✨ Generate with AI"}
-                </button>
+                <div className="flex items-center gap-3">
+                  {/* 📎 FILE UPLOAD */}
+                  <label className="text-xs cursor-pointer text-indigo-600 hover:underline">
+                    📎 Upload File
+                    <input
+                      type="file"
+                      accept=".pdf,.docx,.txt"
+                      hidden
+                      onChange={(e) => setAiFile(e.target.files[0])}
+                    />
+                  </label>
+
+                  {/* ✨ AI BUTTON */}
+                  <button
+                    onClick={handleAIGenerate}
+                    disabled={aiLoading || (!taskData.title)}
+                    className={`text-xs font-medium hover:underline ${aiLoading || (!aiFile && !taskData.title)
+                      ? "text-gray-400 cursor-not-allowed"
+                      : "text-indigo-600"
+                      }`}
+                  >
+                    {aiLoading ? "Generating..." : "✨ Generate with AI"}
+                  </button>
+
+                </div>
               </div>
 
               <input
@@ -291,7 +307,27 @@ const CreateTask = () => {
                   handleValueChange("title", target.value)
                 }
               />
+
+              {/* 📄 FILE NAME PREVIEW */}
+              {aiFile && (
+                <div className="flex items-center gap-2 mt-1">
+                  <p className="text-xs text-slate-500">
+                    Selected file: {aiFile.name}
+                  </p>
+
+                  <button
+                    type="button"
+                    onClick={handleRemoveAIFile}
+                    className="text-xs text-red-500 hover:underline"
+                  >
+                    ✕ Remove
+                  </button>
+                </div>
+              )}
+
+
             </div>
+
 
             <div className="mt-3">
               <label className="text-xs font-medium text-slate-600">

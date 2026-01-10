@@ -60,67 +60,141 @@
 
 
 const { GoogleGenerativeAI } = require("@google/generative-ai");
+const cloudinary = require("../config/cloudinary");
+const streamifier = require("streamifier");
+const pdf = require("pdf-parse");
+const mammoth = require("mammoth");
 
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
 
-const generateTaskUsingAI = async (req, res) => {
-  try {
-    const { title, fileText } = req.body;
+/* -------------------- HELPERS -------------------- */
 
-    if (!title && !fileText) {
-      return res.status(400).json({
-        message: "Title or file content required",
-      });
+const uploadToCloudinary = (buffer) => {
+    return new Promise((resolve, reject) => {
+        const stream = cloudinary.uploader.upload_stream(
+            { folder: "task-files", resource_type: "auto" },
+            (error, result) => {
+                if (error) reject(error);
+                else resolve(result);
+            }
+        );
+
+        streamifier.createReadStream(buffer).pipe(stream);
+    });
+};
+
+const extractTextFromFile = async (file) => {
+    if (!file) return "";
+
+    if (file.mimetype === "application/pdf") {
+        const data = await pdf(file.buffer);
+        return data.text;
     }
 
-    const prompt = `
-You are a task management assistant.
+    if (
+        file.mimetype ===
+        "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+    ) {
+        const result = await mammoth.extractRawText({ buffer: file.buffer });
+        return result.value;
+    }
+
+    if (file.mimetype === "text/plain") {
+        return file.buffer.toString("utf-8");
+    }
+
+    return "";
+};
+
+/* -------------------- CONTROLLER -------------------- */
+
+const generateTaskUsingAI = async (req, res) => {
+    try {
+        const { title } = req.body;
+        let fileText = "";
+        let fileUrl = "";
+
+        // ✅ Handle file if present
+        if (req.file) {
+            // 1️⃣ Upload to Cloudinary
+            const uploaded = await uploadToCloudinary(req.file.buffer);
+            fileUrl = uploaded.secure_url;
+
+            // 2️⃣ Extract text for AI
+            fileText = await extractTextFromFile(req.file);
+        }
+
+        if (!title && !fileText) {
+            return res.status(400).json({
+                message: "Title or file required",
+            });
+        }
+
+        const prompt = `
+You are a senior project manager.
+
+Your job is to break work into ACTIONABLE subtasks.
 
 Generate a task in STRICT JSON format.
 
-Input:
-${title ? `Title: ${title}` : ""}
-${fileText ? `File Content: ${fileText}` : ""}
+INPUT INFORMATION:
+${title ? `Task Title Hint: ${title}` : ""}
+${fileText ? `Reference Document Content:\n${fileText.slice(0, 3000)}` : ""}
 
-Rules:
-- Output ONLY JSON
-- No markdown
-- No explanation
-- No comments
+VERY IMPORTANT RULES:
+- todoCheckList MUST contain at least 5 items
+- Each todo must be a clear ACTION (verb-based)
+- Do NOT summarize
+- Do NOT merge steps
+- Think like a project breakdown (WBS)
 
-Format:
+Return ONLY valid JSON.
+No markdown.
+No explanation.
+
+JSON FORMAT:
 {
-  "title": "",
-  "description": "",
+  "title": "Short actionable task title",
+  "description": "2–3 sentence overview of what needs to be done",
   "priority": "Low | Medium | High",
-  "todoCheckList": []
+  "todoCheckList": [
+    "Action step 1",
+    "Action step 2",
+    "Action step 3",
+    "Action step 4",
+    "Action step 5"
+  ]
 }
 `;
 
-    const model = genAI.getGenerativeModel({
-    //   model: "gemini-1.5-pro",
-      model: "gemini-2.5-flash",
-    });
+        const model = genAI.getGenerativeModel({
+            model: "gemini-2.5-flash", // ✅ FREE & STABLE
+        });
 
-    const result = await model.generateContent(prompt);
-    const responseText = result.response.text();
+        const result = await model.generateContent(prompt);
+        let responseText = result.response.text();
 
-    // Gemini sometimes returns ```json ... ```
-    const cleaned = responseText
-      .replace(/```json/g, "")
-      .replace(/```/g, "")
-      .trim();
+        // 🔥 Clean Gemini formatting
+        responseText = responseText
+            .replace(/```json/g, "")
+            .replace(/```/g, "")
+            .trim();
 
-    const parsed = JSON.parse(cleaned);
+        const parsed = JSON.parse(responseText);
 
-    res.status(200).json(parsed);
-  } catch (error) {
-    console.error("Gemini AI Error:", error);
-    res.status(500).json({
-      message: "Gemini task generation failed",
-    });
-  }
+        res.status(200).json({
+            ...parsed,
+            fileUrl, // 👈 return hosted file link
+        });
+    } catch (error) {
+        console.error("Gemini AI Error:", error.message);
+
+        res.status(500).json({
+            message: "Gemini task generation failed",
+        });
+    }
 };
 
 module.exports = { generateTaskUsingAI };
+
 
