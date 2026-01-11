@@ -1,8 +1,9 @@
 const Task = require("../models/Task");
+const addLog = require("../utils/addLogs");
 
-// ===============================
-// GET ALL TASKS
-// ===============================
+/* ===============================
+   GET ALL TASKS
+================================ */
 const getTasks = async (req, res) => {
     try {
         const { status } = req.query;
@@ -10,13 +11,11 @@ const getTasks = async (req, res) => {
 
         if (status) filter.status = status;
 
-        // 🔐 role-based scope
         if (req.user.role === "admin") {
             filter.createdBy = req.user._id;
         } else if (req.user.role === "member") {
             filter.assignedTo = req.user._id;
         }
-        // superadmin → no filter
 
         let tasks = await Task.find(filter).populate(
             "assignedTo",
@@ -24,14 +23,10 @@ const getTasks = async (req, res) => {
         );
 
         tasks = tasks.map((task) => {
-            const completedCount = task.todoCheckList.filter(
-                (item) => item.completed
-            ).length;
-
+            const completedCount = task.todoCheckList.filter(t => t.completed).length;
             return { ...task._doc, completedTodoCount: completedCount };
         });
 
-        // ===== status summary (unchanged response) =====
         const baseFilter =
             req.user.role === "superadmin"
                 ? {}
@@ -39,22 +34,21 @@ const getTasks = async (req, res) => {
                     ? { createdBy: req.user._id }
                     : { assignedTo: req.user._id };
 
-        const allTasks = await Task.countDocuments(baseFilter);
-
-        const pendingTasks = await Task.countDocuments({
-            ...baseFilter,
-            status: "Pending",
-        });
-
-        const inProgressTasks = await Task.countDocuments({
-            ...baseFilter,
-            status: "In Progress",
-        });
-
-        const completedTasks = await Task.countDocuments({
-            ...baseFilter,
-            status: "Completed",
-        });
+        const [
+            allTasks,
+            pendingTasks,
+            inProgressTasks,
+            inReviewTasks,
+            completedTasks,
+            blockedTasks,
+        ] = await Promise.all([
+            Task.countDocuments(baseFilter),
+            Task.countDocuments({ ...baseFilter, status: "Pending" }),
+            Task.countDocuments({ ...baseFilter, status: "In Progress" }),
+            Task.countDocuments({ ...baseFilter, status: "In Review" }),
+            Task.countDocuments({ ...baseFilter, status: "Completed" }),
+            Task.countDocuments({ ...baseFilter, status: "Blocked" }),
+        ]);
 
         res.json({
             tasks,
@@ -62,283 +56,235 @@ const getTasks = async (req, res) => {
                 all: allTasks,
                 pendingTasks,
                 inProgressTasks,
+                inReviewTasks,
                 completedTasks,
+                blockedTasks,
             },
         });
     } catch (error) {
-        res.status(500).json({
-            message: "Server error",
-            error: error.message,
-        });
+        res.status(500).json({ message: error.message });
     }
 };
 
-// ===============================
-// GET TASK BY ID
-// ===============================
+/* ===============================
+   GET TASK BY ID
+================================ */
 const getTaskById = async (req, res) => {
     try {
         const filter = { _id: req.params.id };
 
-        if (req.user.role === "admin") {
-            filter.createdBy = req.user._id;
-        } else if (req.user.role === "member") {
-            filter.assignedTo = req.user._id;
-        }
+        if (req.user.role === "admin") filter.createdBy = req.user._id;
+        else if (req.user.role === "member") filter.assignedTo = req.user._id;
 
-        const task = await Task.findOne(filter).populate(
-            "assignedTo",
-            "name email profileImageUrl"
-        );
+        const task = await Task.findOne(filter)
+            .populate("assignedTo", "name email profileImageUrl")
+            .populate("comments.commentedBy", "name profileImageUrl");
 
-        if (!task)
-            return res.status(404).json({ message: "Task not found" });
+        if (!task) return res.status(404).json({ message: "Task not found" });
 
         res.json(task);
     } catch (error) {
-        res.status(500).json({
-            message: "Server error",
-            error: error.message,
-        });
+        res.status(500).json({ message: error.message });
     }
 };
 
-// ===============================
-// CREATE TASK
-// ===============================
+/* ===============================
+   CREATE TASK
+================================ */
 const createTask = async (req, res) => {
     try {
-      const {
-        title,
-        description,
-        priority,
-        dueDate,
-        assignedTo,
-        attachments = [],
-        todoCheckList = [],
-      } = req.body;
-  
-      // 🔒 VALIDATIONS
-      if (!title) {
-        return res.status(400).json({ message: "Title is required" });
-      }
-  
-      if (!dueDate || isNaN(new Date(dueDate).getTime())) {
-        return res.status(400).json({ message: "Valid due date is required" });
-      }
-  
-      if (!Array.isArray(assignedTo) || assignedTo.length === 0) {
-        return res.status(400).json({
-          message: "Task must be assigned to at least one user",
-        });
-      }
-  
-      // ✅ NORMALIZE TODOS
-      const normalizedTodos = todoCheckList.map((item) =>
-        typeof item === "string"
-          ? { text: item, completed: false }
-          : {
-              text: item.text,
-              completed: item.completed ?? false,
-            }
-      );
-  
-      const task = await Task.create({
-        title,
-        description,
-        priority,
-        dueDate,
-        assignedTo,
-        createdBy: req.user._id,
-        todoCheckList: normalizedTodos,
-        attachments,
-      });
-  
-      res.status(201).json({
-        message: "Task created successfully",
-        task,
-      });
-    } catch (error) {
-      console.error("🔥 CREATE TASK FAILED 🔥", error);
-  
-      if (error.name === "ValidationError") {
-        return res.status(400).json({
-          message: error.message,
-          errors: error.errors,
-        });
-      }
-  
-      res.status(500).json({
-        message: "Server error",
-        error: error.message,
-      });
-    }
-  };
-  
+        const {
+            title,
+            description,
+            priority,
+            dueDate,
+            assignedTo,
+            attachments = [],
+            todoCheckList = [],
+        } = req.body;
 
-// ===============================
-// UPDATE TASK
-// ===============================
+        if (!title || !dueDate || !assignedTo?.length) {
+            return res.status(400).json({ message: "Invalid task data" });
+        }
+
+        const normalizedTodos = todoCheckList.map((t) =>
+            typeof t === "string" ? { text: t, completed: false } : t
+        );
+
+        const task = await Task.create({
+            title,
+            description,
+            priority,
+            dueDate,
+            assignedTo,
+            createdBy: req.user._id,
+            todoCheckList: normalizedTodos,
+            attachments,
+            logs: [
+                {
+                    action: "TASK_CREATED",
+                    description: "Task created",
+                    performedBy: req.user._id,
+                },
+            ],
+        });
+
+        res.status(201).json({ message: "Task created", task });
+    } catch (error) {
+        res.status(500).json({ message: error.message });
+    }
+};
+
+/* ===============================
+   UPDATE TASK
+================================ */
 const updateTask = async (req, res) => {
     try {
         const filter = { _id: req.params.id };
 
-        if (req.user.role === "admin") {
-            filter.createdBy = req.user._id;
-        } else if (req.user.role === "member") {
-            filter.assignedTo = req.user._id;
-        }
+        if (req.user.role === "admin") filter.createdBy = req.user._id;
+        else if (req.user.role === "member") filter.assignedTo = req.user._id;
 
         const task = await Task.findOne(filter);
+        if (!task) return res.status(404).json({ message: "Task not found" });
 
-        if (!task)
-            return res.status(404).json({ message: "Task not found" });
+        Object.assign(task, req.body);
 
-        task.title = req.body.title || task.title;
-        task.description = req.body.description || task.description;
-        task.priority = req.body.priority || task.priority;
-        task.dueDate = req.body.dueDate || task.dueDate;
-        task.todoCheckList = req.body.todoCheckList || task.todoCheckList;
-        task.attachments = req.body.attachments || task.attachments;
+        addLog(task, "TASK_UPDATED", "Task updated", req.user._id);
 
-        if (req.body.assignedTo) {
-            if (!Array.isArray(req.body.assignedTo)) {
-                return res
-                    .status(400)
-                    .json({ message: "assignedTo must be an array" });
-            }
-            task.assignedTo = req.body.assignedTo;
-        }
-
-        const updatedTask = await task.save();
-        res.json({ message: "Task updated successfully", updatedTask });
+        await task.save();
+        res.json({ message: "Task updated", task });
     } catch (error) {
-        res.status(500).json({
-            message: "Server error",
-            error: error.message,
-        });
+        res.status(500).json({ message: error.message });
     }
 };
 
-// ===============================
-// DELETE TASK
-// ===============================
+/* ===============================
+   UPDATE TASK STATUS (ADMIN ONLY COMPLETE)
+================================ */
+const updateTaskStatus = async (req, res) => {
+    try {
+        console.log("hi")
+        const task = await Task.findById(req.params.id);
+        console.log(req.body)
+        if (!task) return res.status(404).json({ message: "Task not found" });
+
+        if (req.user.role === "member" && req.body.status === "Completed") {
+            return res.status(403).json({ message: "Only admin can complete task" });
+        }
+
+        task.status = req.body.status;
+
+        addLog(
+            task,
+            "STATUS_CHANGED",
+            `Status changed to ${task.status}`,
+            req.user._id
+        );
+
+        await task.save();
+        res.json({ message: "Status updated", task });
+    } catch (error) {
+        console.log(error)
+        res.status(500).json({ message: error.message });
+    }
+};
+
+/* ===============================
+   UPDATE CHECKLIST
+================================ */
+const updateTaskChecklist = async (req, res) => {
+    try {
+        const task = await Task.findById(req.params.id);
+        console.log(task)
+        if (!task) return res.status(404).json({ message: "Task not found" });
+
+        task.todoCheckList = req.body.todoCheckList;
+
+        const completed = task.todoCheckList.filter(t => t.completed).length;
+        const total = task.todoCheckList.length;
+
+        task.progress = total ? Math.round((completed / total) * 100) : 0;
+
+        if (task.progress === 100) {
+            task.status = "In Review";
+            addLog(task, "TASK_IN_REVIEW", "Moved to In Review", req.user._id);
+        } else if (task.progress > 0) {
+            task.status = "In Progress";
+        } else {
+            task.status = "Pending";
+        }
+
+        await task.save();
+        res.json({ message: "Checklist updated", task });
+    } catch (error) {
+        res.status(500).json({ message: error.message });
+        console.log(error)
+    }
+};
+
+/* ===============================
+   ADD COMMENT
+================================ */
+const addComment = async (req, res) => {
+    try {
+        const filter = { _id: req.params.id };
+
+        if (req.user.role === "admin") filter.createdBy = req.user._id;
+        else if (req.user.role === "member") filter.assignedTo = req.user._id;
+
+        const task = await Task.findOne(filter);
+        if (!task) return res.status(404).json({ message: "Task not found" });
+
+        task.comments.push({
+            message: req.body.message,
+            commentedBy: req.user._id,
+        });
+
+        addLog(task, "COMMENT_ADDED", "Comment added", req.user._id);
+
+        await task.save();
+
+        const populatedTask = await Task.findById(task._id)
+            .populate("comments.commentedBy", "name profileImageUrl");
+
+        res.json({ message: "Comment added", task: populatedTask });
+    } catch (error) {
+        console.log(error)
+        res.status(500).json({ message: error.message });
+    }
+};
+
+/* ===============================
+   DELETE TASK (ADMIN ONLY)
+================================ */
 const deleteTask = async (req, res) => {
     try {
         const filter = { _id: req.params.id };
 
         if (req.user.role === "admin") {
             filter.createdBy = req.user._id;
+        } else {
+            return res.status(403).json({
+                message: "You are not allowed to delete this task",
+            });
         }
 
         const task = await Task.findOne(filter);
-
-        if (!task)
-            return res.status(404).json({ message: "Task not found" });
+        if (!task) return res.status(404).json({ message: "Task not found" });
 
         await task.deleteOne();
+
         res.json({ message: "Task deleted successfully" });
     } catch (error) {
-        res.status(500).json({
-            message: "Server error",
-            error: error.message,
-        });
+        res.status(500).json({ message: error.message });
     }
 };
 
-// ===============================
-// UPDATE TASK STATUS
-// ===============================
-const updateTaskStatus = async (req, res) => {
-    try {
-        const filter = { _id: req.params.id };
 
-        if (req.user.role === "admin") {
-            filter.createdBy = req.user._id;
-        } else if (req.user.role === "member") {
-            filter.assignedTo = req.user._id;
-        }
-
-        const task = await Task.findOne(filter);
-
-        if (!task)
-            return res.status(404).json({ message: "Task not found" });
-
-        task.status = req.body.status || task.status;
-
-        if (task.status === "Completed") {
-            task.todoCheckList.forEach((item) => (item.completed = true));
-            task.progress = 100;
-        }
-
-        await task.save();
-
-        res.json({ message: "Task status updated", task });
-    } catch (error) {
-        res.status(500).json({
-            message: "Server error",
-            error: error.message,
-        });
-    }
-};
-
-// ===============================
-// UPDATE TASK CHECKLIST
-// ===============================
-const updateTaskChecklist = async (req, res) => {
-    try {
-        const filter = { _id: req.params.id };
-
-        if (req.user.role === "admin") {
-            filter.createdBy = req.user._id;
-        } else if (req.user.role === "member") {
-            filter.assignedTo = req.user._id;
-        }
-
-        const task = await Task.findOne(filter);
-
-        if (!task)
-            return res.status(404).json({ message: "Task not found" });
-
-        task.todoCheckList = req.body.todoCheckList;
-
-        const completedCount = task.todoCheckList.filter(
-            (item) => item.completed
-        ).length;
-
-        const totalItems = task.todoCheckList.length;
-
-        task.progress =
-            totalItems > 0
-                ? Math.round((completedCount / totalItems) * 100)
-                : 0;
-
-        if (task.progress === 100) task.status = "Completed";
-        else if (task.progress > 0) task.status = "In Progress";
-        else task.status = "Pending";
-
-        await task.save();
-
-        const updatedTask = await Task.findById(req.params.id).populate(
-            "assignedTo",
-            "name email profileImageUrl"
-        );
-
-        res.json({
-            message: "Task checklist updated",
-            task: updatedTask,
-        });
-    } catch (error) {
-        res.status(500).json({
-            message: "Server error",
-            error: error.message,
-        });
-    }
-};
-
-// ===============================
-// DASHBOARD DATA (UNCHANGED SHAPE)
-// ===============================
+/* ===============================
+ DASHBOARD DATA (ADMIN / SUPERADMIN)
+================================ */
 const getDashboardData = async (req, res) => {
     try {
         const baseFilter =
@@ -365,13 +311,6 @@ const getDashboardData = async (req, res) => {
             dueDate: { $lt: new Date() },
         });
 
-        const taskDistribution = {
-            Pending: pendingTasks,
-            InProgress: inProgressTasks,
-            Completed: completedTasks,
-            All: totalTasks,
-        };
-
         const priorityAgg = await Task.aggregate([
             { $match: baseFilter },
             { $group: { _id: "$priority", count: { $sum: 1 } } },
@@ -397,22 +336,25 @@ const getDashboardData = async (req, res) => {
                 overdueTasks,
             },
             charts: {
-                taskDistribution,
+                taskDistribution: {
+                    Pending: pendingTasks,
+                    InProgress: inProgressTasks,
+                    Completed: completedTasks,
+                    All: totalTasks,
+                },
                 taskPriorityLevels,
             },
             recentTasks,
         });
     } catch (error) {
-        res.status(500).json({
-            message: "Server error",
-            error: error.message,
-        });
+        res.status(500).json({ message: error.message });
     }
 };
 
-// ===============================
-// USER DASHBOARD DATA (UNCHANGED)
-// ===============================
+
+/* ===============================
+ USER DASHBOARD DATA (MEMBER)
+================================ */
 const getUserDashboardData = async (req, res) => {
     try {
         const userId = req.user._id;
@@ -440,13 +382,6 @@ const getUserDashboardData = async (req, res) => {
             dueDate: { $lt: new Date() },
         });
 
-        const taskDistribution = {
-            Pending: pendingTasks,
-            InProgress: inProgressTasks,
-            Completed: completedTasks,
-            All: totalTasks,
-        };
-
         const priorityAgg = await Task.aggregate([
             { $match: baseFilter },
             { $group: { _id: "$priority", count: { $sum: 1 } } },
@@ -472,16 +407,18 @@ const getUserDashboardData = async (req, res) => {
                 overdueTasks,
             },
             charts: {
-                taskDistribution,
+                taskDistribution: {
+                    Pending: pendingTasks,
+                    InProgress: inProgressTasks,
+                    Completed: completedTasks,
+                    All: totalTasks,
+                },
                 taskPriorityLevels,
             },
             recentTasks,
         });
     } catch (error) {
-        res.status(500).json({
-            message: "Server error",
-            error: error.message,
-        });
+        res.status(500).json({ message: error.message });
     }
 };
 
@@ -496,4 +433,5 @@ module.exports = {
     updateTaskChecklist,
     getDashboardData,
     getUserDashboardData,
+    addComment,
 };

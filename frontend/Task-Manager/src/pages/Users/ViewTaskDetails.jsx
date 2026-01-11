@@ -11,18 +11,51 @@ const ViewTaskDetails = () => {
   const { id } = useParams();
   const [task, setTask] = useState(null);
 
+  const [comment, setComment] = useState("");
+  const [commentLoading, setCommentLoading] = useState(false);
+
+  const handleAddComment = async () => {
+    if (!comment.trim()) return;
+
+    try {
+      setCommentLoading(true);
+
+      const response = await axiosInstance.post(
+        API_PATHS.TASKS.ADD_COMMENT(id),
+        { message: comment }
+      );
+
+      if (response.data?.task) {
+        setTask(response.data.task);
+        setComment("");
+      }
+    } catch (error) {
+      console.error("Failed to add comment", error);
+    } finally {
+      setCommentLoading(false);
+    }
+  };
+
+
   const getStatusTagColor = (status) => {
     switch (status) {
       case "In Progress":
         return "text-cyan-500 bg-cyan-50 border border-cyan-500/10";
 
+      case "In Review":
+        return "text-amber-500 bg-amber-50 border border-amber-500/20";
+
       case "Completed":
         return "text-lime-500 bg-lime-50 border border-lime-500/20";
+
+      case "Blocked":
+        return "text-red-500 bg-red-50 border border-red-500/20";
 
       default:
         return "text-violet-500 bg-violet-50 border border-violet-500/10";
     }
   };
+
 
   // get Task info by ID
   const getTaskDetailsByID = async () => {
@@ -41,33 +74,31 @@ const ViewTaskDetails = () => {
   };
 
 
-  // handle todo check
   const updatetodoCheckList = async (index) => {
-    const todoCheckList = [...task?.todoCheckList];
+    if (!task?.todoCheckList?.[index]) return;
+
     const taskId = id;
 
-    if (todoCheckList && todoCheckList[index]) {
-      todoCheckList[index].completed = !todoCheckList[index].completed;
+    const todoCheckList = task.todoCheckList.map((item, i) =>
+      i === index
+        ? { ...item, completed: !item.completed }
+        : item
+    );
 
-      try {
-        const response = await axiosInstance.put(
-          API_PATHS.TASKS.UPDATE_TODO_CHECKLIST(taskId),
-          {
-            todoCheckList
-          }
-        );
+    try {
+      const response = await axiosInstance.put(
+        API_PATHS.TASKS.UPDATE_TODO_CHECKLIST(taskId),
+        { todoCheckList }
+      );
 
-        if (response.status === 200) {
-          setTask(response.data?.task || task);
-        } else {
-          // Optionally revert the toggle if the API call fails
-          todoCheckList[index].completed = !todoCheckList[index].completed;
-        }
-      } catch (error) {
-        todoCheckList[index].completed = !todoCheckList[index].completed;
+      if (response.status === 200) {
+        setTask(response.data.task);
       }
+    } catch (error) {
+      console.error("Failed to update checklist", error);
     }
   };
+
 
 
   // Handle attachment link tick
@@ -150,6 +181,7 @@ const ViewTaskDetails = () => {
                   key={`todo_${index}`}
                   text={item.text}
                   isChecked={item?.completed}
+                  disabled={["Completed", "Blocked"].includes(task?.status)}
                   onChange={() => updatetodoCheckList(index)}
                 />
               ))}
@@ -172,6 +204,62 @@ const ViewTaskDetails = () => {
               </div>
             )}
 
+            {/* COMMENTS SECTION */}
+            <div className="mt-6">
+              <label className="text-xs font-medium text-slate-500">
+                Comments
+              </label>
+
+              {task?.comments?.length === 0 && (
+                <p className="text-xs text-gray-400 mt-2">
+                  No comments yet
+                </p>
+              )}
+
+              <div className="mt-2 space-y-2">
+                {task?.comments?.map((c) => (
+                  <div
+                    key={c._id}
+                    className="border border-gray-100 bg-gray-50 rounded-md p-3"
+                  >
+                    <div className="flex items-center gap-2 mb-1">
+                      <img
+                        src={c.commentedBy?.profileImageUrl}
+                        alt=""
+                        className="w-6 h-6 rounded-full"
+                      />
+                      <p className="text-xs font-medium text-gray-700">
+                        {c.commentedBy?.name}
+                      </p>
+                      <span className="text-[11px] text-gray-400">
+                        {moment(c.createdAt).fromNow()}
+                      </span>
+                    </div>
+
+                    <p className="text-sm text-gray-800">{c.message}</p>
+                  </div>
+                ))}
+              </div>
+
+              {/* ADD COMMENT */}
+              <div className="mt-3">
+                <textarea
+                  className="form-input"
+                  rows={2}
+                  placeholder="Add a comment..."
+                  value={comment}
+                  onChange={(e) => setComment(e.target.value)}
+                />
+
+                <button
+                  className="add-btn mt-2"
+                  disabled={commentLoading || !comment.trim()}
+                  onClick={handleAddComment}
+                >
+                  {commentLoading ? "Posting..." : "Add Comment"}
+                </button>
+              </div>
+            </div>
 
           </div>
         </div>
@@ -196,16 +284,19 @@ const InfoBox = ({ label, value }) => {
 };
 
 
-const TodoCheckList = ({ text, isChecked, onChange }) => {
+const TodoCheckList = ({ text, isChecked, onChange, disabled }) => {
   return (
     <div className="flex items-center gap-3 p-3">
       <input
         type="checkbox"
         checked={isChecked}
+        disabled={disabled}
         onChange={onChange}
-        className="w-4 h-4 text-primary bg-gray-100 border-gray-300 rounded-sm outline-none cursor-pointer"
+        className="w-4 h-4 text-primary bg-gray-100 border-gray-300 rounded-sm cursor-pointer disabled:cursor-not-allowed"
       />
-      <p className="text-[13px] text-gray-800">{text}</p>
+      <p className={`text-[13px] ${disabled ? "text-gray-400" : "text-gray-800"}`}>
+        {text}
+      </p>
     </div>
   );
 };
