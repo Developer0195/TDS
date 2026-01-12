@@ -6,6 +6,29 @@ const todoSchema = new mongoose.Schema({
     completed: { type: Boolean, default: false },
 });
 
+// Comment Schema
+const commentSchema = new mongoose.Schema({
+    message: { type: String, required: true },
+    commentedBy: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "User",
+        required: true,
+    },
+    createdAt: { type: Date, default: Date.now },
+});
+
+// Activity Log Schema
+const logSchema = new mongoose.Schema({
+    action: { type: String, required: true },
+    description: String,
+    performedBy: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "User",
+    },
+    createdAt: { type: Date, default: Date.now },
+});
+
+
 // Task Schema
 const taskSchema = new mongoose.Schema(
     {
@@ -18,7 +41,11 @@ const taskSchema = new mongoose.Schema(
         },
         status: {
             type: String,
-            enum: ["Pending", "In Progress", "Completed"],
+            enum: ["Pending",
+                "In Progress",
+                "In Review",   // ✅ NEW
+                "Completed",
+                "Blocked",],
             default: "Pending",
         },
         dueDate: { type: Date, required: true },
@@ -45,6 +72,8 @@ const taskSchema = new mongoose.Schema(
         ],
         todoCheckList: [todoSchema],
         progress: { type: Number, default: 0 },
+        comments: [commentSchema], // ✅ NEW
+        logs: [logSchema],
     },
     { timestamps: true }
 );

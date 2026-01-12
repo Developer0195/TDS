@@ -53,7 +53,7 @@ const ManageTasks = () => {
           status: filterStatus === "All" || filterStatus === "ALL" ? "" : filterStatus
         }
       });
-      console.log(filterStatus)
+      console.log(response.data?.tasks.todoCheckList?.length)
       setAllTasks(response.data?.tasks?.length > 0 ? response.data?.tasks : []);
 
       //Map statusSummary data with fixed labels and order
@@ -62,8 +62,11 @@ const ManageTasks = () => {
         { label: "All", count: statusSummary.all || 0 },
         { label: "Pending", count: statusSummary.pendingTasks || 0 },
         { label: "In Progress", count: statusSummary.inProgressTasks || 0 },
+        { label: "In Review", count: statusSummary.inReviewTasks || 0 },
         { label: "Completed", count: statusSummary.completedTasks || 0 },
+        { label: "Blocked", count: statusSummary.blockedTasks || 0 },
       ];
+
 
       setTabs(statusArray)
     } catch (error) {
@@ -122,7 +125,7 @@ const ManageTasks = () => {
               assignedTo={item.assignedTo?.map((item) => item.profileImageUrl)}
               attachmentCount={item.attachments?.length || 0}
               completedTodoCount={item.completedTodoCount || 0}
-              todoChecklist={item.todoChecklist || []}
+              todoChecklist={item.todoCheckList || []}
               onClick={() => {
                 handleClick(item);
               }}

@@ -17,11 +17,17 @@ import DeleteAlert from '../../components/DeleteAlert'
 
 const CreateTask = () => {
 
+
+
+
   const location = useLocation()
   const { taskId } = location.state || {}
   const navigate = useNavigate()
 
-  /* -------------------- STATE -------------------- */
+  const [comments, setComments] = useState([]);
+  const [newComment, setNewComment] = useState("");
+  const [commentLoading, setCommentLoading] = useState(false);
+
 
   const [taskData, setTaskData] = useState({
     title: "",
@@ -43,6 +49,10 @@ const CreateTask = () => {
   const [aiAttachment, setAiAttachment] = useState(null)     // cloudinary file
 
   /* -------------------- HELPERS -------------------- */
+
+  const isTaskLocked =
+    currentTask?.status === "Completed" ||
+    currentTask?.status === "Blocked";
 
   const handleValueChange = (key, value) => {
     setTaskData((prev) => ({ ...prev, [key]: value }))
@@ -228,6 +238,7 @@ const CreateTask = () => {
 
       const taskInfo = response.data
       setCurrentTask(taskInfo)
+      setComments(taskInfo.comments || []);
 
       setTaskData({
         title: taskInfo.title,
@@ -277,6 +288,7 @@ const CreateTask = () => {
                   <label className="text-xs cursor-pointer text-indigo-600 hover:underline">
                     📎 Upload File
                     <input
+                      disabled={isTaskLocked}
                       type="file"
                       accept=".pdf,.docx,.txt"
                       hidden
@@ -300,6 +312,7 @@ const CreateTask = () => {
               </div>
 
               <input
+                disabled={isTaskLocked}
                 placeholder="Create App UI"
                 className="form-input mt-1"
                 value={taskData.title}
@@ -335,6 +348,7 @@ const CreateTask = () => {
               </label>
 
               <textarea
+                disabled={isTaskLocked}
                 placeholder="Describe task"
                 className="form-input"
                 rows={4}
@@ -352,6 +366,7 @@ const CreateTask = () => {
                 </label>
 
                 <SelectDropdown
+                  disabled={isTaskLocked}
                   options={PRIORITY_DATA}
                   value={taskData.priority}
                   onChange={(value) =>
@@ -367,6 +382,7 @@ const CreateTask = () => {
                 </label>
 
                 <Input
+                  disabled={isTaskLocked}
                   placeholder="Create App UI"
                   className="form-input"
                   value={taskData.dueDate}
@@ -415,20 +431,135 @@ const CreateTask = () => {
                 }
               />
             </div>
+            {/* COMMENTS SECTION */}
+            {taskId && (
+              <div className="mt-6">
+                <h3 className="text-sm font-medium mb-2">Comments</h3>
+
+                {comments.length === 0 && (
+                  <p className="text-xs text-gray-400">No comments yet</p>
+                )}
+
+                <div className="space-y-2">
+                  {comments.map((c) => (
+                    <div
+                      key={c._id}
+                      className="border border-gray-100 bg-gray-50 rounded-md p-3"
+                    >
+                      <p className="text-sm text-gray-800">{c.message}</p>
+                      <p className="text-xs text-gray-400 mt-1">
+                        {c.commentedBy?.name} •{" "}
+                        {moment(c.createdAt).fromNow()}
+                      </p>
+                    </div>
+                  ))}
+                </div>
+
+                {/* ADD COMMENT */}
+                {!isTaskLocked && (
+                  <div className="mt-3">
+                    <textarea
+                      className="form-input"
+                      rows={2}
+                      placeholder="Add a comment..."
+                      value={newComment}
+                      onChange={(e) => setNewComment(e.target.value)}
+                    />
+
+                    <button
+                      className="add-btn mt-2"
+                      disabled={!newComment.trim() || commentLoading}
+                      onClick={async () => {
+                        try {
+                          setCommentLoading(true);
+                          const res = await axiosInstance.post(
+                            API_PATHS.TASKS.ADD_COMMENT(taskId),
+                            { message: newComment }
+                          );
+                          console.log(res)
+                          setComments(res.data.task.comments);
+                          setNewComment("");
+                        } finally {
+                          setCommentLoading(false);
+                        }
+                      }}
+                    >
+                      Add Comment
+                    </button>
+                  </div>
+                )}
+              </div>
+            )}
+
+
+            {taskId && currentTask?.status === "In Review" && (
+              <div className="flex gap-3 mt-6">
+                <button
+                  className="add-btn"
+                  onClick={async () => {
+                    try {
+                      await axiosInstance.put(
+                        API_PATHS.TASKS.UPDATE_TASK_STATUS(taskId),
+                        { status: "Completed" }
+                      );
+
+                      toast.success("Task marked as completed");
+                      // navigate("/admin/tasks");
+                    } catch (error) {
+                      console.error(error);
+                      toast.error(
+                        error?.response?.data?.message ||
+                        "Failed to complete task. Please try again."
+                      );
+                    }
+                  }}
+                >
+                  Approve & Complete
+                </button>
+
+                <button
+                  className="border border-red-300 text-red-600 px-4 py-2 rounded"
+                  onClick={async () => {
+                    try {
+                      await axiosInstance.put(
+                        API_PATHS.TASKS.UPDATE_TASK_STATUS(taskId),
+                        { status: "Blocked" }
+                      );
+
+                      toast.success("Task blocked");
+                      // navigate("/admin/manage-tasks");
+                    } catch (error) {
+                      console.error(error);
+                      toast.error(
+                        error?.response?.data?.message ||
+                        "Failed to block task. Please try again."
+                      );
+                    }
+                  }}
+                >
+                  Block Task
+                </button>
+              </div>
+
+            )}
+
 
             {error && (
               <p className="text-xs font-medium text-red-500 mt-5">{error}</p>
             )}
 
-            <div className="flex justify-end mt-7">
-              <button
-                className="add-btn"
-                onClick={handleSubmit}
-                disabled={loading}
-              >
-                {taskId ? "UPDATE TASK" : "CREATE TASK"}
-              </button>
-            </div>
+            {!isTaskLocked && (
+              <div className="flex justify-end mt-7">
+                <button
+                  className="add-btn"
+                  onClick={handleSubmit}
+                  disabled={loading}
+                >
+                  {taskId ? "UPDATE TASK" : "CREATE TASK"}
+                </button>
+              </div>
+            )}
+
           </div>
         </div>
       </div>
