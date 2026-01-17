@@ -31,6 +31,7 @@ export const API_PATHS = {
         AI_GENERATE: "/api/tasks/ai-generate",
         ADD_COMMENT: (taskId) => `/api/tasks/${taskId}/comments`,
         GET_USER_ANALYTICS: (userId) => `/api/tasks/user/${userId}/analytics`,
+        AI_ESTIMATE: "/api/tasks/ai/estimate",
     },
 
     REPORTS: {

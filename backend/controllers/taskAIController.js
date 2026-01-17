@@ -195,6 +195,111 @@ JSON FORMAT:
     }
 };
 
-module.exports = { generateTaskUsingAI };
+
+const estimateTaskUsingAI = async (req, res) => {
+    try {
+        const {
+            title,
+            description,
+            priority,
+            checklistCount,
+            assignedTo,
+            hasHistoricalData = false,
+        } = req.body;
+
+        const today = new Date().toISOString().split("T")[0];
+
+        if (
+            !title ||
+            !description ||
+            !priority ||
+            !checklistCount ||
+            !Array.isArray(assignedTo) ||
+            assignedTo.length === 0
+        ) {
+            return res.status(400).json({
+                message: "Insufficient data for AI estimation",
+            });
+        }
+
+        const prompt = `
+You are a senior project manager.
+
+Your task is to ESTIMATE effort and timeline.
+You are providing ADVISORY guidance only.
+
+CRITICAL CONTEXT:
+- Today's date is ${today}.
+- Suggested due date MUST be in the FUTURE.
+- NEVER return a past date.
+
+IMPORTANT:
+- This is a NEW system.
+- There is ${hasHistoricalData ? "" : "NO"} organization-specific historical data.
+- Use GENERAL project management heuristics.
+
+TASK DETAILS:
+Title: ${title}
+Description: ${description}
+Priority: ${priority}
+Number of subtasks: ${checklistCount}
+Number of assignees: ${assignedTo.length}
+
+RULES:
+- First estimate effort (in hours)
+- Then convert effort into calendar days FROM TODAY
+- Be conservative
+- Use ranges
+- Express uncertainty honestly
+- Do NOT mention AI or models
+
+Return ONLY valid JSON.
+
+JSON FORMAT:
+{
+  "estimatedHours": "min–max hours",
+  "suggestedDueDate": "YYYY-MM-DD",
+  "confidence": number between 0 and 1,
+  "reasoning": "Short explanation of assumptions"
+}
+`;
+
+
+        const model = genAI.getGenerativeModel({
+            model: "gemini-2.5-flash",
+        });
+
+        const result = await model.generateContent(prompt);
+        let responseText = result.response.text();
+
+        // 🔥 Clean Gemini formatting
+        responseText = responseText
+            .replace(/```json/g, "")
+            .replace(/```/g, "")
+            .trim();
+
+        const parsed = JSON.parse(responseText);
+
+        // 🛡️ Final safety normalization
+        res.status(200).json({
+            estimatedHours: parsed.estimatedHours,
+            suggestedDueDate: parsed.suggestedDueDate,
+            confidence: Math.min(Math.max(parsed.confidence, 0), 1),
+            reasoning: parsed.reasoning,
+            meta: {
+                heuristicMode: !hasHistoricalData,
+                generatedAt: new Date(),
+            },
+        });
+    } catch (error) {
+        console.error("Gemini AI Estimation Error:", error.message);
+
+        res.status(500).json({
+            message: "AI task estimation failed",
+        });
+    }
+};
+
+module.exports = { generateTaskUsingAI, estimateTaskUsingAI };
 
 

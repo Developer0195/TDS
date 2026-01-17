@@ -14,11 +14,12 @@ import SelectUsers from '../../components/Inputs/SelectUsers'
 import Input from '../../components/Inputs/Input'
 import Modal from '../../components/Modal'
 import DeleteAlert from '../../components/DeleteAlert'
+import useAIGeneration from "../../hooks/useAIGeneration";
+import useAIEstimation from "../../hooks/useAIEstimation";
+import AIEstimationPanel from '../../components/AIEstimationPanel'
+
 
 const CreateTask = () => {
-
-
-
 
   const location = useLocation()
   const { taskId } = location.state || {}
@@ -39,14 +40,19 @@ const CreateTask = () => {
     attachments: []
   })
 
+  const {
+    loading: aiEstimateLoading,
+    estimation,
+    runEstimation,
+    canEstimate,
+  } = useAIEstimation({ taskData });
+
+
+
   const [currentTask, setCurrentTask] = useState(null)
   const [error, setError] = useState("")
   const [loading, setLoading] = useState(false)
   const [openDeleteAlert, setOpenDeleteAlert] = useState(false)
-
-  const [aiLoading, setAiLoading] = useState(false)
-  const [aiFile, setAiFile] = useState(null)                 // local file
-  const [aiAttachment, setAiAttachment] = useState(null)     // cloudinary file
 
   /* -------------------- HELPERS -------------------- */
 
@@ -73,14 +79,19 @@ const CreateTask = () => {
     setError(null)
   }
 
-  const handleRemoveAIFile = () => {
-    setAiFile(null)
-    setAiAttachment(null)
-
-    if (!taskId) {
-      clearData()
-    }
-  }
+  const {
+    aiLoading,
+    aiFile,
+    setAiFile,
+    aiAttachment,
+    setAiAttachment,
+    handleAIGenerate,
+    handleRemoveAIFile,
+  } = useAIGeneration({
+    setTaskData,
+    taskId,
+    clearData,
+  });
 
   /* -------------------- CREATE TASK -------------------- */
 
@@ -180,51 +191,6 @@ const CreateTask = () => {
     taskId ? updateTask() : createTask()
   }
 
-  /* -------------------- AI GENERATE -------------------- */
-
-  const handleAIGenerate = async () => {
-    if (!taskData.title && !aiFile) {
-      toast.error("Enter a title or upload a file")
-      return
-    }
-
-    try {
-      setAiLoading(true)
-
-      const formData = new FormData()
-      formData.append("title", taskData.title)
-      if (aiFile) formData.append("file", aiFile)
-
-      const response = await axiosInstance.post(
-        API_PATHS.TASKS.AI_GENERATE,
-        formData,
-        { headers: { "Content-Type": "multipart/form-data" } }
-      )
-
-      const aiTask = response.data
-
-      setTaskData((prev) => ({
-        ...prev,
-        title: aiTask.title,
-        description: aiTask.description,
-        priority: aiTask.priority,
-        todoCheckList: aiTask.todoCheckList,
-      }))
-
-      if (aiTask.fileUrl) {
-        setAiAttachment({
-          url: aiTask.fileUrl,
-          name: aiFile?.name || "AI Uploaded File",
-        })
-      }
-
-      toast.success("Task generated using AI")
-    } catch (error) {
-      toast.error("AI generation failed")
-    } finally {
-      setAiLoading(false)
-    }
-  }
 
   /* -------------------- LOAD TASK -------------------- */
 
@@ -298,7 +264,7 @@ const CreateTask = () => {
 
                   {/* ✨ AI BUTTON */}
                   <button
-                    onClick={handleAIGenerate}
+                    onClick={() => handleAIGenerate(taskData.title)}
                     disabled={aiLoading || (!taskData.title)}
                     className={`text-xs font-medium hover:underline ${aiLoading || (!aiFile && !taskData.title)
                       ? "text-gray-400 cursor-not-allowed"
@@ -393,6 +359,7 @@ const CreateTask = () => {
                 />
               </div>
 
+
               <div className="col span-12 md:col-span-3">
                 <label className="text-xs font-medium text-slate-600 ">
                   Assign To
@@ -405,6 +372,18 @@ const CreateTask = () => {
                 />
               </div>
 
+            </div>
+            <div className="mt-4">
+              <AIEstimationPanel
+                loading={aiEstimateLoading}
+                estimation={estimation}
+                canEstimate={canEstimate}
+                onRun={runEstimation}
+                onApplyDueDate={() => {
+                  if (!estimation?.suggestedDueDate) return;
+                  handleValueChange("dueDate", estimation.suggestedDueDate);
+                }}
+              />
             </div>
 
             <div className="mt-3">
