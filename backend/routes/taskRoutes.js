@@ -1,6 +1,6 @@
 const express = require("express");
 const { protect, adminOnly } = require("../middlewares/authMiddleware");
-const { getDashboardData, getUserDashboardData, getTasks, getTaskById, createTask, updateTask, deleteTask, updateTaskStatus, updateTaskChecklist, addComment } = require("../controllers/taskController");
+const { getDashboardData, getUserDashboardData, getTasks, getTaskById, createTask, updateTask, deleteTask, updateTaskStatus, updateTaskChecklist, addComment,getUserAnalyticsByAdmin } = require("../controllers/taskController");
 const { generateTaskUsingAI } = require("../controllers/taskAIController");
 const upload = require("../middlewares/uploadMiddleware");
 
@@ -18,6 +18,7 @@ router.put("/:id/status", protect, updateTaskStatus); // Update task status
 router.put("/:id/todo", protect, updateTaskChecklist); // Update task checklist
 router.post("/ai-generate", protect, adminOnly,upload.single("file"), generateTaskUsingAI);
 router.post("/:id/comments", protect, addComment);
-
+router.get("/user/:userId/analytics",protect,adminOnly,getUserAnalyticsByAdmin);
+  
 
 module.exports = router;
