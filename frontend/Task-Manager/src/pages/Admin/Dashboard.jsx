@@ -74,7 +74,7 @@ const Dashboard = () => {
 
 
   return <DashboardLayout activeMenu="Dashboard">
-    <div className="card my-5">
+    <div className="card my-5 p-3">
       <div>
         <div className="col-span-3">
           <h2 className="text-xl md:text-2xl">Good Morning! {user?.name}</h2>

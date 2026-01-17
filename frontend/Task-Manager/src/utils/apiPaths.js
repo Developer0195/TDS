@@ -30,6 +30,7 @@ export const API_PATHS = {
         UPDATE_TODO_CHECKLIST: (taskId) => `/api/tasks/${taskId}/todo`, // Update task checklist
         AI_GENERATE: "/api/tasks/ai-generate",
         ADD_COMMENT: (taskId) => `/api/tasks/${taskId}/comments`,
+        GET_USER_ANALYTICS: (userId) => `/api/tasks/user/${userId}/analytics`,
     },
 
     REPORTS: {

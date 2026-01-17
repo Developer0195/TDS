@@ -19,6 +19,7 @@ import UserProvider, { UserContext } from './context/userContext';
 import { Toaster } from 'react-hot-toast';
 
 import UserProfile from "./pages/Profile/UserProfile";
+import UserAnalyticsPage from './pages/Admin/UserAnalyticsPage';
 
 /* ✅ ROOT COMPONENT — MUST EXIST */
 const Root = () => {
@@ -51,6 +52,7 @@ const App = () => {
             <Route path="/admin/tasks" element={<ManageTasks />} />
             <Route path="/admin/create-task" element={<CreateTask />} />
             <Route path="/admin/users" element={<ManageUsers />} />
+            <Route path="admin/users/:id" element={<UserAnalyticsPage />} />
           </Route>
 
           {/* User Routes */}

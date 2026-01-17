@@ -325,7 +325,8 @@ const getDashboardData = async (req, res) => {
         const recentTasks = await Task.find(baseFilter)
             .sort({ createdAt: -1 })
             .limit(10)
-            .select("title status priority dueDate createdAt");
+            .select("title status priority dueDate createdAt createdBy")
+            .populate("createdBy", "name email");
 
         res.status(200).json({
             statistics: {
@@ -422,6 +423,85 @@ const getUserDashboardData = async (req, res) => {
     }
 };
 
+/* ===============================
+ USER ANALYTICS (ADMIN)
+================================ */
+const getUserAnalyticsByAdmin = async (req, res) => {
+    try {
+        const { userId } = req.params;
+
+        const baseFilter = {
+            assignedTo: { $in: [userId] },
+        };
+
+        const [
+            totalTasks,
+            pendingTasks,
+            inProgressTasks,
+            inReviewTasks,
+            completedTasks,
+            blockedTasks,
+            overdueTasks,
+        ] = await Promise.all([
+            Task.countDocuments(baseFilter),
+            Task.countDocuments({ ...baseFilter, status: "Pending" }),
+            Task.countDocuments({ ...baseFilter, status: "In Progress" }),
+            Task.countDocuments({ ...baseFilter, status: "In Review" }),
+            Task.countDocuments({ ...baseFilter, status: "Completed" }),
+            Task.countDocuments({ ...baseFilter, status: "Blocked" }),
+            Task.countDocuments({
+                ...baseFilter,
+                status: { $ne: "Completed" },
+                dueDate: { $lt: new Date() },
+            }),
+        ]);
+
+        const priorityAgg = await Task.aggregate([
+            { $match: baseFilter },
+            { $group: { _id: "$priority", count: { $sum: 1 } } },
+        ]);
+
+        const taskPriorityLevels = {
+            Low: priorityAgg.find(p => p._id === "Low")?.count || 0,
+            Medium: priorityAgg.find(p => p._id === "Medium")?.count || 0,
+            High: priorityAgg.find(p => p._id === "High")?.count || 0,
+        };
+
+        const recentTasks = await Task.find(baseFilter)
+            .sort({ createdAt: -1 })
+            .limit(10)
+            .select("title status priority dueDate createdAt createdBy")
+            .populate("createdBy", "name email");
+
+        res.status(200).json({
+            statistics: {
+                totalTasks,
+                pendingTasks,
+                inProgressTasks,
+                inReviewTasks,
+                completedTasks,
+                blockedTasks,
+                overdueTasks,
+            },
+            charts: {
+                taskDistribution: {
+                    Pending: pendingTasks,
+                    InProgress: inProgressTasks,
+                    InReview: inReviewTasks,
+                    Completed: completedTasks,
+                    Blocked: blockedTasks,
+                    All: totalTasks,
+                },
+                taskPriorityLevels,
+            },
+            recentTasks,
+        });
+    } catch (error) {
+        res.status(500).json({ message: error.message });
+    }
+};
+
+
 
 module.exports = {
     getTasks,
@@ -434,4 +514,5 @@ module.exports = {
     getDashboardData,
     getUserDashboardData,
     addComment,
+    getUserAnalyticsByAdmin
 };

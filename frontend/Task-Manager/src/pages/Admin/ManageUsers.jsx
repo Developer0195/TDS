@@ -1,22 +1,19 @@
-import React, { useEffect, useState } from 'react'
-import { API_PATHS } from '../../utils/apiPaths';
-import axiosInstance from '../../utils/axiosInstance';
-import DashboardLayout from '../../components/Layouts/DashboardLayout';
-import { LuFileSpreadsheet } from 'react-icons/lu';
-import UserCard from '../../components/Cards/UserCard'
-import DeleteAlert from '../../components/DeleteAlert';
-import UserAnalyticsModal from "../../components/Modals/UserAnalyticsModal";
-
+import React, { useEffect, useState } from "react";
+import { API_PATHS } from "../../utils/apiPaths";
+import axiosInstance from "../../utils/axiosInstance";
+import DashboardLayout from "../../components/Layouts/DashboardLayout";
+import { LuFileSpreadsheet } from "react-icons/lu";
+import UserCard from "../../components/Cards/UserCard";
+import DeleteAlert from "../../components/DeleteAlert";
+import { useNavigate } from "react-router-dom";
 
 const ManageUsers = () => {
-
   const [allUsers, setAllUsers] = useState([]);
   const [showDeleteAlert, setShowDeleteAlert] = useState(false);
   const [selectedUserId, setSelectedUserId] = useState(null);
   const [deleteError, setDeleteError] = useState("");
 
-  const [selectedUser, setSelectedUser] = useState(null);
-
+  const navigate = useNavigate();
 
   const getAllUsers = async () => {
     try {
@@ -29,39 +26,33 @@ const ManageUsers = () => {
     }
   };
 
-  // OPEN DELETE POPUP
   const confirmDeleteUser = (userId) => {
     setSelectedUserId(userId);
     setDeleteError("");
     setShowDeleteAlert(true);
   };
 
-  // DELETE USER
   const deleteUser = async () => {
     try {
       await axiosInstance.delete(
         API_PATHS.USERS.DELETE_USER(selectedUserId)
       );
-
-
       setShowDeleteAlert(false);
       setSelectedUserId(null);
       getAllUsers();
-
     } catch (error) {
       setDeleteError(
-        error.response?.data?.message ||
-        "Failed to delete user"
+        error.response?.data?.message || "Failed to delete user"
       );
     }
   };
 
-  // download task report
   const handleDownloadReport = async () => {
     try {
-      const response = await axiosInstance.get(API_PATHS.REPORTS.EXPORT_USERS, {
-        responseType: "blob",
-      });
+      const response = await axiosInstance.get(
+        API_PATHS.REPORTS.EXPORT_USERS,
+        { responseType: "blob" }
+      );
 
       const url = window.URL.createObjectURL(new Blob([response.data]));
       const link = document.createElement("a");
@@ -69,10 +60,10 @@ const ManageUsers = () => {
       link.setAttribute("download", "user_details.xlsx");
       document.body.appendChild(link);
       link.click();
-      link.parentNode.removeChild(link);
+      link.remove();
       window.URL.revokeObjectURL(url);
     } catch (error) {
-      console.error("Error downloading expense details:", error);
+      console.error("Error downloading report:", error);
     }
   };
 
@@ -96,11 +87,12 @@ const ManageUsers = () => {
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-4">
-          {allUsers?.map((user) => (
+          {allUsers.map((user) => (
             <div key={user._id}>
               <UserCard
                 userInfo={user}
-                onClick={(userData) => setSelectedUser(userData)} />
+                onClick={() => navigate(`/admin/users/${user._id}`)}
+              />
 
               <button
                 onClick={() => confirmDeleteUser(user._id)}
@@ -113,7 +105,6 @@ const ManageUsers = () => {
         </div>
       </div>
 
-      {/* ✅ DELETE CONFIRMATION POPUP */}
       {showDeleteAlert && (
         <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
           <div className="bg-white rounded-lg p-5 w-[90%] max-w-sm">
@@ -134,13 +125,6 @@ const ManageUsers = () => {
           </div>
         </div>
       )}
-      {selectedUser && (
-        <UserAnalyticsModal
-          user={selectedUser}
-          onClose={() => setSelectedUser(null)}
-        />
-      )}
-
     </DashboardLayout>
   );
 };
