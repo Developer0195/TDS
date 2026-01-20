@@ -1,7 +1,7 @@
 import React, { useState } from 'react'
 import { HiMiniPlus, HiOutlineTrash } from "react-icons/hi2";
 
-const TodoListInput = ({ todoList, setTodoList }) => {
+const TodoListInput = ({ disabled, todoList, setTodoList }) => {
     const [option, setOption] = useState("");
 
     // Function to handle adding an option
@@ -22,7 +22,7 @@ const TodoListInput = ({ todoList, setTodoList }) => {
             {todoList && todoList.map((item, index) => (
                 <div
                     key={item}
-                    className="flex justify-center bg-gray-50 border border-gray-100 px-3 py-2 rounded-md mb-3 mt-2"
+                    className="flex justify-between bg-gray-50 border border-gray-100 px-3 py-2 rounded-md mb-3 mt-2"
                 >
                     <p className="text-xs text-black">
                         <span className="text-xs text-gray-400 font-semibold mr-2">
@@ -31,28 +31,35 @@ const TodoListInput = ({ todoList, setTodoList }) => {
                         {item}
                     </p>
 
-                    <button
-                        className="cursor-pointer"
-                        onClick={() => {
-                            handleDeleteOption(index);
-                        }}
-                    >
-                        <HiOutlineTrash className='text-lg text-red-500' />
-                    </button>
+                    {
+                        !disabled &&
+                        <button
+                            className="cursor-pointer"
+                            onClick={() => {
+                                handleDeleteOption(index);
+                            }}
+                        >
+                            <HiOutlineTrash className='text-lg text-red-500' />
+                        </button>
+                    }
                 </div>
             ))}
-            <div className='flex-items-center gap-5 mt-4'>
-                <input
-                    type='text'
-                    placeholder='Enter Task'
-                    value={option}
-                    onChange={({ target }) => setOption(target.value)}
-                    className="w-full text-[13px] text-black outline-none bg-white border border-gray-100 px-3 py-2 rounded-md "
-                />
-                <button className="card-btn text-nowrap" onClick={handleAddOption}>
-                    <HiMiniPlus className="text-lg" /> Add
-                </button>
-            </div>
+            {
+                !disabled &&
+                <div className='flex-items-center gap-5 mt-4'>
+                    <input
+                        disabled={disabled}
+                        type='text'
+                        placeholder='Enter Task'
+                        value={option}
+                        onChange={({ target }) => setOption(target.value)}
+                        className="w-full text-[13px] text-black outline-none bg-white border border-gray-100 px-3 py-2 rounded-md "
+                    />
+                    <button className="card-btn text-nowrap" onClick={handleAddOption}>
+                        <HiMiniPlus className="text-lg" /> Add
+                    </button>
+                </div>
+            }
         </div>
 
 

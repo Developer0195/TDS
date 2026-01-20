@@ -5,7 +5,7 @@ import AvatarGroup from "../AvatarGroup";
 import { LuUser } from "react-icons/lu";
 import { API_PATHS } from "../../utils/apiPaths";
 
-const SelectUsers = ({ selectedUsers, setSelectedUsers }) => {
+const SelectUsers = ({ disabled, selectedUsers, setSelectedUsers }) => {
   const [allUsers, setAllUsers] = useState([]);
   const [isModalOpen, setIsModalOpen] = useState(false); // ✅ FIX
   const [tempSelectedUsers, setTempSelectedUsers] = useState([]);
@@ -50,6 +50,7 @@ const SelectUsers = ({ selectedUsers, setSelectedUsers }) => {
     <div className="space-y-4 mt-2">
       {selectedUserAvatars.length === 0 && (
         <button
+          disabled={disabled}
           type="button"
           className="card-btn"
           onClick={() => setIsModalOpen(true)} // ✅ FIX
@@ -67,45 +68,48 @@ const SelectUsers = ({ selectedUsers, setSelectedUsers }) => {
         </div>
       )}
 
-      <Modal
-        isOpen={isModalOpen}
-        onClose={() => setIsModalOpen(false)}
-        title="Select users"
-      >
-        <div className="space-y-4 h-[60vh] overflow-y-auto">
-          {allUsers.map((user) => (
-            <div
-              key={user._id}
-              className="flex items-center gap-4 p-3 border-b"
-            >
-              <img
-                src={user.profileImageUrl}
-                alt={user.name}
-                className="w-10 h-10 rounded-full"
-              />
-              <div className="flex-1">
-                <p className="font-medium">{user.name}</p>
-                <p className="text-[13px] text-gray-500">{user.email}</p>
+      {
+        !disabled &&
+        <Modal
+          isOpen={isModalOpen}
+          onClose={() => setIsModalOpen(false)}
+          title="Select users"
+        >
+          <div className="space-y-4 h-[60vh] overflow-y-auto">
+            {allUsers.map((user) => (
+              <div
+                key={user._id}
+                className="flex items-center gap-4 p-3 border-b"
+              >
+                <img
+                  src={user.profileImageUrl}
+                  alt={user.name}
+                  className="w-10 h-10 rounded-full"
+                />
+                <div className="flex-1">
+                  <p className="font-medium">{user.name}</p>
+                  <p className="text-[13px] text-gray-500">{user.email}</p>
+                </div>
+
+                <input
+                  type="checkbox"
+                  checked={tempSelectedUsers.includes(user._id)}
+                  onChange={() => toggleUserSelection(user._id)}
+                />
               </div>
+            ))}
+          </div>
 
-              <input
-                type="checkbox"
-                checked={tempSelectedUsers.includes(user._id)}
-                onChange={() => toggleUserSelection(user._id)}
-              />
-            </div>
-          ))}
-        </div>
-
-        <div className="flex justify-end gap-4 pt-4">
-          <button className="card-btn" onClick={() => setIsModalOpen(false)}>
-            CANCEL
-          </button>
-          <button className="card-btn" onClick={handleAssign}>
-            DONE
-          </button>
-        </div>
-      </Modal>
+          <div className="flex justify-end gap-4 pt-4">
+            <button className="card-btn" onClick={() => setIsModalOpen(false)}>
+              CANCEL
+            </button>
+            <button className="card-btn" onClick={handleAssign}>
+              DONE
+            </button>
+          </div>
+        </Modal>
+      }
     </div>
   );
 };
