@@ -12,6 +12,7 @@ import InfoCard from "../../components/Cards/InfoCards";
 import TaskListTable from "../../components/TaskListTable";
 import CustomPieChart from "../../components/Charts/CustomPieChart";
 import CustomBarChart from "../../components/Charts/CustomBarChart";
+import { LuArrowRight } from "react-icons/lu";
 
 const COLORS = ['#8D51FF', '#00B8D8', '#7BCE00'];
 
@@ -53,6 +54,7 @@ const UserDashboard = () => {
       const response = await axiosInstance.get(
         API_PATHS.TASKS.GET_USER_DASHBOARD_DATA
       );
+      console.log("Here")
       console.log(response)
       if (response.data) {
         setDashboardData(response.data);
@@ -64,12 +66,11 @@ const UserDashboard = () => {
   };
 
   const onSeeMore = () => {
-    navigate('admin/tasks')
+    navigate('user/my-tasks')
   }
 
   useEffect(() => {
     getDashboardData();
-
     return () => { }
   }, [])
 
@@ -153,9 +154,9 @@ const UserDashboard = () => {
           <div className="flex items-center justify-between">
             <h5 className="text-lg">Recent Tasks</h5>
 
-            {/* <button className="card-btn" onClick={onSeeMore}>
+            <button className="card-btn" onClick={onSeeMore}>
               See all <LuArrowRight className="text-base" />
-            </button> */}
+            </button>
           </div>
 
           <TaskListTable tableData={dashboardData?.recentTasks || []} />

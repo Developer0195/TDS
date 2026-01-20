@@ -3,7 +3,7 @@ import { HiMiniPlus, HiOutlineTrash } from "react-icons/hi2";
 import { LuPaperclip, LuUpload } from "react-icons/lu";
 import axiosInstance from "../../utils/axiosInstance";
 
-const AddAttachmentsInput = ({ attachments = [], setAttachments }) => {
+const AddAttachmentsInput = ({ disabled, attachments = [], setAttachments }) => {
   const [option, setOption] = useState("");
   const [uploading, setUploading] = useState(false);
 
@@ -87,47 +87,55 @@ const AddAttachmentsInput = ({ attachments = [], setAttachments }) => {
             </a>
           </div>
 
-          <button
-            className="cursor-pointer"
-            onClick={() => handleDeleteOption(index)}
-          >
-            <HiOutlineTrash className="text-lg text-red-500" />
-          </button>
+          {
+            !disabled &&
+            <button
+              className="cursor-pointer"
+              onClick={() => handleDeleteOption(index)}
+            >
+              <HiOutlineTrash className="text-lg text-red-500" />
+            </button>
+          }
         </div>
       ))}
 
       {/* ADD LINK + FILE */}
-      <div className="flex items-center gap-5 mt-4">
-        {/* TEXT INPUT */}
-        <div className="flex-1 flex items-center gap-3 border border-gray-100 rounded-md px-3">
-          <LuPaperclip className="text-gray-400" />
-          <input
-            type="text"
-            placeholder="Add file link"
-            value={option}
-            onChange={({ target }) => setOption(target.value)}
-            className="w-full text-[13px] text-black outline-none bg-white py-2"
-          />
-        </div>
+      {
+        !disabled &&
+        <>
+          <div className="flex items-center gap-5 mt-4">
+            {/* TEXT INPUT */}
+            <div className="flex-1 flex items-center gap-3 border border-gray-100 rounded-md px-3">
+              <LuPaperclip className="text-gray-400" />
+              <input
+                type="text"
+                placeholder="Add file link"
+                value={option}
+                onChange={({ target }) => setOption(target.value)}
+                className="w-full text-[13px] text-black outline-none bg-white py-2"
+              />
+            </div>
 
-        <button className="card-btn text-nowrap" onClick={handleAddOption}>
-          <HiMiniPlus className="text-lg" /> Add
-        </button>
-      </div>
+            <button className="card-btn text-nowrap" onClick={handleAddOption}>
+              <HiMiniPlus className="text-lg" /> Add
+            </button>
+          </div>
 
-      {/* FILE UPLOAD BUTTON */}
-      <div className="mt-3">
-        <label className="flex items-center gap-2 text-xs cursor-pointer text-indigo-600">
-          <LuUpload />
-          {uploading ? "Uploading..." : "Upload file"}
-          <input
-            type="file"
-            hidden
-            accept="image/*,.pdf,.doc,.docx,.xlsx"
-            onChange={(e) => handleFileUpload(e.target.files[0])}
-          />
-        </label>
-      </div>
+          {/* FILE UPLOAD BUTTON */}
+          <div className="mt-3">
+            <label className="flex items-center gap-2 text-xs cursor-pointer text-indigo-600">
+              <LuUpload />
+              {uploading ? "Uploading..." : "Upload file"}
+              <input
+                type="file"
+                hidden
+                accept="image/*,.pdf,.doc,.docx,.xlsx"
+                onChange={(e) => handleFileUpload(e.target.files[0])}
+              />
+            </label>
+          </div>
+        </>
+      }
     </div>
   );
 };
