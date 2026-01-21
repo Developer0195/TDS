@@ -397,7 +397,8 @@ const getUserDashboardData = async (req, res) => {
         const recentTasks = await Task.find(baseFilter)
             .sort({ createdAt: -1 })
             .limit(10)
-            .select("title status priority dueDate createdAt");
+            .select("title status priority dueDate createdAt createdBy")
+            .populate("createdBy", "name email");
 
         res.status(200).json({
             statistics: {

@@ -203,6 +203,9 @@ const CreateTask = () => {
       )
 
       const taskInfo = response.data
+
+      console.log(taskInfo)
+
       setCurrentTask(taskInfo)
       setComments(taskInfo.comments || []);
 
@@ -221,6 +224,28 @@ const CreateTask = () => {
 
     loadTask()
   }, [taskId])
+
+  const handleReopenTask = async () => {
+    try {
+      await axiosInstance.put(
+        API_PATHS.TASKS.UPDATE_TASK_STATUS(taskId),
+        { status: "In Review" }
+      );
+
+      toast.success("Task reopened for review");
+
+      // Refresh task
+      const res = await axiosInstance.get(
+        API_PATHS.TASKS.GET_TASK_BY_ID(taskId)
+      );
+
+      setCurrentTask(res.data);
+    } catch (error) {
+      console.error(error);
+      toast.error("Failed to reopen task");
+    }
+  };
+
 
 
   return (
@@ -251,28 +276,34 @@ const CreateTask = () => {
 
                 <div className="flex items-center gap-3">
                   {/* 📎 FILE UPLOAD */}
-                  <label className="text-xs cursor-pointer text-indigo-600 hover:underline">
-                    📎 Upload File
-                    <input
-                      disabled={isTaskLocked}
-                      type="file"
-                      accept=".pdf,.docx,.txt"
-                      hidden
-                      onChange={(e) => setAiFile(e.target.files[0])}
-                    />
-                  </label>
+                  {
+                    !isTaskLocked &&
+                    <label className="text-xs cursor-pointer text-indigo-600 hover:underline">
+                      📎 Upload File
+                      <input
+                        disabled={isTaskLocked}
+                        type="file"
+                        accept=".pdf,.docx,.txt"
+                        hidden
+                        onChange={(e) => setAiFile(e.target.files[0])}
+                      />
+                    </label>
+                  }
 
                   {/* ✨ AI BUTTON */}
-                  <button
-                    onClick={() => handleAIGenerate(taskData.title)}
-                    disabled={aiLoading || (!taskData.title)}
-                    className={`text-xs font-medium hover:underline ${aiLoading || (!aiFile && !taskData.title)
-                      ? "text-gray-400 cursor-not-allowed"
-                      : "text-indigo-600"
-                      }`}
-                  >
-                    {aiLoading ? "Generating..." : "✨ Generate with AI"}
-                  </button>
+                  {
+                    !isTaskLocked &&
+                    <button
+                      onClick={() => handleAIGenerate(taskData.title)}
+                      disabled={aiLoading || (!taskData.title) || isTaskLocked}
+                      className={`text-xs font-medium hover:underline ${aiLoading || (!aiFile && !taskData.title)
+                        ? "text-gray-400 cursor-not-allowed"
+                        : "text-indigo-600"
+                        }`}
+                    >
+                      {aiLoading ? "Generating..." : "✨ Generate with AI"}
+                    </button>
+                  }
 
                 </div>
               </div>
@@ -365,6 +396,7 @@ const CreateTask = () => {
                   Assign To
                 </label>
                 <SelectUsers
+                  disabled={isTaskLocked}
                   selectedUsers={taskData.assignedTo}
                   setSelectedUsers={(value) => {
                     handleValueChange("assignedTo", value);
@@ -373,18 +405,21 @@ const CreateTask = () => {
               </div>
 
             </div>
-            <div className="mt-4">
-              <AIEstimationPanel
-                loading={aiEstimateLoading}
-                estimation={estimation}
-                canEstimate={canEstimate}
-                onRun={runEstimation}
-                onApplyDueDate={() => {
-                  if (!estimation?.suggestedDueDate) return;
-                  handleValueChange("dueDate", estimation.suggestedDueDate);
-                }}
-              />
-            </div>
+            {
+              !isTaskLocked &&
+              <div className="mt-4">
+                <AIEstimationPanel
+                  loading={aiEstimateLoading}
+                  estimation={estimation}
+                  canEstimate={canEstimate}
+                  onRun={runEstimation}
+                  onApplyDueDate={() => {
+                    if (!estimation?.suggestedDueDate) return;
+                    handleValueChange("dueDate", estimation.suggestedDueDate);
+                  }}
+                />
+              </div>
+            }
 
             <div className="mt-3">
               <label className="text-xs font-medium  text-slate-600">
@@ -392,6 +427,7 @@ const CreateTask = () => {
               </label>
 
               <TodoListInput
+                disabled={isTaskLocked}
                 todoList={taskData?.todoCheckList}
                 setTodoList={(value) =>
                   handleValueChange("todoCheckList", value)
@@ -404,6 +440,7 @@ const CreateTask = () => {
               </label>
 
               <AddAttachmentsInput
+                disabled={isTaskLocked}
                 attachments={taskData?.attachments}
                 setAttachments={(value) =>
                   handleValueChange("attachments", value)
@@ -471,56 +508,74 @@ const CreateTask = () => {
             )}
 
 
-            {taskId && currentTask?.status === "In Review" && (
-              <div className="flex gap-3 mt-6">
-                <button
-                  className="add-btn"
-                  onClick={async () => {
-                    try {
-                      await axiosInstance.put(
-                        API_PATHS.TASKS.UPDATE_TASK_STATUS(taskId),
-                        { status: "Completed" }
-                      );
+            {/* TASK ACTIONS */}
+            {taskId && (
+              <div className="mt-6 flex gap-3 justify-end border-t pt-4">
 
-                      toast.success("Task marked as completed");
-                      // navigate("/admin/tasks");
-                    } catch (error) {
-                      console.error(error);
-                      toast.error(
-                        error?.response?.data?.message ||
-                        "Failed to complete task. Please try again."
-                      );
-                    }
-                  }}
-                >
-                  Approve & Complete
-                </button>
+                {/* IN REVIEW → APPROVE / BLOCK */}
+                {currentTask?.status === "In Review" && (
+                  <>
+                    <button
+                      className="px-4 py-2 rounded bg-emerald-600 text-white text-sm hover:bg-emerald-700"
+                      onClick={async () => {
+                        try {
+                          await axiosInstance.put(
+                            API_PATHS.TASKS.UPDATE_TASK_STATUS(taskId),
+                            { status: "Completed" }
+                          );
 
-                <button
-                  className="border border-red-300 text-red-600 px-4 py-2 rounded"
-                  onClick={async () => {
-                    try {
-                      await axiosInstance.put(
-                        API_PATHS.TASKS.UPDATE_TASK_STATUS(taskId),
-                        { status: "Blocked" }
-                      );
+                          toast.success("Task approved & completed");
 
-                      toast.success("Task blocked");
-                      // navigate("/admin/manage-tasks");
-                    } catch (error) {
-                      console.error(error);
-                      toast.error(
-                        error?.response?.data?.message ||
-                        "Failed to block task. Please try again."
-                      );
-                    }
-                  }}
-                >
-                  Block Task
-                </button>
+                          const res = await axiosInstance.get(
+                            API_PATHS.TASKS.GET_TASK_BY_ID(taskId)
+                          );
+                          setCurrentTask(res.data);
+                        } catch (error) {
+                          toast.error("Failed to complete task");
+                        }
+                      }}
+                    >
+                      ✅ Approve & Complete
+                    </button>
+
+                    <button
+                      className="px-4 py-2 rounded border border-red-400 text-red-600 text-sm hover:bg-red-50"
+                      onClick={async () => {
+                        try {
+                          await axiosInstance.put(
+                            API_PATHS.TASKS.UPDATE_TASK_STATUS(taskId),
+                            { status: "Blocked" }
+                          );
+
+                          toast.success("Task blocked");
+
+                          const res = await axiosInstance.get(
+                            API_PATHS.TASKS.GET_TASK_BY_ID(taskId)
+                          );
+                          setCurrentTask(res.data);
+                        } catch (error) {
+                          toast.error("Failed to block task");
+                        }
+                      }}
+                    >
+                      🚫 Block Task
+                    </button>
+                  </>
+                )}
+
+                {/* COMPLETED / BLOCKED → REOPEN */}
+                {(currentTask?.status === "Completed" ||
+                  currentTask?.status === "Blocked") && (
+                    <button
+                      className="px-4 py-2 rounded bg-indigo-600 text-white text-sm hover:bg-indigo-700 cursor-pointer"
+                      onClick={handleReopenTask}
+                    >
+                      🔄 Reopen Task
+                    </button>
+                  )}
               </div>
-
             )}
+
 
 
             {error && (
