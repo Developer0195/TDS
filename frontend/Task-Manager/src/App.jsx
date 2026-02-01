@@ -6,6 +6,7 @@ import Login from './pages/Auth/Login';
 import Signup from './pages/Auth/Signup';
 import ManageTasks from './pages/Admin/ManageTasks';
 import CreateTask from './pages/Admin/CreateTask';
+import CreateProject from "./pages/Admin/CreateProject";
 import ManageUsers from './pages/Admin/ManageUsers';
 
 import UserDashboard from './pages/Users/UserDashboard';
@@ -51,8 +52,9 @@ const App = () => {
             <Route path="/admin/dashboard" element={<Dashboard />} />
             <Route path="/admin/tasks" element={<ManageTasks />} />
             <Route path="/admin/create-task" element={<CreateTask />} />
+            <Route path="/admin/create-project" element={<CreateProject />} />
             <Route path="/admin/users" element={<ManageUsers />} />
-            <Route path="admin/users/:id" element={<UserAnalyticsPage />} />
+            <Route path="/admin/users/:id" element={<UserAnalyticsPage />} />
           </Route>
 
           {/* User Routes */}

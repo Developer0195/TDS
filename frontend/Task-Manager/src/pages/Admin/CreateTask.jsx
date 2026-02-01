@@ -25,6 +25,7 @@ const CreateTask = () => {
   const { taskId } = location.state || {}
   const navigate = useNavigate()
 
+  const [projects, setProjects] = useState([]);
   const [comments, setComments] = useState([]);
   const [newComment, setNewComment] = useState("");
   const [commentLoading, setCommentLoading] = useState(false);
@@ -36,6 +37,7 @@ const CreateTask = () => {
     priority: "Low",
     dueDate: null,
     assignedTo: [],
+    project: null,
     todoCheckList: [],
     attachments: []
   })
@@ -71,6 +73,7 @@ const CreateTask = () => {
       priority: "Low",
       dueDate: null,
       assignedTo: [],
+      project: null,
       todoCheckList: [],
       attachments: [],
     })
@@ -113,6 +116,7 @@ const CreateTask = () => {
 
       const payload = {
         ...taskData,
+        project: taskData.project || null,
         dueDate: new Date(taskData.dueDate).toISOString(),
         todoCheckList: todoList,
         attachments: aiAttachment ? [aiAttachment] : [],
@@ -157,6 +161,7 @@ const CreateTask = () => {
         API_PATHS.TASKS.UPDATE_TASK(taskId),
         {
           ...taskData,
+          project: taskData.project || null,
           dueDate: new Date(taskData.dueDate).toISOString(),
           todoCheckList: todoList,
           attachments: aiAttachment
@@ -217,6 +222,7 @@ const CreateTask = () => {
           ? moment(taskInfo.dueDate).format("YYYY-MM-DD")
           : null,
         assignedTo: taskInfo.assignedTo.map((u) => u._id),
+        project: taskInfo.project?._id || null,
         todoCheckList: taskInfo.todoCheckList.map((t) => t.text),
         attachments: taskInfo.attachments || [],
       })
@@ -224,6 +230,27 @@ const CreateTask = () => {
 
     loadTask()
   }, [taskId])
+
+  useEffect(() => {
+    const fetchProjects = async () => {
+      try {
+        const res = await axiosInstance.get(API_PATHS.PROJECTS.GET_PROJECTS);
+
+        const formatted = res.data.projects.map((p) => ({
+          label: p.name,
+          value: p._id,
+        }));
+
+        setProjects(formatted);
+      } catch (error) {
+        console.log(error);
+        toast.error("Failed to load projects");
+      }
+    };
+
+    fetchProjects();
+  }, []);
+
 
   const handleReopenTask = async () => {
     try {
@@ -374,6 +401,20 @@ const CreateTask = () => {
               </div>
 
               <div className="col-span-6 md:col-span-4">
+                <label className="text-xs font-medium text-slate-600">
+                  Project (Optional)
+                </label>
+
+                <SelectDropdown
+                  options={projects}
+                  value={taskData.project}
+                  onChange={(value) => handleValueChange("project", value)}
+                  placeholder="Select Project"
+                />
+              </div>
+
+
+              <div className="col-span-6 md:col-span-4">
                 <label className="text-xs font-medium  text-slate-600">
                   Due Date
                 </label>
@@ -388,6 +429,22 @@ const CreateTask = () => {
                   }
                   type="date"
                 />
+              </div>
+
+              <div className="col-span-6 md:col-span-4">
+                <label className="text-xs font-medium  text-slate-600">
+                  Estimated Hours
+                </label>
+
+                <Input
+                  type="number"
+                  placeholder="Estimated Hours"
+                  value={taskData.estimatedHours}
+                  onChange={(e) =>
+                    handleValueChange("estimatedHours", e.target.value)
+                  }
+                />
+
               </div>
 
 

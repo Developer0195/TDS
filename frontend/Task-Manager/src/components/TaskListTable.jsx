@@ -37,18 +37,32 @@ const TaskListTable = ({ tableData }) => {
       <table className="min-w-full">
         <thead>
           <tr className="text-left">
+            {/* TASK NAME */}
             <th className="py-3 px-4 text-gray-800 font-medium text-[13px]">
               Name
             </th>
+
+            {/* ✅ NEW PROJECT COLUMN */}
+            <th className="py-3 px-4 text-gray-800 font-medium text-[13px]">
+              Project
+            </th>
+
+            {/* STATUS */}
             <th className="py-3 px-4 text-gray-800 font-medium text-[13px]">
               Status
             </th>
+
+            {/* PRIORITY */}
             <th className="py-3 px-4 text-gray-800 font-medium text-[13px]">
               Priority
             </th>
+
+            {/* ASSIGNED BY */}
             <th className="py-3 px-4 text-gray-800 font-medium text-[13px] hidden md:table-cell">
               Assigned By
             </th>
+
+            {/* CREATED ON */}
             <th className="py-3 px-4 text-gray-800 font-medium text-[13px] hidden md:table-cell">
               Created On
             </th>
@@ -58,10 +72,23 @@ const TaskListTable = ({ tableData }) => {
         <tbody>
           {tableData.map((task) => (
             <tr key={task._id} className="border-t border-gray-200">
+              {/* TASK TITLE */}
               <td className="py-3 px-4 text-gray-700 text-[13px] line-clamp-1">
                 {task.title}
               </td>
 
+              {/* ✅ PROJECT NAME */}
+              <td className="py-3 px-4 text-gray-600 text-[13px]">
+                {task.project?.name ? (
+                  <span className="text-indigo-600 font-medium">
+                    {task.project.name}
+                  </span>
+                ) : (
+                  <span className="text-gray-400 italic">No Project</span>
+                )}
+              </td>
+
+              {/* STATUS */}
               <td className="py-4 px-4">
                 <span
                   className={`px-2 py-1 text-xs rounded inline-block ${getStatusBadgeColor(
@@ -72,6 +99,7 @@ const TaskListTable = ({ tableData }) => {
                 </span>
               </td>
 
+              {/* PRIORITY */}
               <td className="py-4 px-4">
                 <span
                   className={`px-2 py-1 text-xs rounded inline-block ${getPriorityBadgeColor(
@@ -82,10 +110,12 @@ const TaskListTable = ({ tableData }) => {
                 </span>
               </td>
 
+              {/* CREATED BY */}
               <td className="py-4 px-4 text-gray-700 text-[13px] hidden md:table-cell">
                 {task.createdBy?.name || "—"}
               </td>
 
+              {/* CREATED DATE */}
               <td className="py-4 px-4 text-gray-700 text-[13px] hidden md:table-cell">
                 {task.createdAt
                   ? moment(task.createdAt).format("DD MMM YYYY")

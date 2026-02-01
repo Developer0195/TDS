@@ -144,9 +144,10 @@ ${fileText ? `Reference Document Content:\n${fileText.slice(0, 3000)}` : ""}
 VERY IMPORTANT RULES:
 - todoCheckList MUST contain at least 5 items
 - Each todo must be a clear ACTION (verb-based)
+- estimatedHours MUST be included (1–40 hours)
+- Return estimatedHours as a NUMBER, not a string
 - Do NOT summarize
 - Do NOT merge steps
-- Think like a project breakdown (WBS)
 
 Return ONLY valid JSON.
 No markdown.
@@ -157,6 +158,9 @@ JSON FORMAT:
   "title": "Short actionable task title",
   "description": "2–3 sentence overview of what needs to be done",
   "priority": "Low | Medium | High",
+
+  "estimatedHours": number (integer, minimum 1),
+
   "todoCheckList": [
     "Action step 1",
     "Action step 2",
@@ -165,12 +169,12 @@ JSON FORMAT:
     "Action step 5"
   ]
 }
+
 `;
 
         const model = genAI.getGenerativeModel({
-            model: "gemini-2.5-flash", // ✅ FREE & STABLE
+            model: "gemini-2.5-flash",
         });
-
         const result = await model.generateContent(prompt);
         let responseText = result.response.text();
 
@@ -180,12 +184,20 @@ JSON FORMAT:
             .replace(/```/g, "")
             .trim();
 
+        // ✅ Convert AI response to JSON
         const parsed = JSON.parse(responseText);
 
+        // ✅ STEP 2 HERE
+        if (!parsed.estimatedHours) {
+            parsed.estimatedHours = 4;
+        }
+
+        // ✅ Return AI Task Response
         res.status(200).json({
             ...parsed,
-            fileUrl, // 👈 return hosted file link
+            fileUrl,
         });
+
     } catch (error) {
         console.error("Gemini AI Error:", error.message);
 

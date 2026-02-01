@@ -44,8 +44,17 @@ const useAIGeneration = ({ setTaskData, taskId, clearData }) => {
                 title: aiTask.title,
                 description: aiTask.description,
                 priority: aiTask.priority,
-                todoCheckList: aiTask.todoCheckList,
+
+                estimatedHours: aiTask.estimatedHours || 1, // ✅ NEW
+
+                todoCheckList: aiTask.todoCheckList.map((t) => ({
+                    text: t,
+                    completed: false,
+                    assignedTo: null,
+                })),
+
             }));
+
 
             if (aiTask.fileUrl) {
                 setAiAttachment({

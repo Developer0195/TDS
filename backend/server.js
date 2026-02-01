@@ -12,6 +12,7 @@ const reportRoutes = require('./routes/reportRoutes')
 const attendanceRoutes = require("./routes/attendanceRoutes");
 const cloudinary = require("./config/cloudinary");
 const uploadRoutes = require("./routes/uploadRoutes");
+const projectRoutes = require("./routes/projectRoutes");
 
 // Middleware to handle CORS
 app.use(
@@ -36,6 +37,7 @@ app.use("/api/tasks", taskRoutes);
 app.use("/api/reports", reportRoutes);
 app.use("/api/attendance", attendanceRoutes);
 app.use("/api/upload", uploadRoutes);
+app.use("/api/projects", projectRoutes);
 
 
 //Server uploads folder

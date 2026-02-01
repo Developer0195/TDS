@@ -6,10 +6,17 @@ const addLog = require("../utils/addLogs");
 ================================ */
 const getTasks = async (req, res) => {
     try {
-        const { status } = req.query;
+        const { status, projectId } = req.query;
         let filter = {};
 
         if (status) filter.status = status;
+
+        // ✅ Project Filtering (Loose Tasks Support)
+        if (projectId === "null") {
+            filter.project = null; // Loose tasks
+        } else if (projectId) {
+            filter.project = projectId; // Project tasks
+        }
 
         if (req.user.role === "admin") {
             filter.createdBy = req.user._id;
@@ -17,10 +24,9 @@ const getTasks = async (req, res) => {
             filter.assignedTo = req.user._id;
         }
 
-        let tasks = await Task.find(filter).populate(
-            "assignedTo",
-            "name email profileImageUrl"
-        );
+        let tasks = await Task.find(filter)
+            .populate("assignedTo", "name email profileImageUrl")
+            .populate("project", "name");
 
         tasks = tasks.map((task) => {
             const completedCount = task.todoCheckList.filter(t => t.completed).length;
@@ -78,6 +84,7 @@ const getTaskById = async (req, res) => {
 
         const task = await Task.findOne(filter)
             .populate("assignedTo", "name email profileImageUrl")
+            .populate("project", "name description")
             .populate("comments.commentedBy", "name profileImageUrl");
 
         if (!task) return res.status(404).json({ message: "Task not found" });
@@ -98,25 +105,40 @@ const createTask = async (req, res) => {
             description,
             priority,
             dueDate,
+            estimatedHours, // ✅ NEW REQUIRED FIELD
             assignedTo,
+            project,
             attachments = [],
             todoCheckList = [],
         } = req.body;
 
+        // ✅ Validation
         if (!title || !dueDate || !assignedTo?.length) {
             return res.status(400).json({ message: "Invalid task data" });
         }
 
-        const normalizedTodos = todoCheckList.map((t) =>
-            typeof t === "string" ? { text: t, completed: false } : t
-        );
+        if (!estimatedHours || estimatedHours < 1) {
+            return res
+                .status(400)
+                .json({ message: "Estimated hours is required (min 1 hour)" });
+        }
 
+        // ✅ Normalize Subtasks
+        const normalizedTodos = todoCheckList.map((t) => ({
+            text: t.text || t,
+            completed: t.completed ?? false,
+            assignedTo: t.assignedTo || null, // ✅ One assignee per subtask
+        }));
+
+        // ✅ Create Task
         const task = await Task.create({
             title,
             description,
             priority,
             dueDate,
+            estimatedHours, // ✅ Save Hours
             assignedTo,
+            project: project || null,
             createdBy: req.user._id,
             todoCheckList: normalizedTodos,
             attachments,
@@ -135,6 +157,7 @@ const createTask = async (req, res) => {
     }
 };
 
+
 /* ===============================
    UPDATE TASK
 ================================ */
@@ -142,11 +165,22 @@ const updateTask = async (req, res) => {
     try {
         const filter = { _id: req.params.id };
 
+        if (req.body.estimatedHours && req.body.estimatedHours < 1) {
+            return res.status(400).json({
+                message: "Estimated hours must be at least 1",
+            });
+        }
+
+
         if (req.user.role === "admin") filter.createdBy = req.user._id;
         else if (req.user.role === "member") filter.assignedTo = req.user._id;
 
         const task = await Task.findOne(filter);
         if (!task) return res.status(404).json({ message: "Task not found" });
+
+        if (req.body.project === "") {
+            req.body.project = null;
+        }
 
         Object.assign(task, req.body);
 
@@ -199,7 +233,12 @@ const updateTaskChecklist = async (req, res) => {
         console.log(task)
         if (!task) return res.status(404).json({ message: "Task not found" });
 
-        task.todoCheckList = req.body.todoCheckList;
+        task.todoCheckList = req.body.todoCheckList.map((t) => ({
+            text: t.text,
+            completed: t.completed ?? false,
+            assignedTo: t.assignedTo || null,
+        }));
+
 
         const completed = task.todoCheckList.filter(t => t.completed).length;
         const total = task.todoCheckList.length;
@@ -287,10 +326,14 @@ const deleteTask = async (req, res) => {
 ================================ */
 const getDashboardData = async (req, res) => {
     try {
+        const { projectId } = req.query;
+
         const baseFilter =
             req.user.role === "superadmin"
                 ? {}
                 : { createdBy: req.user._id };
+
+        if (projectId) baseFilter.project = projectId;
 
         const totalTasks = await Task.countDocuments(baseFilter);
         const pendingTasks = await Task.countDocuments({

@@ -1,5 +1,5 @@
+// export const BASE_URL = "https://tds-pc3j.onrender.com";
 export const BASE_URL = "http://localhost:8000";
-
 // utils/apiPaths.js
 export const API_PATHS = {
     AUTH: {
@@ -47,4 +47,12 @@ export const API_PATHS = {
         PUNCH_OUT: "/api/attendance/punch-out",
         MY_ATTENDANCE: "/api/attendance/my",
     },
+    PROJECTS: {
+        CREATE_PROJECT: "/api/projects/create",
+        GET_PROJECTS: "/api/projects",
+        GET_PROJECT_BY_ID: (id) => `/api/projects/${id}`,
+        UPDATE_PROJECT: (id) => `/api/projects/${id}`,
+        DELETE_PROJECT: (id) => `/api/projects/${id}`,
+      },
+      
 };

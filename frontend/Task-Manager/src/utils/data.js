@@ -5,6 +5,7 @@ import {
     LuSquarePlus,
     LuLogOut,
     LuMapPinCheckInside,
+    LuFolderPlus
 } from "react-icons/lu";
 
 import { FaUser } from "react-icons/fa";
@@ -30,24 +31,30 @@ export const SIDE_MENU_DATA = [
     },
     {
         id: "04",
+        label: "Create Project",
+        icon: LuFolderPlus,
+        path: "/admin/create-project",
+    },    
+    {
+        id: "05",
         label: "Team Members",
         icon: LuUsers,
         path: "/admin/users",
     },
     {
-        id: "05",
+        id: "06",
         label: "Attendance",
         icon: LuMapPinCheckInside,
         path: "/attendance",
     },
     {
-        id: "06",
+        id: "07",
         label: "Profile",
         icon: FaUser,
         path: "/profile",
     },
     {
-        id: "07",
+        id: "08",
         label: "Logout",
         icon: LuLogOut,
         path: "logout",
