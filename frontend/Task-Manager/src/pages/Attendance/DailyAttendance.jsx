@@ -3,8 +3,6 @@ import axiosInstance from "../../utils/axiosInstance";
 import { API_PATHS } from "../../utils/apiPaths";
 import LocationPopover from "../../components/LocationPopOver";
 
-
-
 const DailyAttendance = () => {
   const [selectedDate, setSelectedDate] = useState(
     new Date().toISOString().split("T")[0]
@@ -70,7 +68,7 @@ const DailyAttendance = () => {
                   <td className="px-4 py-3">
                     {r.durationMinutes ? `${Math.floor(r.durationMinutes / 60)}h ${r.durationMinutes % 60}m` : "—"}
                   </td>
-                  <td className="px-4 py-3">{r.status || "—"}</td>
+                  <td className="px-4 py-3">{r.workType || "—"}</td>
                   <td className="px-4 py-3">
                    <LocationPopover location={r.location} />
                   </td>

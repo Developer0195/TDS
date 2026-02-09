@@ -116,8 +116,6 @@ const punchIn = async (req, res) => {
   }
 };
 
-
-
 // const punchOut = async (req, res) => {
 //     try {
 //         const { latitude, longitude } = req.body;
@@ -450,7 +448,7 @@ const getDailyAttendance = async (req, res) => {
         punchOutTime: record.punchOut?.time || null,
         durationMinutes: record.totalDurationMinutes || null,
 
-        workType: record.status || null, // WFO | OFFSITE
+        workType: record.workType || null, // WFO | OFFSITE
         attendanceStatus: record.attendanceStatus, // Present | Absent | Delayed
 
         location: record.punchIn?.location
