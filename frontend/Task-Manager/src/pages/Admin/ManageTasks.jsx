@@ -4,10 +4,25 @@ import { useNavigate } from "react-router-dom";
 import { API_PATHS } from "../../utils/apiPaths";
 import axiosInstance from "../../utils/axiosInstance";
 import TaskCard from "../../components/Cards/TaskCard";
+import TaskRow from "../../components/TaskRow";
 
 const ManageTasks = () => {
   const [projects, setProjects] = useState([]);
   const [allTasks, setAllTasks] = useState([]);
+
+  // task filters
+  const [filters, setFilters] = useState({
+    startDate: "",
+    endDate: "",
+    status: "",
+    projectId: "",
+  });
+
+  // pagination
+  // pagination
+  const [page, setPage] = useState(1);
+  const PAGE_SIZE = 10;
+  const [pagination, setPagination] = useState(null);
 
   // ✅ Selected Project Filter
   const [selectedProject, setSelectedProject] = useState("ALL");
@@ -32,27 +47,29 @@ const ManageTasks = () => {
   /* ---------------- FETCH TASKS ---------------- */
   const fetchTasks = async () => {
     try {
-      let params = {};
-
-      // ✅ Loose Tasks Filter
-      if (selectedProject === "LOOSE") {
-        params.projectId = "null";
-      }
-
-      // ✅ Specific Project Filter
-      else if (selectedProject !== "ALL") {
-        params.projectId = selectedProject;
-      }
-
       const res = await axiosInstance.get(API_PATHS.TASKS.GET_ALL_TASKS, {
-        params,
+        params: {
+          startDate: filters.startDate,
+          endDate: filters.endDate,
+          status: filters.status,
+          projectId: filters.projectId,
+          page,
+          limit: PAGE_SIZE,
+        },
       });
 
       setAllTasks(res.data.tasks || []);
+      setPagination(res.data.pagination);
     } catch (error) {
       console.log("Failed to fetch tasks", error);
     }
   };
+
+  console.log(allTasks);
+
+  useEffect(() => {
+    setPage(1);
+  }, [filters]);
 
   /* ---------------- LOAD DATA ---------------- */
   useEffect(() => {
@@ -61,64 +78,81 @@ const ManageTasks = () => {
 
   useEffect(() => {
     fetchTasks();
-  }, [selectedProject]);
+  }, [filters, page]);
 
   return (
     <DashboardLayout activeMenu="Manage Tasks">
       <div className="my-5">
-        {/* ---------------- PROJECT CARDS ---------------- */}
-        <h2 className="text-xl font-medium mb-4">Projects</h2>
+        {/* ---------------- FILTERS ---------------- */}
+        <div className="card p-4 mb-6">
+          <h3 className="font-medium mb-3">Filters</h3>
 
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-          {/* ✅ All Tasks Card */}
-          <div
-            onClick={() => setSelectedProject("ALL")}
-            className={`p-4 rounded-xl border cursor-pointer shadow-sm ${
-              selectedProject === "ALL"
-                ? "border-indigo-500 bg-indigo-50"
-                : "border-gray-200"
-            }`}
-          >
-            <h3 className="font-medium text-gray-800">📌 All Tasks</h3>
-            <p className="text-xs text-gray-500">
-              View tasks across all projects
-            </p>
-          </div>
-
-          {/* ✅ Loose Tasks Card */}
-          <div
-            onClick={() => setSelectedProject("LOOSE")}
-            className={`p-4 rounded-xl border cursor-pointer shadow-sm ${
-              selectedProject === "LOOSE"
-                ? "border-indigo-500 bg-indigo-50"
-                : "border-gray-200"
-            }`}
-          >
-            <h3 className="font-medium text-gray-800">🗂 Loose Tasks</h3>
-            <p className="text-xs text-gray-500">
-              Tasks not tagged to any project
-            </p>
-          </div>
-
-          {/* ✅ Project Cards */}
-          {projects.map((project) => (
-            <div
-              key={project._id}
-              onClick={() => setSelectedProject(project._id)}
-              className={`p-4 rounded-xl border cursor-pointer shadow-sm ${
-                selectedProject === project._id
-                  ? "border-indigo-500 bg-indigo-50"
-                  : "border-gray-200"
-              }`}
-            >
-              <h3 className="font-medium text-gray-800">
-                {project.name}
-              </h3>
-              <p className="text-xs text-gray-500 line-clamp-2">
-                {project.description || "No description"}
-              </p>
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+            {/* Date From */}
+            <div>
+              <label className="text-xs text-gray-500">Start Date</label>
+              <input
+                type="date"
+                className="w-full border border-gray-300 rounded px-3 py-2 text-xs"
+                value={filters.startDate}
+                onChange={(e) =>
+                  setFilters((prev) => ({ ...prev, startDate: e.target.value }))
+                }
+              />
             </div>
-          ))}
+
+            {/* Date To */}
+            <div>
+              <label className="text-xs text-gray-500">End Date</label>
+              <input
+                type="date"
+                className="w-full border border-gray-300 rounded px-3 py-2 text-xs"
+                value={filters.endDate}
+                onChange={(e) =>
+                  setFilters((prev) => ({ ...prev, endDate: e.target.value }))
+                }
+              />
+            </div>
+
+            {/* Status */}
+            <div>
+              <label className="text-xs text-gray-500">Status</label>
+              <select
+                className="w-full border border-gray-300 rounded px-3 py-2 text-xs"
+                value={filters.status}
+                onChange={(e) =>
+                  setFilters((prev) => ({ ...prev, status: e.target.value }))
+                }
+              >
+                <option value="">All Status</option>
+                <option value="Pending">Pending</option>
+                <option value="In Progress">In Progress</option>
+                <option value="In Review">In Review</option>
+                <option value="OnHold">On Hold</option>
+                <option value="Completed">Completed</option>
+              </select>
+            </div>
+
+            {/* Project */}
+            <div>
+              <label className="text-xs text-gray-500">Project</label>
+              <select
+                className="w-full border border-gray-300 rounded px-3 py-2 text-xs"
+                value={filters.projectId}
+                onChange={(e) =>
+                  setFilters((prev) => ({ ...prev, projectId: e.target.value }))
+                }
+              >
+                <option value="">All Projects</option>
+                <option value="null">Loose Tasks</option>
+                {projects.map((project) => (
+                  <option key={project._id} value={project._id}>
+                    {project.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+          </div>
         </div>
 
         {/* ---------------- TASKS SECTION ---------------- */}
@@ -126,39 +160,63 @@ const ManageTasks = () => {
           {selectedProject === "ALL"
             ? "All Tasks"
             : selectedProject === "LOOSE"
-            ? "Loose Tasks"
-            : "Project Tasks"}
+              ? "Loose Tasks"
+              : "Project Tasks"}
         </h2>
 
         {/* TASK LIST */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div className="border border-gray-300 rounded-lg overflow-hidden bg-white">
+          {/* Header */}
+          <div className="grid grid-cols-12 gap-3 px-4 py-2 bg-gray-50 text-xs font-medium text-gray-500 border-b border-gray-300">
+            <div className="col-span-3">Task</div>
+            <div className="col-span-2">Status</div>
+            <div className="col-span-1">Priority</div>
+            <div className="col-span-2">Subtasks</div>
+            <div className="col-span-1">Created</div>
+            <div className="col-span-1">Due</div>
+            <div className="col-span-2">Assigned To</div>
+          </div>
+
+          {/* Rows */}
           {allTasks.length === 0 ? (
-            <p className="text-sm text-gray-400">
-              No tasks found in this section.
-            </p>
+            <p className="p-4 text-sm text-gray-400">No tasks found.</p>
           ) : (
             allTasks.map((item) => (
-              <TaskCard
+              <TaskRow
                 key={item._id}
-                title={item.title}
-                description={item.description}
-                priority={item.priority}
-                status={item.status}
-                progress={item.progress}
-                createdAt={item.createdAt}
-                dueDate={item.dueDate}
-                projectName={item.project?.name || ""}
-                assignedTo={item.assignedTo?.map(
-                  (u) => u.profileImageUrl
-                )}
-                attachmentCount={item.attachments?.length || 0}
-                completedTodoCount={item.completedTodoCount || 0}
-                todoChecklist={item.todoCheckList || []}
+                task={item}
                 onClick={() => handleClick(item)}
               />
             ))
           )}
         </div>
+
+        {pagination && pagination.totalPages > 1 && (
+          <div className="flex items-center justify-between mt-6 mb-3 mx-3">
+            <p className="text-xs text-gray-500">
+              Page {pagination.currentPage} of {pagination.totalPages} •{" "}
+              {pagination.totalItems} tasks
+            </p>
+
+            <div className="flex gap-2">
+              <button
+                disabled={page === 1}
+                onClick={() => setPage((p) => Math.max(p - 1, 1))}
+                className="px-3 py-1 text-xs border border-gray-300 rounded disabled:opacity-50"
+              >
+                Previous
+              </button>
+
+              <button
+                disabled={page === pagination.totalPages}
+                onClick={() => setPage((p) => p + 1)}
+                className="px-3 py-1 text-xs border border-gray-300 rounded disabled:opacity-50"
+              >
+                Next
+              </button>
+            </div>
+          </div>
+        )}
       </div>
     </DashboardLayout>
   );

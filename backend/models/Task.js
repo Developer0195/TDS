@@ -14,7 +14,12 @@ const subTaskSchema = new mongoose.Schema({
     default: false,
   },
 
-  // ✅ One assignee per subtask
+  completedAt: {
+    type: Date,
+    default: null, // ✅ KEY FIELD
+  },
+
+  // One assignee per subtask
   assignedTo: {
     type: mongoose.Schema.Types.ObjectId,
     ref: "User",
@@ -76,7 +81,7 @@ const taskSchema = new mongoose.Schema(
 
     status: {
       type: String,
-      enum: ["Pending", "In Progress", "In Review", "Completed", "Blocked"],
+      enum: ["Pending", "In Progress", "In Review", "Completed", "OnHold"],
       default: "Pending",
     },
 
@@ -111,6 +116,12 @@ const taskSchema = new mongoose.Schema(
         uploadedAt: { type: Date, default: Date.now },
       },
     ],
+
+    completedAt: {
+      type: Date,
+      default: null,
+    },
+
 
     // ✅ Subtasks (each can have its own assignee)
     todoCheckList: [subTaskSchema],

@@ -6,6 +6,8 @@ import { validateEmail } from '../../utils/helper';
 import axiosInstance from '../../utils/axiosInstance';
 import { API_PATHS } from '../../utils/apiPaths';
 import { UserContext } from '../../context/userContext';
+import toast from "react-hot-toast";
+
 
 const Login = () => {
 
@@ -50,13 +52,17 @@ const Login = () => {
           navigate("/user/dashboard");
         }
       }
-    } catch (error) {
-      if (error.response && error.response.data.message) {
-        setError(error.response.data.message);
-      } else {
-        setError("Something went wrong. Please try again.");
-      }
-    }
+    }  catch (error) {
+  const message =
+    error.response?.data?.message ||
+    "Something went wrong. Please try again.";
+
+  setError(message);
+
+  // 🔔 Show toast (especially useful for email verification)
+  toast.error(message);
+}
+
   }
 
 

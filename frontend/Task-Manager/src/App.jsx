@@ -4,10 +4,12 @@ import { BrowserRouter as Router, Routes, Route, Outlet, Navigate } from 'react-
 import Dashboard from './pages/Admin/Dashboard';
 import Login from './pages/Auth/Login';
 import Signup from './pages/Auth/Signup';
+import VerifyEmail from './pages/Auth/VerifyEmail';
 import ManageTasks from './pages/Admin/ManageTasks';
 import CreateTask from './pages/Admin/CreateTask';
 import CreateProject from "./pages/Admin/CreateProject";
 import ManageUsers from './pages/Admin/ManageUsers';
+import ManageProjects from './pages/Admin/ManageProjects';
 
 import UserDashboard from './pages/Users/UserDashboard';
 import Mytasks from './pages/Users/Mytasks';
@@ -46,6 +48,7 @@ const App = () => {
           {/* Public Routes */}
           <Route path="/login" element={<Login />} />
           <Route path="/signup" element={<Signup />} />
+          <Route path="/verify-email" element={<VerifyEmail />} />
 
           {/* Admin Routes */}
           <Route element={<PrivateRoute allowedRoles={["admin"]} />}>
@@ -53,6 +56,7 @@ const App = () => {
             <Route path="/admin/tasks" element={<ManageTasks />} />
             <Route path="/admin/create-task" element={<CreateTask />} />
             <Route path="/admin/create-project" element={<CreateProject />} />
+            <Route path="/admin/projects" element={<ManageProjects />} />
             <Route path="/admin/users" element={<ManageUsers />} />
             <Route path="/admin/users/:id" element={<UserAnalyticsPage />} />
           </Route>

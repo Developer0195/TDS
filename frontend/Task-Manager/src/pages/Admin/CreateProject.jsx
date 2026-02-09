@@ -26,6 +26,7 @@ const CreateProject = () => {
   const [projectData, setProjectData] = useState({
     name: "",
     description: "",
+    clientName: "",
     status: "Active",
     members: [],
   });
@@ -45,6 +46,7 @@ const CreateProject = () => {
     setProjectData({
       name: "",
       description: "",
+      clientName: "",
       status: "Active",
       members: [],
     });
@@ -59,7 +61,7 @@ const CreateProject = () => {
     try {
       const response = await axiosInstance.post(
         API_PATHS.PROJECTS.CREATE_PROJECT,
-        projectData
+        projectData,
       );
 
       if (response.status === 201) {
@@ -82,7 +84,7 @@ const CreateProject = () => {
     try {
       await axiosInstance.put(
         API_PATHS.PROJECTS.UPDATE_PROJECT(projectId),
-        projectData
+        projectData,
       );
 
       toast.success("Project Updated Successfully");
@@ -127,7 +129,7 @@ const CreateProject = () => {
 
     const loadProject = async () => {
       const response = await axiosInstance.get(
-        API_PATHS.PROJECTS.GET_PROJECT_BY_ID(projectId)
+        API_PATHS.PROJECTS.GET_PROJECT_BY_ID(projectId),
       );
 
       const projectInfo = response.data;
@@ -137,6 +139,7 @@ const CreateProject = () => {
       setProjectData({
         name: projectInfo.name,
         description: projectInfo.description,
+        clientName: projectInfo.clientName || "",
         status: projectInfo.status,
         members: projectInfo.members.map((m) => m._id),
       });
@@ -194,6 +197,21 @@ const CreateProject = () => {
                 value={projectData.description}
                 onChange={({ target }) =>
                   handleValueChange("description", target.value)
+                }
+              />
+            </div>
+
+            {/* CLIENT NAME */}
+            <div className="mt-3">
+              <label className="text-xs font-medium text-slate-600">
+                Client Name
+              </label>
+
+              <Input
+                placeholder="Enter client name"
+                value={projectData.clientName}
+                onChange={({ target }) =>
+                  handleValueChange("clientName", target.value)
                 }
               />
             </div>

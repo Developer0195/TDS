@@ -1,6 +1,8 @@
 const User = require("../models/User");
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
+const crypto = require("crypto");
+const {sendVerificationEmail} = require("../config/email")
 
 // Generate JWT Token
 const generateToken = (userId) => {
@@ -10,52 +12,133 @@ const generateToken = (userId) => {
 // @desc Register a new user
 // @route POST /api/auth/register
 // @access Public
+
+// const registerUser = async (req, res) => {
+//     try {
+//         const { name, email, password, profileImageUrl, adminInviteToken } =
+//             req.body;
+//         // Check if user already exists
+//         const userExists = await User.findOne({ email });
+//         if (userExists) {
+//             return res.status(400).json({ message: "User already exists" });
+//         }
+
+//         // Determine user role: Admin if correct token is provided, otherwise Member
+//         let role = "member";
+//         if (
+//             adminInviteToken &&
+//             adminInviteToken === process.env.ADMIN_INVITE_TOKEN
+//         ) {
+//             role = "admin"
+//         }
+
+//         // Hash password
+//         const salt = await bcrypt.genSalt(10);
+//         const hashedPassword = await bcrypt.hash(password, salt);
+
+//         // Create new user
+//         const user = await User.create({
+//             name,
+//             email,
+//             password: hashedPassword,
+//             profileImageUrl,
+//             role,
+//         });
+
+//         // Return user data with JWT
+//         res.status(201).json({
+//             _id: user._id,
+//             name: user.name,
+//             email: user.email,
+//             role: user.role,
+//             profileImageUrl: user.profileImageUrl,
+//             token: generateToken(user._id),
+//         });
+//     } catch (error) {
+//         res.status(500).json({ message: "Server error", error: error.message });
+
+//     };
+// }
+
+
+
+
 const registerUser = async (req, res) => {
-    try {
-        const { name, email, password, profileImageUrl, adminInviteToken } =
-            req.body;
-        // Check if user already exists
-        const userExists = await User.findOne({ email });
-        if (userExists) {
-            return res.status(400).json({ message: "User already exists" });
-        }
+  try {
+    const { name, email, password, profileImageUrl, adminInviteToken } = req.body;
 
-        // Determine user role: Admin if correct token is provided, otherwise Member
-        let role = "member";
-        if (
-            adminInviteToken &&
-            adminInviteToken === process.env.ADMIN_INVITE_TOKEN
-        ) {
-            role = "admin"
-        }
+    const userExists = await User.findOne({ email });
+    if (userExists) {
+      return res.status(400).json({ message: "User already exists" });
+    }
 
-        // Hash password
-        const salt = await bcrypt.genSalt(10);
-        const hashedPassword = await bcrypt.hash(password, salt);
+    let role = "member";
+    if (adminInviteToken === process.env.ADMIN_INVITE_TOKEN) {
+      role = "admin";
+    }
 
-        // Create new user
-        const user = await User.create({
-            name,
-            email,
-            password: hashedPassword,
-            profileImageUrl,
-            role,
-        });
+    const salt = await bcrypt.genSalt(10);
+    const hashedPassword = await bcrypt.hash(password, salt);
 
-        // Return user data with JWT
-        res.status(201).json({
-            _id: user._id,
-            name: user.name,
-            email: user.email,
-            role: user.role,
-            profileImageUrl: user.profileImageUrl,
-            token: generateToken(user._id),
-        });
-    } catch (error) {
-        res.status(500).json({ message: "Server error", error: error.message });
+    const emailToken = crypto.randomBytes(32).toString("hex");
 
-    };
-}
+    await User.create({
+      name,
+      email,
+      password: hashedPassword,
+      profileImageUrl,
+      role,
+      emailVerified: false,
+      emailVerificationToken: emailToken,
+      emailVerificationExpires: Date.now() + 1000 * 60 * 60, // 1 hour
+    });
+
+    // 📧 Send email
+    await sendVerificationEmail(email, emailToken);
+
+    res.status(200).json({
+      message: "Verification email sent. Please check your inbox.",
+    });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+
+const verifyEmail = async (req, res) => {
+  try {
+    const { token } = req.query;
+
+    const user = await User.findOne({
+      emailVerificationToken: token,
+      emailVerificationExpires: { $gt: Date.now() },
+    });
+
+    if (!user) {
+      return res.status(400).json({
+        message: "Invalid or expired verification link",
+      });
+    }
+
+    user.emailVerified = true;
+    user.emailVerificationToken = undefined;
+    user.emailVerificationExpires = undefined;
+
+    await user.save();
+
+    res.json({
+      _id: user._id,
+      name: user.name,
+      email: user.email,
+      role: user.role,
+      token: generateToken(user._id),
+    });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+
 
 // @desc Login user
 // @route POST /api/auth/login
@@ -69,6 +152,13 @@ const loginUser = async (req, res) => {
         if (!user) {
             return res.status(401).json({ message: "Invalid email or password" });
         }
+
+        if (!user.emailVerified) {
+  return res.status(403).json({
+    message: "Please verify your email before logging in",
+  });
+}
+
 
         // Compare password
         const isMatch = await bcrypt.compare(password, user.password);
@@ -108,30 +198,68 @@ const getUserProfile = async (req, res) => {
 // @route PUT /api/auth/profile
 // @access Private (Requires JWT)
 
+// @desc Update user profile
+// @route PUT /api/auth/profile
+// @access Private
 const updateUserProfile = async (req, res) => {
-    try {
-        const user = await User.findById(req.user.id);
-        if (!user) {
-            return res.status(404).json({ message: "User not found" });
-        }
-        user.name = req.body.name || user.name;
-        user.email = req.body.email || user.email;
-        if (req.body.password) {
-            const salt = await bcrypt.genSalt(10);
-            user.password = await bcrypt.hash(req.body.password, salt);
-        }
-        const updatedUser = await user.save();
-        res.json({
-            _id: updatedUser._id,
-            name: updateUser.name,
-            email: updatedUser.email,
-            role: updatedUser.role,
-            token: generateToken(updatedUser._id),
+  try {
+    const { name, email, phone, password } = req.body;
+
+    const user = await User.findById(req.user.id);
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    /* ================= EMAIL UPDATE ================= */
+    if (email && email !== user.email) {
+      const emailExists = await User.findOne({
+        email,
+        _id: { $ne: user._id },
+      });
+
+      if (emailExists) {
+        return res.status(400).json({
+          message: "Email already in use",
         });
+      }
+
+      user.email = email;
     }
-    catch (error) {
-        res.status(500).json({ message: "Server error", error: error.message });
+
+    /* ================= BASIC FIELDS ================= */
+    if (name) user.name = name;
+    if (phone !== undefined) user.phone = phone;
+
+    /* ================= PASSWORD UPDATE ================= */
+    if (password) {
+      if (password.length < 6) {
+        return res.status(400).json({
+          message: "Password must be at least 6 characters",
+        });
+      }
+
+      const salt = await bcrypt.genSalt(10);
+      user.password = await bcrypt.hash(password, salt);
     }
+
+    const updatedUser = await user.save();
+
+    res.json({
+      _id: updatedUser._id,
+      name: updatedUser.name,
+      email: updatedUser.email,
+      phone: updatedUser.phone,
+      role: updatedUser.role,
+      profileImageUrl: updatedUser.profileImageUrl,
+      token: generateToken(updatedUser._id), // optional but OK
+    });
+  } catch (error) {
+    res.status(500).json({
+      message: "Server error",
+      error: error.message,
+    });
+  }
 };
 
-module.exports = { registerUser, loginUser, getUserProfile, updateUserProfile };
+
+module.exports = { registerUser, loginUser, getUserProfile, updateUserProfile, verifyEmail };

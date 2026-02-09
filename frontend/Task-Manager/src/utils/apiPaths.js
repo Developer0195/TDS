@@ -6,6 +6,8 @@ export const API_PATHS = {
         REGISTER: "/api/auth/register", // Register a new user (Admin or Member)
         LOGIN: "/api/auth/login", // Authenticate user & return JWT token
         GET_PROFILE: "/api/auth/profile", // Get logged-in user details
+        UPDATE_PROFILE: "/api/auth/profile",
+        VERIFY_EMAIL: "/api/auth/verify-email",
     },
 
     USERS: {
@@ -16,6 +18,11 @@ export const API_PATHS = {
         DELETE_USER: (userId) => `/api/users/${userId}`, // Delete a user
         GET_MY_PROFILE: "/api/users/me/profile",
         UPDATE_MY_PROFILE: "/api/users/me/profile",
+        GET_ADMIN_TEAM: "/api/users/team",
+        ADD_TEAM_MEMBER: "/api/users/team",
+        REMOVE_TEAM_MEMBER: (id) => `/api/users/team/${id}`,
+        SEARCH_USERS: "/api/users/search",
+        GET_USER_ANALYTICS: (id) => `/api/users/${id}/analytics`,
     },
 
     TASKS: {
@@ -34,6 +41,14 @@ export const API_PATHS = {
         AI_ESTIMATE: "/api/tasks/ai/estimate",
     },
 
+    LOCATIONS: {
+  GET_ALL: "/api/locations",                 // Get all active locations (Admin)
+  CREATE: "/api/locations",                  // Create a new location (Admin)
+  DELETE: (locationId) => `/api/locations/${locationId}`, // Soft delete location
+  ASSIGN: (userId) => `/api/locations/assign/${userId}`,  // Assign locations to user
+},
+
+
     REPORTS: {
         EXPORT_TASKS: "/api/reports/export/tasks", // Download all tasks as an Excel file
         EXPORT_USERS: "/api/reports/export/users", // Download user-task report
@@ -46,6 +61,10 @@ export const API_PATHS = {
         PUNCH_IN: "/api/attendance/punch-in",
         PUNCH_OUT: "/api/attendance/punch-out",
         MY_ATTENDANCE: "/api/attendance/my",
+        DAILY: "/api/attendance/daily",
+        TEAM_ANALYTICS: "api/attendance/team/analytics",
+        UPDATE_STATUS: (id) => `api/attendance/${id}/status`,
+        ADMIN_OVERRIDE: "/api/attendance/admin/override",
     },
     PROJECTS: {
         CREATE_PROJECT: "/api/projects/create",

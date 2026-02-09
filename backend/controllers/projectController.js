@@ -7,7 +7,7 @@ const Task = require("../models/Task");
 ================================ */
 const createProject = async (req, res) => {
   try {
-    const { name, description, members = [] } = req.body;
+    const { name, description, clientName, members = [] } = req.body;
 
     if (!name) {
       return res.status(400).json({ message: "Project name is required" });
@@ -16,6 +16,7 @@ const createProject = async (req, res) => {
     const project = await Project.create({
       name,
       description,
+      clientName: clientName?.trim() || "",
       createdBy: req.user._id,
       members,
     });
@@ -29,26 +30,126 @@ const createProject = async (req, res) => {
   }
 };
 
+
 /* ===============================
    GET ALL PROJECTS
 ================================ */
+// const getProjects = async (req, res) => {
+//   try {
+//     let filter = {};
+
+//     if (req.user.role === "admin") {
+//       filter.createdBy = req.user._id;
+//     }
+
+//     const projects = await Project.find(filter)
+//       .populate("createdBy", "name email")
+//       .populate("members", "name email");
+
+//     res.status(200).json({ projects });
+//   } catch (error) {
+//     res.status(500).json({ message: error.message });
+//   }
+// };
+
+
 const getProjects = async (req, res) => {
   try {
-    let filter = {};
+    const {
+      status,
+      search,
+      clientName,
+      startDate,
+      endDate,
+      page = 1,
+      limit = 10,
+    } = req.query;
 
+    const filter = {};
+
+    /* ===============================
+       ROLE-BASED ACCESS
+    =============================== */
     if (req.user.role === "admin") {
       filter.createdBy = req.user._id;
     }
 
-    const projects = await Project.find(filter)
-      .populate("createdBy", "name email")
-      .populate("members", "name email");
+    /* ===============================
+       STATUS FILTER
+    =============================== */
+    if (status) {
+      filter.status = status;
+    }
 
-    res.status(200).json({ projects });
+    /* ===============================
+       CLIENT NAME FILTER
+    =============================== */
+    if (clientName) {
+      filter.clientName = { $regex: clientName, $options: "i" };
+    }
+
+    /* ===============================
+       SEARCH (PROJECT NAME OR CLIENT)
+    =============================== */
+    if (search) {
+      filter.$or = [
+        { name: { $regex: search, $options: "i" } },
+        { clientName: { $regex: search, $options: "i" } },
+      ];
+    }
+
+    /* ===============================
+       CREATION DATE FILTER
+    =============================== */
+    if (startDate || endDate) {
+      filter.createdAt = {};
+
+      if (startDate) {
+        filter.createdAt.$gte = new Date(startDate);
+      }
+
+      if (endDate) {
+        filter.createdAt.$lte = new Date(endDate);
+      }
+    }
+
+    /* ===============================
+       PAGINATION
+    =============================== */
+    const pageNumber = parseInt(page, 10);
+    const pageSize = parseInt(limit, 10);
+    const skip = (pageNumber - 1) * pageSize;
+
+    const [projects, totalItems] = await Promise.all([
+      Project.find(filter)
+        .sort({ createdAt: -1 })
+        .skip(skip)
+        .limit(pageSize)
+        .populate("createdBy", "name email")
+        .populate("members", "name email profileImageUrl"),
+
+      Project.countDocuments(filter),
+    ]);
+
+    /* ===============================
+       RESPONSE
+    =============================== */
+    res.status(200).json({
+      projects,
+      pagination: {
+        currentPage: pageNumber,
+        totalPages: Math.ceil(totalItems / pageSize),
+        totalItems,
+        limit: pageSize,
+      },
+    });
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
 };
+
+
+
 
 /* ===============================
    GET PROJECT BY ID

@@ -1,130 +1,218 @@
-import React, { useEffect, useState } from "react";
-import { API_PATHS } from "../../utils/apiPaths";
-import axiosInstance from "../../utils/axiosInstance";
+import { useEffect, useState } from "react";
 import DashboardLayout from "../../components/Layouts/DashboardLayout";
-import { LuFileSpreadsheet } from "react-icons/lu";
-import UserCard from "../../components/Cards/UserCard";
-import DeleteAlert from "../../components/DeleteAlert";
+import axiosInstance from "../../utils/axiosInstance";
+import { API_PATHS } from "../../utils/apiPaths";
+import { LuUserPlus, LuTrash2 } from "react-icons/lu";
+import toast from "react-hot-toast";
+import TaskStatusChips from "../../components/TaskStatusChip";
 import { useNavigate } from "react-router-dom";
 
-const ManageUsers = () => {
-  const [allUsers, setAllUsers] = useState([]);
-  const [showDeleteAlert, setShowDeleteAlert] = useState(false);
-  const [selectedUserId, setSelectedUserId] = useState(null);
-  const [deleteError, setDeleteError] = useState("");
 
+
+const ManageUsers = () => {
+  /* =======================
+     STATE
+  ======================= */
+  const [teamMembers, setTeamMembers] = useState([]);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [searchResults, setSearchResults] = useState([]);
+  const [showDropdown, setShowDropdown] = useState(false);
+  const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
 
-  const getAllUsers = async () => {
+
+  console.log(teamMembers)
+
+  /* =======================
+     FETCH ADMIN TEAM
+  ======================= */
+  const fetchTeamMembers = async () => {
     try {
-      const response = await axiosInstance.get(API_PATHS.USERS.GET_ALL_USERS);
-      if (response.data?.length > 0) {
-        setAllUsers(response.data);
-      }
+      const res = await axiosInstance.get(API_PATHS.USERS.GET_ADMIN_TEAM);
+      setTeamMembers(res.data || []);
     } catch (error) {
-      console.error("Error fetching users:", error);
+      console.error(error);
+      toast.error("Failed to load team members");
     }
   };
 
-  const confirmDeleteUser = (userId) => {
-    setSelectedUserId(userId);
-    setDeleteError("");
-    setShowDeleteAlert(true);
+  /* =======================
+     SEARCH USERS
+  ======================= */
+  const searchUsers = async (query) => {
+    if (!query.trim()) {
+      setSearchResults([]);
+      return;
+    }
+
+    try {
+      const res = await axiosInstance.get(
+        API_PATHS.USERS.SEARCH_USERS,
+        { params: { search: query } }
+      );
+      setSearchResults(res.data || []);
+    } catch (error) {
+      console.error(error);
+    }
   };
 
-  const deleteUser = async () => {
+  /* =======================
+     ADD TEAM MEMBER
+  ======================= */
+  const addTeamMember = async (userId) => {
+    try {
+      await axiosInstance.post(API_PATHS.USERS.ADD_TEAM_MEMBER, {
+        memberId: userId,
+      });
+
+      toast.success("Member added to team");
+      setSearchQuery("");
+      setSearchResults([]);
+      setShowDropdown(false);
+      fetchTeamMembers();
+    } catch (error) {
+      toast.error(error.response?.data?.message || "Failed to add member");
+    }
+  };
+
+  /* =======================
+     REMOVE TEAM MEMBER
+  ======================= */
+  const removeTeamMember = async (memberId) => {
     try {
       await axiosInstance.delete(
-        API_PATHS.USERS.DELETE_USER(selectedUserId)
+        API_PATHS.USERS.REMOVE_TEAM_MEMBER(memberId)
       );
-      setShowDeleteAlert(false);
-      setSelectedUserId(null);
-      getAllUsers();
+
+      toast.success("Member removed from team");
+      fetchTeamMembers();
     } catch (error) {
-      setDeleteError(
-        error.response?.data?.message || "Failed to delete user"
-      );
+      toast.error("Failed to remove member");
     }
   };
 
-  const handleDownloadReport = async () => {
-    try {
-      const response = await axiosInstance.get(
-        API_PATHS.REPORTS.EXPORT_USERS,
-        { responseType: "blob" }
-      );
-
-      const url = window.URL.createObjectURL(new Blob([response.data]));
-      const link = document.createElement("a");
-      link.href = url;
-      link.setAttribute("download", "user_details.xlsx");
-      document.body.appendChild(link);
-      link.click();
-      link.remove();
-      window.URL.revokeObjectURL(url);
-    } catch (error) {
-      console.error("Error downloading report:", error);
-    }
-  };
-
+  /* =======================
+     EFFECTS
+  ======================= */
   useEffect(() => {
-    getAllUsers();
+    fetchTeamMembers();
   }, []);
 
+  useEffect(() => {
+    const delay = setTimeout(() => {
+      searchUsers(searchQuery);
+    }, 300);
+
+    return () => clearTimeout(delay);
+  }, [searchQuery]);
+
+  /* =======================
+     UI
+  ======================= */
   return (
     <DashboardLayout activeMenu="Team Members">
-      <div className="mt-5 mb-10">
-        <div className="flex md:flex-row md:items-center justify-between">
-          <h2 className="text-xl font-medium">Team Members</h2>
+      <div className="my-6">
 
-          <button
-            className="flex md:flex download-btn"
-            onClick={handleDownloadReport}
-          >
-            <LuFileSpreadsheet className="text-lg" />
-            Download Report
-          </button>
+        {/* ================= HEADER ================= */}
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="text-xl font-medium">Team Members</h2>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-4">
-          {allUsers.map((user) => (
-            <div key={user._id}>
-              <UserCard
-                userInfo={user}
-                onClick={() => navigate(`/admin/users/${user._id}`)}
-              />
+        {/* ================= ADD MEMBER ================= */}
+        <div className="relative max-w-md mb-6">
+          <label className="text-xs text-gray-500 mb-1 block">
+            Add Team Member
+          </label>
 
-              <button
-                onClick={() => confirmDeleteUser(user._id)}
-                className="mt-2 w-full text-sm bg-red-500 hover:bg-red-600 text-white py-1 rounded"
-              >
-                Delete User
-              </button>
+          <div className="flex items-center gap-2 border border-gray-300 rounded px-3 py-2 bg-white">
+            <LuUserPlus className="text-gray-400" />
+            <input
+              type="text"
+              placeholder="Search users by name"
+              className="w-full text-sm outline-none"
+              value={searchQuery}
+              onChange={(e) => {
+                setSearchQuery(e.target.value);
+                setShowDropdown(true);
+              }}
+            />
+          </div>
+
+          {/* SEARCH DROPDOWN */}
+          {showDropdown && searchResults.length > 0 && (
+            <div className="absolute z-10 w-full bg-white border border-gray-300 rounded mt-1 shadow max-h-60 overflow-y-auto">
+              {searchResults.map((user) => (
+                <div
+                  key={user._id}
+                  className="px-3 py-2 text-sm cursor-pointer hover:bg-gray-100"
+                  onClick={() => addTeamMember(user._id)}
+                >
+                  <p className="font-medium">{user.name}</p>
+                  <p className="text-xs text-gray-500">{user.email}</p>
+                </div>
+              ))}
             </div>
-          ))}
+          )}
+        </div>
+
+        {/* ================= TABLE ================= */}
+        <div className="border border-gray-300 rounded-lg overflow-hidden bg-white">
+
+          {/* HEADER */}
+          <div className="grid grid-cols-12 gap-3 px-4 py-2 bg-gray-50 text-xs font-medium text-gray-500 border-b border-gray-300">
+            <div className="col-span-3">Member</div>
+            <div className="col-span-5">Task Status</div>
+            <div className="col-span-3">On-Time Completion %</div>
+            <div className="col-span-1 text-right">Action</div>
+          </div>
+
+          {/* ROWS */}
+          {teamMembers.length === 0 ? (
+            <p className="p-4 text-sm text-gray-400">
+              No team members added yet.
+            </p>
+          ) : (
+            teamMembers.map((member) => (
+              <div
+                key={member._id}
+                onClick={() =>
+                  navigate(`/admin/users/${member._id}`)
+                }
+                className="cursor-pointer grid grid-cols-12 gap-3 px-4 py-3 border-b border-gray-300 text-sm items-center"
+              >
+                {/* MEMBER */}
+                <div className="col-span-3">
+                  <p className="font-medium">{member.name}</p>
+                  <p className="text-xs text-gray-500">{member.email}</p>
+                </div>
+
+                {/* TASK COUNTS */}
+               <div className="col-span-5">
+                <TaskStatusChips taskCounts={member.taskCounts} />
+              </div>
+
+
+                {/* ON TIME RATE */}
+                <div className="col-span-3">
+                  <span className="text-xs font-medium px-2 py-1 rounded bg-green-100 text-green-700">
+                    {member.onTimeCompletionRate}%
+                  </span>
+                </div>
+
+                {/* ACTION */}
+                <div className="col-span-1 text-right">
+                  <button
+                    onClick={() => removeTeamMember(member._id)}
+                    className="text-red-500 hover:text-red-700"
+                  >
+                    <LuTrash2 />
+                  </button>
+                </div>
+              </div>
+            ))
+          )}
         </div>
       </div>
-
-      {showDeleteAlert && (
-        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg p-5 w-[90%] max-w-sm">
-            <DeleteAlert
-              content={
-                deleteError ||
-                "Are you sure you want to delete this user?"
-              }
-              onDelete={deleteUser}
-            />
-
-            <button
-              className="text-xs text-gray-500 mt-3"
-              onClick={() => setShowDeleteAlert(false)}
-            >
-              Cancel
-            </button>
-          </div>
-        </div>
-      )}
     </DashboardLayout>
   );
 };

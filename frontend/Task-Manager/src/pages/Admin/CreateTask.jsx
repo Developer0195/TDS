@@ -1,35 +1,33 @@
-import React, { useEffect, useState } from 'react'
-import DashboardLayout from '../../components/Layouts/DashboardLayout'
-import { PRIORITY_DATA } from '../../utils/data'
-import axiosInstance from '../../utils/axiosInstance'
-import { API_PATHS } from '../../utils/apiPaths'
-import toast from "react-hot-toast"
-import { useLocation, useNavigate } from "react-router-dom"
-import moment from "moment"
-import { LuTrash2 } from "react-icons/lu"
-import SelectDropdown from '../../components/Inputs/SelectDropdown'
-import TodoListInput from '../../components/Inputs/TodoListInput'
-import AddAttachmentsInput from '../../components/Inputs/AddAttachmentsInput'
-import SelectUsers from '../../components/Inputs/SelectUsers'
-import Input from '../../components/Inputs/Input'
-import Modal from '../../components/Modal'
-import DeleteAlert from '../../components/DeleteAlert'
+import React, { useEffect, useState } from "react";
+import DashboardLayout from "../../components/Layouts/DashboardLayout";
+import { PRIORITY_DATA } from "../../utils/data";
+import axiosInstance from "../../utils/axiosInstance";
+import { API_PATHS } from "../../utils/apiPaths";
+import toast from "react-hot-toast";
+import { useLocation, useNavigate } from "react-router-dom";
+import moment from "moment";
+import { LuTrash2 } from "react-icons/lu";
+import SelectDropdown from "../../components/Inputs/SelectDropdown";
+import TodoListInput from "../../components/Inputs/TodoListInput";
+import AddAttachmentsInput from "../../components/Inputs/AddAttachmentsInput";
+import SelectUsers from "../../components/Inputs/SelectUsers";
+import Input from "../../components/Inputs/Input";
+import Modal from "../../components/Modal";
+import DeleteAlert from "../../components/DeleteAlert";
 import useAIGeneration from "../../hooks/useAIGeneration";
 import useAIEstimation from "../../hooks/useAIEstimation";
-import AIEstimationPanel from '../../components/AIEstimationPanel'
-
+import AIEstimationPanel from "../../components/AIEstimationPanel";
 
 const CreateTask = () => {
-
-  const location = useLocation()
-  const { taskId } = location.state || {}
-  const navigate = useNavigate()
+  const location = useLocation();
+  const { taskId } = location.state || {};
+  const navigate = useNavigate();
+  const [projectMembers, setProjectMembers] = useState([]);
 
   const [projects, setProjects] = useState([]);
   const [comments, setComments] = useState([]);
   const [newComment, setNewComment] = useState("");
   const [commentLoading, setCommentLoading] = useState(false);
-
 
   const [taskData, setTaskData] = useState({
     title: "",
@@ -39,8 +37,8 @@ const CreateTask = () => {
     assignedTo: [],
     project: null,
     todoCheckList: [],
-    attachments: []
-  })
+    attachments: [],
+  });
 
   const {
     loading: aiEstimateLoading,
@@ -49,22 +47,21 @@ const CreateTask = () => {
     canEstimate,
   } = useAIEstimation({ taskData });
 
+  const [currentTask, setCurrentTask] = useState(null);
+  const [error, setError] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [openDeleteAlert, setOpenDeleteAlert] = useState(false);
 
-
-  const [currentTask, setCurrentTask] = useState(null)
-  const [error, setError] = useState("")
-  const [loading, setLoading] = useState(false)
-  const [openDeleteAlert, setOpenDeleteAlert] = useState(false)
+  
 
   /* -------------------- HELPERS -------------------- */
 
   const isTaskLocked =
-    currentTask?.status === "Completed" ||
-    currentTask?.status === "Blocked";
+    currentTask?.status === "Completed" || currentTask?.status === "Blocked";
 
   const handleValueChange = (key, value) => {
-    setTaskData((prev) => ({ ...prev, [key]: value }))
-  }
+    setTaskData((prev) => ({ ...prev, [key]: value }));
+  };
 
   const clearData = () => {
     setTaskData({
@@ -76,11 +73,11 @@ const CreateTask = () => {
       project: null,
       todoCheckList: [],
       attachments: [],
-    })
-    setAiFile(null)
-    setAiAttachment(null)
-    setError(null)
-  }
+    });
+    setAiFile(null);
+    setAiAttachment(null);
+    setError(null);
+  };
 
   const {
     aiLoading,
@@ -99,20 +96,29 @@ const CreateTask = () => {
   /* -------------------- CREATE TASK -------------------- */
 
   const createTask = async () => {
-    setLoading(true)
+    setLoading(true);
 
     try {
       if (!taskData.dueDate || isNaN(new Date(taskData.dueDate).getTime())) {
-        toast.error("Please select a valid due date")
-        setLoading(false)
-        return
+        toast.error("Please select a valid due date");
+        setLoading(false);
+        return;
       }
 
       const todoList = taskData.todoCheckList.map((item) =>
-        typeof item === "string"
-          ? { text: item, completed: false }
-          : { text: item.text, completed: item.completed ?? false }
-      )
+  typeof item === "string"
+    ? {
+        text: item,
+        completed: false,
+        assignedTo: null,
+      }
+    : {
+        text: item.text,
+        completed: item.completed ?? false,
+        assignedTo: item.assignedTo || null,
+      }
+);
+
 
       const payload = {
         ...taskData,
@@ -120,116 +126,149 @@ const CreateTask = () => {
         dueDate: new Date(taskData.dueDate).toISOString(),
         todoCheckList: todoList,
         attachments: aiAttachment ? [aiAttachment] : [],
-      }
+      };
 
       const response = await axiosInstance.post(
         API_PATHS.TASKS.CREATE_TASK,
-        payload
-      )
+        payload,
+      );
 
       if (response.status === 201) {
-        toast.success("Task Created Successfully")
-        clearData()
+        toast.success("Task Created Successfully");
+        clearData();
       }
     } catch (error) {
-      console.error("Error creating task:", error)
-      toast.error(error.response?.data?.message || "Failed to create task")
+      console.error("Error creating task:", error);
+      toast.error(error.response?.data?.message || "Failed to create task");
     } finally {
-      setLoading(false)
+      setLoading(false);
     }
-  }
+  };
 
   /* -------------------- UPDATE TASK -------------------- */
 
   const updateTask = async () => {
-    setLoading(true)
+    setLoading(true);
 
     try {
       if (!taskData.dueDate || isNaN(new Date(taskData.dueDate).getTime())) {
-        toast.error("Please select a valid due date")
-        setLoading(false)
-        return
+        toast.error("Please select a valid due date");
+        setLoading(false);
+        return;
       }
 
       const todoList = taskData.todoCheckList.map((item) =>
-        typeof item === "string"
-          ? { text: item, completed: false }
-          : { text: item.text, completed: item.completed ?? false }
-      )
+  typeof item === "string"
+    ? {
+        text: item,
+        completed: false,
+        assignedTo: null,
+      }
+    : {
+        text: item.text,
+        completed: item.completed ?? false,
+        assignedTo: item.assignedTo || null,
+      }
+);
 
-      await axiosInstance.put(
-        API_PATHS.TASKS.UPDATE_TASK(taskId),
-        {
-          ...taskData,
-          project: taskData.project || null,
-          dueDate: new Date(taskData.dueDate).toISOString(),
-          todoCheckList: todoList,
-          attachments: aiAttachment
-            ? [...taskData.attachments, aiAttachment]
-            : taskData.attachments,
-        }
-      )
 
-      toast.success("Task Updated Successfully")
-      clearData()
+      await axiosInstance.put(API_PATHS.TASKS.UPDATE_TASK(taskId), {
+        ...taskData,
+        project: taskData.project || null,
+        dueDate: new Date(taskData.dueDate).toISOString(),
+        todoCheckList: todoList,
+        attachments: aiAttachment
+          ? [...taskData.attachments, aiAttachment]
+          : taskData.attachments,
+      });
+
+      toast.success("Task Updated Successfully");
+      navigate("/admin/tasks")
+      clearData();
     } catch (error) {
-      console.error("Error updating task:", error)
-      toast.error("Failed to update task")
+      console.error("Error updating task:", error);
+      toast.error("Failed to update task");
     } finally {
-      setLoading(false)
+      setLoading(false);
     }
+  };
+
+  const deleteTask = async () => {
+    try{
+       const response = await axiosInstance.delete(
+        API_PATHS.TASKS.DELETE_TASK(taskId),
+      );
+      if(response.data){
+        setOpenDeleteAlert(false)
+        toast.success("Task Deleted Successfully");
+        navigate("/admin/tasks")
+
+      }
+      else{
+        toast.error("Could not delete task")
+      }
+    }
+    catch(err){
+      toast.error("Could not delete task")
+    }
+    
   }
 
   /* -------------------- SUBMIT -------------------- */
 
   const handleSubmit = () => {
-    setError("")
+    setError("");
 
-    if (!taskData.title.trim()) return setError("Title is required.")
-    if (!taskData.description.trim()) return setError("Description is required.")
-    if (!taskData.dueDate) return setError("Due date is required.")
+    if (!taskData.title.trim()) return setError("Title is required.");
+    if (!taskData.description.trim())
+      return setError("Description is required.");
+    if (!taskData.dueDate) return setError("Due date is required.");
     if (taskData.assignedTo.length === 0)
-      return setError("Task not assigned to any member")
+      return setError("Task not assigned to any member");
     if (taskData.todoCheckList.length === 0)
-      return setError("Add at least one todo task")
+      return setError("Add at least one todo task");
 
-    taskId ? updateTask() : createTask()
-  }
-
+    taskId ? updateTask() : createTask();
+  };
 
   /* -------------------- LOAD TASK -------------------- */
-
   useEffect(() => {
-    if (!taskId) return
+    if (!taskId) return;
 
     const loadTask = async () => {
       const response = await axiosInstance.get(
-        API_PATHS.TASKS.GET_TASK_BY_ID(taskId)
-      )
+        API_PATHS.TASKS.GET_TASK_BY_ID(taskId),
+      );
 
-      const taskInfo = response.data
+      const taskInfo = response.data;
 
-      console.log(taskInfo)
+      console.log(taskInfo);
 
-      setCurrentTask(taskInfo)
+      setCurrentTask(taskInfo);
       setComments(taskInfo.comments || []);
 
       setTaskData({
-        title: taskInfo.title,
-        description: taskInfo.description,
-        priority: taskInfo.priority,
-        dueDate: taskInfo.dueDate
-          ? moment(taskInfo.dueDate).format("YYYY-MM-DD")
-          : null,
-        assignedTo: taskInfo.assignedTo.map((u) => u._id),
-        project: taskInfo.project?._id || null,
-        todoCheckList: taskInfo.todoCheckList.map((t) => t.text),
-        attachments: taskInfo.attachments || [],
-      })
-    }
+  title: taskInfo.title,
+  description: taskInfo.description,
+  priority: taskInfo.priority,
+  estimatedHours: taskInfo.estimatedHours,
+  dueDate: taskInfo.dueDate
+    ? moment(taskInfo.dueDate).format("YYYY-MM-DD")
+    : null,
+  assignedTo: taskInfo.assignedTo.map((u) => u._id),
+  project: taskInfo.project?._id || null,
+  todoCheckList: taskInfo.todoCheckList.map((t) => ({
+    text: t.text,
+    completed: t.completed,
+    assignedTo: t.assignedTo?._id || null,
+  })),
+  attachments: taskInfo.attachments || [],
+});
 
-    loadTask()
-  }, [taskId])
+    };
+
+    loadTask();
+  }, [taskId]);
 
   useEffect(() => {
     const fetchProjects = async () => {
@@ -239,9 +278,17 @@ const CreateTask = () => {
         const formatted = res.data.projects.map((p) => ({
           label: p.name,
           value: p._id,
+          members: p.members || [],
         }));
 
         setProjects(formatted);
+
+        if (taskId && currentTask?.project?._id) {
+      const selectedProject = formatted.find(
+        (p) => p.value === currentTask.project._id
+      );
+      setProjectMembers(selectedProject?.members || []);
+    }
       } catch (error) {
         console.log(error);
         toast.error("Failed to load projects");
@@ -249,21 +296,19 @@ const CreateTask = () => {
     };
 
     fetchProjects();
-  }, []);
-
+  }, [taskId, currentTask]);
 
   const handleReopenTask = async () => {
     try {
-      await axiosInstance.put(
-        API_PATHS.TASKS.UPDATE_TASK_STATUS(taskId),
-        { status: "In Review" }
-      );
+      await axiosInstance.put(API_PATHS.TASKS.UPDATE_TASK_STATUS(taskId), {
+        status: "In Review",
+      });
 
       toast.success("Task reopened for review");
 
       // Refresh task
       const res = await axiosInstance.get(
-        API_PATHS.TASKS.GET_TASK_BY_ID(taskId)
+        API_PATHS.TASKS.GET_TASK_BY_ID(taskId),
       );
 
       setCurrentTask(res.data);
@@ -273,8 +318,7 @@ const CreateTask = () => {
     }
   };
 
-
-
+    console.log(currentTask)
   return (
     <DashboardLayout activeMenu="Create Task">
       <div className="mt-5">
@@ -303,8 +347,7 @@ const CreateTask = () => {
 
                 <div className="flex items-center gap-3">
                   {/* 📎 FILE UPLOAD */}
-                  {
-                    !isTaskLocked &&
+                  {!isTaskLocked && (
                     <label className="text-xs cursor-pointer text-indigo-600 hover:underline">
                       📎 Upload File
                       <input
@@ -315,23 +358,22 @@ const CreateTask = () => {
                         onChange={(e) => setAiFile(e.target.files[0])}
                       />
                     </label>
-                  }
+                  )}
 
                   {/* ✨ AI BUTTON */}
-                  {
-                    !isTaskLocked &&
+                  {/* {!isTaskLocked && (
                     <button
                       onClick={() => handleAIGenerate(taskData.title)}
-                      disabled={aiLoading || (!taskData.title) || isTaskLocked}
-                      className={`text-xs font-medium hover:underline ${aiLoading || (!aiFile && !taskData.title)
-                        ? "text-gray-400 cursor-not-allowed"
-                        : "text-indigo-600"
-                        }`}
+                      disabled={aiLoading || !taskData.title || isTaskLocked}
+                      className={`text-xs font-medium hover:underline ${
+                        aiLoading || (!aiFile && !taskData.title)
+                          ? "text-gray-400 cursor-not-allowed"
+                          : "text-indigo-600"
+                      }`}
                     >
                       {aiLoading ? "Generating..." : "✨ Generate with AI"}
                     </button>
-                  }
-
+                  )} */}
                 </div>
               </div>
 
@@ -361,10 +403,7 @@ const CreateTask = () => {
                   </button>
                 </div>
               )}
-
-
             </div>
-
 
             <div className="mt-3">
               <label className="text-xs font-medium text-slate-600">
@@ -393,9 +432,7 @@ const CreateTask = () => {
                   disabled={isTaskLocked}
                   options={PRIORITY_DATA}
                   value={taskData.priority}
-                  onChange={(value) =>
-                    handleValueChange("priority", value)
-                  }
+                  onChange={(value) => handleValueChange("priority", value)}
                   placeholder="Select Priority"
                 />
               </div>
@@ -408,11 +445,25 @@ const CreateTask = () => {
                 <SelectDropdown
                   options={projects}
                   value={taskData.project}
-                  onChange={(value) => handleValueChange("project", value)}
-                  placeholder="Select Project"
+                  onChange={(value) => {
+                    handleValueChange("project", value);
+
+                    const selected = projects.find((p) => p.value === value);
+
+                    setProjectMembers(selected?.members || []);
+
+                    // Reset invalid assignees
+                    setTaskData((prev) => ({
+                      ...prev,
+                      assignedTo: [],
+                      todoCheckList: prev.todoCheckList.map((t) => ({
+                        ...t,
+                        assignedTo: null,
+                      })),
+                    }));
+                  }}
                 />
               </div>
-
 
               <div className="col-span-6 md:col-span-4">
                 <label className="text-xs font-medium  text-slate-600">
@@ -444,9 +495,7 @@ const CreateTask = () => {
                     handleValueChange("estimatedHours", e.target.value)
                   }
                 />
-
               </div>
-
 
               <div className="col span-12 md:col-span-3">
                 <label className="text-xs font-medium text-slate-600 ">
@@ -454,16 +503,15 @@ const CreateTask = () => {
                 </label>
                 <SelectUsers
                   disabled={isTaskLocked}
+                  users={taskData.project ? projectMembers : undefined}
                   selectedUsers={taskData.assignedTo}
-                  setSelectedUsers={(value) => {
-                    handleValueChange("assignedTo", value);
-                  }}
+                  setSelectedUsers={(value) =>
+                    handleValueChange("assignedTo", value)
+                  }
                 />
               </div>
-
             </div>
-            {
-              !isTaskLocked &&
+            {/* {!isTaskLocked && (
               <div className="mt-4">
                 <AIEstimationPanel
                   loading={aiEstimateLoading}
@@ -476,7 +524,7 @@ const CreateTask = () => {
                   }}
                 />
               </div>
-            }
+            )} */}
 
             <div className="mt-3">
               <label className="text-xs font-medium  text-slate-600">
@@ -485,10 +533,11 @@ const CreateTask = () => {
 
               <TodoListInput
                 disabled={isTaskLocked}
-                todoList={taskData?.todoCheckList}
+                todoList={taskData.todoCheckList}
                 setTodoList={(value) =>
                   handleValueChange("todoCheckList", value)
                 }
+                users={taskData.project ? projectMembers : []}
               />
             </div>
             <div className="mt-3">
@@ -521,8 +570,7 @@ const CreateTask = () => {
                     >
                       <p className="text-sm text-gray-800">{c.message}</p>
                       <p className="text-xs text-gray-400 mt-1">
-                        {c.commentedBy?.name} •{" "}
-                        {moment(c.createdAt).fromNow()}
+                        {c.commentedBy?.name} • {moment(c.createdAt).fromNow()}
                       </p>
                     </div>
                   ))}
@@ -547,9 +595,9 @@ const CreateTask = () => {
                           setCommentLoading(true);
                           const res = await axiosInstance.post(
                             API_PATHS.TASKS.ADD_COMMENT(taskId),
-                            { message: newComment }
+                            { message: newComment },
                           );
-                          console.log(res)
+                          console.log(res);
                           setComments(res.data.task.comments);
                           setNewComment("");
                         } finally {
@@ -564,11 +612,9 @@ const CreateTask = () => {
               </div>
             )}
 
-
             {/* TASK ACTIONS */}
             {taskId && (
               <div className="mt-6 flex gap-3 justify-end border-t pt-4">
-
                 {/* IN REVIEW → APPROVE / BLOCK */}
                 {currentTask?.status === "In Review" && (
                   <>
@@ -578,13 +624,13 @@ const CreateTask = () => {
                         try {
                           await axiosInstance.put(
                             API_PATHS.TASKS.UPDATE_TASK_STATUS(taskId),
-                            { status: "Completed" }
+                            { status: "Completed" },
                           );
 
                           toast.success("Task approved & completed");
 
                           const res = await axiosInstance.get(
-                            API_PATHS.TASKS.GET_TASK_BY_ID(taskId)
+                            API_PATHS.TASKS.GET_TASK_BY_ID(taskId),
                           );
                           setCurrentTask(res.data);
                         } catch (error) {
@@ -601,13 +647,13 @@ const CreateTask = () => {
                         try {
                           await axiosInstance.put(
                             API_PATHS.TASKS.UPDATE_TASK_STATUS(taskId),
-                            { status: "Blocked" }
+                            { status: "Blocked" },
                           );
 
                           toast.success("Task blocked");
 
                           const res = await axiosInstance.get(
-                            API_PATHS.TASKS.GET_TASK_BY_ID(taskId)
+                            API_PATHS.TASKS.GET_TASK_BY_ID(taskId),
                           );
                           setCurrentTask(res.data);
                         } catch (error) {
@@ -623,17 +669,15 @@ const CreateTask = () => {
                 {/* COMPLETED / BLOCKED → REOPEN */}
                 {(currentTask?.status === "Completed" ||
                   currentTask?.status === "Blocked") && (
-                    <button
-                      className="px-4 py-2 rounded bg-indigo-600 text-white text-sm hover:bg-indigo-700 cursor-pointer"
-                      onClick={handleReopenTask}
-                    >
-                      🔄 Reopen Task
-                    </button>
-                  )}
+                  <button
+                    className="px-4 py-2 rounded bg-indigo-600 text-white text-sm hover:bg-indigo-700 cursor-pointer"
+                    onClick={handleReopenTask}
+                  >
+                    🔄 Reopen Task
+                  </button>
+                )}
               </div>
             )}
-
-
 
             {error && (
               <p className="text-xs font-medium text-red-500 mt-5">{error}</p>
@@ -650,7 +694,6 @@ const CreateTask = () => {
                 </button>
               </div>
             )}
-
           </div>
         </div>
       </div>
@@ -665,10 +708,8 @@ const CreateTask = () => {
           onDelete={() => deleteTask()}
         />
       </Modal>
-
     </DashboardLayout>
+  );
+};
 
-  )
-}
-
-export default CreateTask
+export default CreateTask;

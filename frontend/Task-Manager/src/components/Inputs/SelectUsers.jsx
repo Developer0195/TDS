@@ -5,14 +5,14 @@ import AvatarGroup from "../AvatarGroup";
 import { LuUser } from "react-icons/lu";
 import { API_PATHS } from "../../utils/apiPaths";
 
-const SelectUsers = ({ disabled, selectedUsers, setSelectedUsers }) => {
+const SelectUsers = ({ disabled, selectedUsers, setSelectedUsers, users: externalUsers }) => {
   const [allUsers, setAllUsers] = useState([]);
   const [isModalOpen, setIsModalOpen] = useState(false); // ✅ FIX
   const [tempSelectedUsers, setTempSelectedUsers] = useState([]);
 
   const getAllUsers = async () => {
     try {
-      const response = await axiosInstance.get(API_PATHS.USERS.GET_ALL_USERS);
+      const response = await axiosInstance.get(API_PATHS.USERS.GET_ADMIN_TEAM);
       if (response.data?.length > 0) {
         setAllUsers(response.data);
       }
@@ -34,17 +34,29 @@ const SelectUsers = ({ disabled, selectedUsers, setSelectedUsers }) => {
     setIsModalOpen(false);
   };
 
-  const selectedUserAvatars = allUsers
+   const displayUsers =
+  externalUsers && externalUsers.length > 0
+    ? externalUsers
+    : allUsers;
+
+  const selectedUserAvatars = displayUsers
     .filter((user) => selectedUsers.includes(user._id))
     .map((user) => user.profileImageUrl);
 
   useEffect(() => {
-    getAllUsers();
-  }, []);
+  // If project members are passed, DO NOT fetch all users
+  if (externalUsers && externalUsers.length > 0) return;
+
+  getAllUsers();
+}, [externalUsers]);
+
 
   useEffect(() => {
     setTempSelectedUsers(selectedUsers || []);
   }, [selectedUsers]);
+
+ 
+
 
   return (
     <div className="space-y-4 mt-2">
@@ -76,7 +88,7 @@ const SelectUsers = ({ disabled, selectedUsers, setSelectedUsers }) => {
           title="Select users"
         >
           <div className="space-y-4 h-[60vh] overflow-y-auto">
-            {allUsers.map((user) => (
+            {displayUsers.map((user) => (
               <div
                 key={user._id}
                 className="flex items-center gap-4 p-3 border-b"

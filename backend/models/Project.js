@@ -29,6 +29,14 @@ const projectSchema = new mongoose.Schema(
       required: true,
     },
 
+    // client name
+    clientName: {
+      type: String,
+      trim: true,
+      default: "",
+    },
+
+
     // Members working in this project
     members: [
       {

@@ -3,26 +3,35 @@ import { HiMiniPlus, HiOutlineTrash } from "react-icons/hi2";
 import axiosInstance from "../../utils/axiosInstance";
 import { API_PATHS } from "../../utils/apiPaths";
 
-const TodoListInput = ({ disabled, todoList, setTodoList }) => {
+const TodoListInput = ({ disabled, todoList, setTodoList, users = [] }) => {
+    const [allUsers, setAllUsers] = useState([]);
     const [option, setOption] = useState("");
     const [assignedTo, setAssignedTo] = useState("");
-    const [users, setUsers] = useState([]);
 
-    /* ===============================
-       FETCH USERS FOR SUBTASK ASSIGNMENT
-    =============================== */
+     const getAllUsers = async () => {
+        try {
+          const response = await axiosInstance.get(API_PATHS.USERS.GET_ADMIN_TEAM);
+          if (response.data?.length > 0) {
+            setAllUsers(response.data);
+          }
+        } catch (error) {
+          console.error("Error fetching users:", error);
+        }
+      };
+
+      const displayUsers =
+  users && users.length > 0
+    ? users
+    : allUsers;
+
     useEffect(() => {
-        const fetchUsers = async () => {
-            try {
-                const res = await axiosInstance.get(API_PATHS.USERS.GET_ALL_USERS);
-                setUsers(res.data.users || []);
-            } catch (error) {
-                console.log("Failed to load users", error);
-            }
-        };
+      // If project members are passed, DO NOT fetch all users
+      if (users && users.length > 0) return;
+    
+      getAllUsers();
+    }, [users]);
 
-        fetchUsers();
-    }, []);
+
 
     /* ===============================
        ADD SUBTASK
@@ -106,17 +115,19 @@ const TodoListInput = ({ disabled, todoList, setTodoList }) => {
 
                     {/* Assign Member */}
                     <select
-                        value={assignedTo}
-                        onChange={(e) => setAssignedTo(e.target.value)}
-                        className="w-full text-[13px] outline-none bg-white border border-gray-200 px-3 py-2 rounded-md"
-                    >
-                        <option value="">Assign Member (Optional)</option>
-                        {users.map((u) => (
-                            <option key={u._id} value={u._id}>
-                                {u.name}
-                            </option>
-                        ))}
-                    </select>
+  value={assignedTo}
+  onChange={(e) => setAssignedTo(e.target.value)}
+  className="w-full text-[13px] outline-none bg-white border border-gray-200 px-3 py-2 rounded-md"
+>
+  <option value="">Assign Member (Optional)</option>
+
+  {displayUsers.map((u) => (
+    <option key={u._id} value={u._id}>
+      {u.name}
+    </option>
+  ))}
+</select>
+
 
                     {/* Add Button */}
                     <button

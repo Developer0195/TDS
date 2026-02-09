@@ -73,12 +73,12 @@ const TaskListTable = ({ tableData }) => {
           {tableData.map((task) => (
             <tr key={task._id} className="border-t border-gray-200">
               {/* TASK TITLE */}
-              <td className="py-3 px-4 text-gray-700 text-[13px] line-clamp-1">
+              <td className="py-4 px-4 text-gray-700 text-[13px]">
                 {task.title}
               </td>
 
-              {/* ✅ PROJECT NAME */}
-              <td className="py-3 px-4 text-gray-600 text-[13px]">
+              {/* PROJECT NAME */}
+              <td className="py-4 px-4 text-gray-600 text-[13px] md:table-cell">
                 {task.project?.name ? (
                   <span className="text-indigo-600 font-medium">
                     {task.project.name}
@@ -92,7 +92,7 @@ const TaskListTable = ({ tableData }) => {
               <td className="py-4 px-4">
                 <span
                   className={`px-2 py-1 text-xs rounded inline-block ${getStatusBadgeColor(
-                    task.status
+                    task.status,
                   )}`}
                 >
                   {task.status}
@@ -103,16 +103,26 @@ const TaskListTable = ({ tableData }) => {
               <td className="py-4 px-4">
                 <span
                   className={`px-2 py-1 text-xs rounded inline-block ${getPriorityBadgeColor(
-                    task.priority
+                    task.priority,
                   )}`}
                 >
                   {task.priority}
                 </span>
               </td>
 
-              {/* CREATED BY */}
-              <td className="py-4 px-4 text-gray-700 text-[13px] hidden md:table-cell">
-                {task.createdBy?.name || "—"}
+              {/* Assigned to */}
+              <td>
+                <div className="flex flex-wrap gap-1">
+                  {task.assignedTo?.map((user) => (
+                    <div
+                      key={user._id}
+                      className="px-2 py-0.5 text-xs rounded-full bg-gray-100 text-gray-700"
+                      title={user.email}
+                    >
+                      {user.name}
+                    </div>
+                  ))}
+                </div>
               </td>
 
               {/* CREATED DATE */}

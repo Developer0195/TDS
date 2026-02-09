@@ -13,6 +13,7 @@ const AttendanceSchema = new mongoose.Schema(
       required: true,
     },
 
+    /* ---------------- PUNCH IN ---------------- */
     punchIn: {
       time: Date,
       location: {
@@ -20,8 +21,10 @@ const AttendanceSchema = new mongoose.Schema(
         longitude: Number,
       },
       distance: Number,
+      photoUrl: String,
     },
 
+    /* ---------------- PUNCH OUT ---------------- */
     punchOut: {
       time: Date,
       location: {
@@ -29,14 +32,33 @@ const AttendanceSchema = new mongoose.Schema(
         longitude: Number,
       },
       distance: Number,
+      photoUrl: String,
     },
 
-    status: {
+    /* ---------------- WORK MODE ---------------- */
+    workType: {
       type: String,
-      enum: ["WFO", "WFH"],
+      enum: ["WFO", "OFFSITE"],
     },
 
-    totalDurationMinutes: Number, // calculated on punch out
+    /* ---------------- ATTENDANCE STATUS ---------------- */
+    attendanceStatus: {
+      type: String,
+      enum: ["Absent", "Present", "Delayed"],
+      default: "Absent",
+      index: true,
+    },
+
+    /* ---------------- CALCULATED ---------------- */
+    totalDurationMinutes: Number,
+
+    /* ---------------- ADMIN OVERRIDE ---------------- */
+    overriddenByAdmin: {
+      type: Boolean,
+      default: false,
+    },
+
+    overrideReason: String,
   },
   { timestamps: true }
 );

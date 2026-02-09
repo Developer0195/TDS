@@ -9,6 +9,8 @@ import { API_PATHS } from '../../utils/apiPaths';
 import { UserContext } from '../../context/userContext';
 import uploadImage from '../../utils/uploadImage';
 import { validateEmail } from '../../utils/helper';
+import toast from "react-hot-toast";
+
 
 const Signup = () => {
 
@@ -38,64 +40,59 @@ const Signup = () => {
 
   // Handle signup From Submit 
   const handleLogin = async (e) => {
-    e.preventDefault();
+  e.preventDefault();
 
-    let profileImageUrl = ''
+  let profileImageUrl = "";
 
-    if (!fullName) {
-      setError("Please enter your fullname");
-      return;
+  if (!fullName) {
+    setError("Please enter your fullname");
+    return;
+  }
+
+  if (!validateEmail(email)) {
+    setError("Kindly enter a valid email address");
+    return;
+  }
+
+  if (!password) {
+    setError("Kindly enter your password");
+    return;
+  }
+
+  setError("");
+
+  try {
+    if (profilePic) {
+      profileImageUrl = await uploadProfileImage(profilePic);
     }
 
-    if (!validateEmail(email)) {
-      setError('kindly enter a valid email address ');
-      return;
+    await axiosInstance.post(API_PATHS.AUTH.REGISTER, {
+      name: fullName,
+      email,
+      password,
+      profileImageUrl,
+      adminInviteToken,
+    });
+
+    toast.success(
+      "Verification email sent. Please check your inbox 📩",
+      { duration: 5000 }
+    );
+
+    // Redirect to login after short delay
+    setTimeout(() => {
+      navigate("/login");
+    }, 2000);
+
+  } catch (error) {
+    if (error.response?.data?.message) {
+      setError(error.response.data.message);
+    } else {
+      setError("Something went wrong. Please try again.");
     }
-    if (!password) {
-      setError("Kindly enter your pssword");
-      return;
-    }
-    setError("");
-    //Sign up API call  API call
-    try {
+  }
+};
 
-      if (profilePic) {
-        profileImageUrl = await uploadProfileImage(profilePic);
-      }
-
-      const response = await axiosInstance.post(API_PATHS.AUTH.REGISTER, {
-        name: fullName,
-        email,
-        password,
-        profileImageUrl: profileImageUrl,
-        adminInviteToken
-      });
-
-      const { token, role } = response.data;
-
-
-      if (token) {
-        localStorage.setItem("token", token);
-        console.log(token)
-        updateUser(response.data);
-
-        // Redirect based on role
-        if (role === "admin") {
-          navigate("/admin/dashboard");
-        } else {
-          navigate("/user/dashboard");
-        }
-      }
-    } catch (error) {
-      if (error.response && error.response.data.message) {
-        setError(error.response.data.message);
-      } else {
-        setError("Something went wrong. Please try again.");
-      }
-    }
-
-
-  };
 
   return (
     <AuthLayout>
