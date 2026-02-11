@@ -5,7 +5,8 @@ import {
     LuSquarePlus,
     LuLogOut,
     LuMapPinCheckInside,
-    LuFolderPlus
+    LuFolderPlus,
+    LuClipboardPen
 } from "react-icons/lu";
 
 import { FaUser } from "react-icons/fa";
@@ -82,18 +83,24 @@ export const SIDE_MENU_USER_DATA = [
     },
     {
         id: "03",
+        label: "Create Weekly Tasks",
+        icon: LuClipboardPen,
+        path: "/user/weekly-tasks",
+    },
+    {
+        id: "04",
         label: "Attendance",
         icon: LuMapPinCheckInside,
         path: "/attendance",
     },
     {
-        id: "04",
+        id: "05",
         label: "Profile",
         icon: FaUser,
         path: "/profile",
     },
     {
-        id: "05",
+        id: "06",
         label: "Logout",
         icon: LuLogOut,
         path: "logout",

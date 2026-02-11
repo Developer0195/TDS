@@ -40,6 +40,7 @@ const CreateTask = () => {
     attachments: [],
   });
 
+
  
 
 
@@ -54,6 +55,23 @@ const CreateTask = () => {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const [openDeleteAlert, setOpenDeleteAlert] = useState(false);
+
+  const [allUsers, setAllUsers] = useState([]);
+
+
+  useEffect(() => {
+  const fetchUsers = async () => {
+    try {
+      const res = await axiosInstance.get(API_PATHS.USERS.GET_ADMIN_TEAM);
+      setAllUsers(res.data || []);
+    } catch (err) {
+      console.error("Failed to fetch users", err);
+    }
+  };
+
+  fetchUsers();
+}, []);
+
 
   /* -------------------- HELPERS -------------------- */
 
@@ -221,6 +239,21 @@ const CreateTask = () => {
     }
   };
 
+
+const subtaskUsers = React.useMemo(() => {
+  if (!taskData.assignedTo?.length) return [];
+
+  const sourceUsers = taskData.project
+    ? projectMembers
+    : allUsers;
+
+  return sourceUsers.filter((u) =>
+    taskData.assignedTo.includes(u._id)
+  );
+}, [taskData.assignedTo, projectMembers, allUsers, taskData.project]);
+
+
+
   /* -------------------- SUBMIT -------------------- */
 
   // const handleSubmit = () => {
@@ -346,7 +379,6 @@ const CreateTask = () => {
     }
   };
 
-  const [subtaskUsers, setSubtaskUsers] = useState([])
 
   return (
     <DashboardLayout activeMenu="Create Task">
@@ -537,7 +569,6 @@ const CreateTask = () => {
                   setSelectedUsers={(value) =>
                     handleValueChange("assignedTo", value)
                   }
-                  setSubtaskUsers={setSubtaskUsers}
                 />
               </div>
             </div>

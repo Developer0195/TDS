@@ -133,7 +133,8 @@ const getTasks = async (req, res) => {
         .skip(skip)              // 🔥 pagination
         .limit(pageSize)         // 🔥 pagination
         .populate("assignedTo", "name email profileImageUrl")
-        .populate("project", "name"),
+        .populate("project", "name")
+        .populate("createdBy", "name email"),
 
       Task.countDocuments(filter),
     ]);
@@ -409,7 +410,7 @@ const updateTaskChecklist = async (req, res) => {
     task.todoCheckList = req.body.todoCheckList.map((t) => ({
       text: t.text,
       completed: t.completed ?? false,
-      assignedTo: t.assignedTo || null,
+      assignedTo: t.assignedTo,
     }));
 
     const completed = task.todoCheckList.filter((t) => t.completed).length;
@@ -838,55 +839,195 @@ const getDashboardData = async (req, res) => {
 /* ===============================
  USER DASHBOARD DATA (MEMBER)
 ================================ */
+// const getUserDashboardData = async (req, res) => {
+//   try {
+//     const userId = req.user._id;
+
+//     const baseFilter = {
+//       assignedTo: { $in: [userId] },
+//     };
+
+//     const totalTasks = await Task.countDocuments(baseFilter);
+//     const pendingTasks = await Task.countDocuments({
+//       ...baseFilter,
+//       status: "Pending",
+//     });
+//     const inProgressTasks = await Task.countDocuments({
+//       ...baseFilter,
+//       status: "In Progress",
+//     });
+//     const completedTasks = await Task.countDocuments({
+//       ...baseFilter,
+//       status: "Completed",
+//     });
+//     const overdueTasks = await Task.countDocuments({
+//       ...baseFilter,
+//       status: { $ne: "Completed" },
+//       dueDate: { $lt: new Date() },
+//     });
+
+//     const priorityAgg = await Task.aggregate([
+//       { $match: baseFilter },
+//       { $group: { _id: "$priority", count: { $sum: 1 } } },
+//     ]);
+
+//     const taskPriorityLevels = {
+//       Low: priorityAgg.find((p) => p._id === "Low")?.count || 0,
+//       Medium: priorityAgg.find((p) => p._id === "Medium")?.count || 0,
+//       High: priorityAgg.find((p) => p._id === "High")?.count || 0,
+//     };
+
+//     const recentTasks = await Task.find(baseFilter)
+//       .sort({ createdAt: -1 })
+//       .limit(10)
+//       .select("title status priority dueDate createdAt createdBy")
+//       .populate("createdBy", "name email");
+
+//     res.status(200).json({
+//       statistics: {
+//         totalTasks,
+//         pendingTasks,
+//         inProgressTasks,
+//         completedTasks,
+//         overdueTasks,
+//       },
+//       charts: {
+//         taskDistribution: {
+//           Pending: pendingTasks,
+//           InProgress: inProgressTasks,
+//           Completed: completedTasks,
+//           All: totalTasks,
+//         },
+//         taskPriorityLevels,
+//       },
+//       recentTasks,
+//     });
+//   } catch (error) {
+//     res.status(500).json({ message: error.message });
+//   }
+// };
+
+
 const getUserDashboardData = async (req, res) => {
   try {
     const userId = req.user._id;
 
-    const baseFilter = {
+    const {
+      projectId,
+      dueStartDate,
+      dueEndDate,
+      createdStartDate,
+      createdEndDate,
+      recentStatus,
+      recentPriority,
+      page = 1,
+      limit = 10,
+    } = req.query;
+
+    const pageNumber = Number(page);
+    const pageSize = Number(limit);
+    const skip = (pageNumber - 1) * pageSize;
+
+    /* ================= BASE FILTER ================= */
+    let baseFilter = {
       assignedTo: { $in: [userId] },
     };
 
-    const totalTasks = await Task.countDocuments(baseFilter);
-    const pendingTasks = await Task.countDocuments({
-      ...baseFilter,
-      status: "Pending",
-    });
-    const inProgressTasks = await Task.countDocuments({
-      ...baseFilter,
-      status: "In Progress",
-    });
-    const completedTasks = await Task.countDocuments({
-      ...baseFilter,
-      status: "Completed",
-    });
-    const overdueTasks = await Task.countDocuments({
-      ...baseFilter,
-      status: { $ne: "Completed" },
-      dueDate: { $lt: new Date() },
-    });
+    /* ================= PROJECT FILTER ================= */
+    if (projectId === "null") {
+      baseFilter.$or = [
+        { project: null },
+        { project: { $exists: false } },
+      ];
+    } else if (projectId) {
+      baseFilter.project = new mongoose.Types.ObjectId(projectId);
+    }
 
+    /* ================= DUE DATE FILTER ================= */
+    if (dueStartDate && dueEndDate) {
+      baseFilter.dueDate = {
+        $gte: new Date(dueStartDate),
+        $lte: new Date(dueEndDate),
+      };
+    }
+
+    /* ================= CREATED DATE FILTER ================= */
+    if (createdStartDate && createdEndDate) {
+      baseFilter.createdAt = {
+        $gte: new Date(createdStartDate),
+        $lte: new Date(createdEndDate),
+      };
+    }
+
+    /* ================= STATUS COUNTS ================= */
+    const [
+      totalTasks,
+      pendingTasks,
+      inProgressTasks,
+      inReviewTasks,
+      completedTasks,
+      overdueTasks,
+    ] = await Promise.all([
+      Task.countDocuments(baseFilter),
+      Task.countDocuments({ ...baseFilter, status: "Pending" }),
+      Task.countDocuments({ ...baseFilter, status: "In Progress" }),
+      Task.countDocuments({ ...baseFilter, status: "In Review" }),
+      Task.countDocuments({ ...baseFilter, status: "Completed" }),
+      Task.countDocuments({
+        ...baseFilter,
+        status: { $ne: "Completed" },
+        dueDate: { $lt: new Date() },
+      }),
+    ]);
+
+    /* ================= PRIORITY AGG ================= */
     const priorityAgg = await Task.aggregate([
       { $match: baseFilter },
-      { $group: { _id: "$priority", count: { $sum: 1 } } },
+      {
+        $group: {
+          _id: "$priority",
+          count: { $sum: 1 },
+        },
+      },
     ]);
 
     const taskPriorityLevels = {
-      Low: priorityAgg.find((p) => p._id === "Low")?.count || 0,
-      Medium: priorityAgg.find((p) => p._id === "Medium")?.count || 0,
-      High: priorityAgg.find((p) => p._id === "High")?.count || 0,
+      Low: 0,
+      Medium: 0,
+      High: 0,
     };
 
-    const recentTasks = await Task.find(baseFilter)
-      .sort({ createdAt: -1 })
-      .limit(10)
-      .select("title status priority dueDate createdAt createdBy")
-      .populate("createdBy", "name email");
+    priorityAgg.forEach((p) => {
+      if (taskPriorityLevels[p._id] !== undefined) {
+        taskPriorityLevels[p._id] = p.count;
+      }
+    });
 
+    /* ================= RECENT TASKS FILTER ================= */
+    let recentTasksFilter = { ...baseFilter };
+
+    if (recentStatus) recentTasksFilter.status = recentStatus;
+    if (recentPriority) recentTasksFilter.priority = recentPriority;
+
+    const [recentTasks, totalRecentTasks] = await Promise.all([
+      Task.find(recentTasksFilter)
+        .sort({ createdAt: -1 })
+        .skip(skip)
+        .limit(pageSize)
+        .select("title status priority dueDate createdAt project")
+        .populate("project", "name")
+        .populate("createdBy", "name email"),
+
+      Task.countDocuments(recentTasksFilter),
+    ]);
+
+    /* ================= RESPONSE ================= */
     res.status(200).json({
       statistics: {
         totalTasks,
         pendingTasks,
         inProgressTasks,
+        inReviewTasks,
         completedTasks,
         overdueTasks,
       },
@@ -894,17 +1035,27 @@ const getUserDashboardData = async (req, res) => {
         taskDistribution: {
           Pending: pendingTasks,
           InProgress: inProgressTasks,
+          InReview: inReviewTasks,
           Completed: completedTasks,
           All: totalTasks,
         },
         taskPriorityLevels,
       },
       recentTasks,
+      recentTasksPagination: {
+        currentPage: pageNumber,
+        totalPages: Math.ceil(totalRecentTasks / pageSize),
+        totalItems: totalRecentTasks,
+        pageSize,
+      },
     });
   } catch (error) {
+    console.error("User dashboard error:", error);
     res.status(500).json({ message: error.message });
   }
 };
+
+
 
 /* ===============================
  USER ANALYTICS (ADMIN)

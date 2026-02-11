@@ -3,7 +3,6 @@ import DashboardLayout from "../../components/Layouts/DashboardLayout";
 import { useNavigate } from "react-router-dom";
 import { API_PATHS } from "../../utils/apiPaths";
 import axiosInstance from "../../utils/axiosInstance";
-import TaskCard from "../../components/Cards/TaskCard";
 import TaskRow from "../../components/TaskRow";
 
 const ManageTasks = () => {
@@ -11,8 +10,6 @@ const ManageTasks = () => {
   const [allTasks, setAllTasks] = useState([]);
 
   const today = new Date().toISOString().split("T")[0];
-
-
 
   // task filters
   const [filters, setFilters] = useState({
