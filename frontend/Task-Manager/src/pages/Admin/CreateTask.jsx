@@ -40,6 +40,9 @@ const CreateTask = () => {
     attachments: [],
   });
 
+ 
+
+
   const {
     loading: aiEstimateLoading,
     estimation,
@@ -51,8 +54,6 @@ const CreateTask = () => {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const [openDeleteAlert, setOpenDeleteAlert] = useState(false);
-
-  
 
   /* -------------------- HELPERS -------------------- */
 
@@ -106,19 +107,18 @@ const CreateTask = () => {
       }
 
       const todoList = taskData.todoCheckList.map((item) =>
-  typeof item === "string"
-    ? {
-        text: item,
-        completed: false,
-        assignedTo: null,
-      }
-    : {
-        text: item.text,
-        completed: item.completed ?? false,
-        assignedTo: item.assignedTo || null,
-      }
-);
-
+        typeof item === "string"
+          ? {
+              text: item,
+              completed: false,
+              assignedTo: null,
+            }
+          : {
+              text: item.text,
+              completed: item.completed ?? false,
+              assignedTo: item.assignedTo || null,
+            },
+      );
 
       const payload = {
         ...taskData,
@@ -157,20 +157,31 @@ const CreateTask = () => {
         return;
       }
 
-      const todoList = taskData.todoCheckList.map((item) =>
-  typeof item === "string"
-    ? {
-        text: item,
-        completed: false,
-        assignedTo: null,
-      }
-    : {
-        text: item.text,
-        completed: item.completed ?? false,
-        assignedTo: item.assignedTo || null,
-      }
-);
+      //       const todoList = taskData.todoCheckList.map((item) =>
+      //   typeof item === "string"
+      //     ? {
+      //         text: item,
+      //         completed: false,
+      //         assignedTo: null,
+      //       }
+      //     : {
+      //         text: item.text,
+      //         completed: item.completed ?? false,
+      //         assignedTo: item.assignedTo,
+      //       }
+      // );
 
+      const todoList = taskData.todoCheckList.map((item) => {
+        if (!item.assignedTo) {
+          throw new Error("Each subtask must have an assignee");
+        }
+
+        return {
+          text: item.text,
+          completed: item.completed ?? false,
+          assignedTo: item.assignedTo,
+        };
+      });
 
       await axiosInstance.put(API_PATHS.TASKS.UPDATE_TASK(taskId), {
         ...taskData,
@@ -183,7 +194,7 @@ const CreateTask = () => {
       });
 
       toast.success("Task Updated Successfully");
-      navigate("/admin/tasks")
+      navigate("/admin/tasks");
       clearData();
     } catch (error) {
       console.error("Error updating task:", error);
@@ -194,27 +205,38 @@ const CreateTask = () => {
   };
 
   const deleteTask = async () => {
-    try{
-       const response = await axiosInstance.delete(
+    try {
+      const response = await axiosInstance.delete(
         API_PATHS.TASKS.DELETE_TASK(taskId),
       );
-      if(response.data){
-        setOpenDeleteAlert(false)
+      if (response.data) {
+        setOpenDeleteAlert(false);
         toast.success("Task Deleted Successfully");
-        navigate("/admin/tasks")
-
+        navigate("/admin/tasks");
+      } else {
+        toast.error("Could not delete task");
       }
-      else{
-        toast.error("Could not delete task")
-      }
+    } catch (err) {
+      toast.error("Could not delete task");
     }
-    catch(err){
-      toast.error("Could not delete task")
-    }
-    
-  }
+  };
 
   /* -------------------- SUBMIT -------------------- */
+
+  // const handleSubmit = () => {
+  //   setError("");
+
+  //   if (!taskData.title.trim()) return setError("Title is required.");
+  //   if (!taskData.description.trim())
+  //     return setError("Description is required.");
+  //   if (!taskData.dueDate) return setError("Due date is required.");
+  //   if (taskData.assignedTo.length === 0)
+  //     return setError("Task not assigned to any member");
+  //   if (taskData.todoCheckList.length === 0)
+  //     return setError("Add at least one todo task");
+
+  //   taskId ? updateTask() : createTask();
+  // };
 
   const handleSubmit = () => {
     setError("");
@@ -226,7 +248,14 @@ const CreateTask = () => {
     if (taskData.assignedTo.length === 0)
       return setError("Task not assigned to any member");
     if (taskData.todoCheckList.length === 0)
-      return setError("Add at least one todo task");
+      return setError("Add at least one subtask");
+
+    // 🚨 SUBTASK ASSIGNEE VALIDATION
+    const invalidSubtask = taskData.todoCheckList.find((t) => !t.assignedTo);
+
+    if (invalidSubtask) {
+      return setError("Each subtask must have exactly one assignee");
+    }
 
     taskId ? updateTask() : createTask();
   };
@@ -248,23 +277,22 @@ const CreateTask = () => {
       setComments(taskInfo.comments || []);
 
       setTaskData({
-  title: taskInfo.title,
-  description: taskInfo.description,
-  priority: taskInfo.priority,
-  estimatedHours: taskInfo.estimatedHours,
-  dueDate: taskInfo.dueDate
-    ? moment(taskInfo.dueDate).format("YYYY-MM-DD")
-    : null,
-  assignedTo: taskInfo.assignedTo.map((u) => u._id),
-  project: taskInfo.project?._id || null,
-  todoCheckList: taskInfo.todoCheckList.map((t) => ({
-    text: t.text,
-    completed: t.completed,
-    assignedTo: t.assignedTo?._id || null,
-  })),
-  attachments: taskInfo.attachments || [],
-});
-
+        title: taskInfo.title,
+        description: taskInfo.description,
+        priority: taskInfo.priority,
+        estimatedHours: taskInfo.estimatedHours,
+        dueDate: taskInfo.dueDate
+          ? moment(taskInfo.dueDate).format("YYYY-MM-DD")
+          : null,
+        assignedTo: taskInfo.assignedTo.map((u) => u._id),
+        project: taskInfo.project?._id || null,
+        todoCheckList: taskInfo.todoCheckList.map((t) => ({
+          text: t.text,
+          completed: t.completed,
+          assignedTo: t.assignedTo?._id,
+        })),
+        attachments: taskInfo.attachments || [],
+      });
     };
 
     loadTask();
@@ -284,11 +312,11 @@ const CreateTask = () => {
         setProjects(formatted);
 
         if (taskId && currentTask?.project?._id) {
-      const selectedProject = formatted.find(
-        (p) => p.value === currentTask.project._id
-      );
-      setProjectMembers(selectedProject?.members || []);
-    }
+          const selectedProject = formatted.find(
+            (p) => p.value === currentTask.project._id,
+          );
+          setProjectMembers(selectedProject?.members || []);
+        }
       } catch (error) {
         console.log(error);
         toast.error("Failed to load projects");
@@ -318,7 +346,8 @@ const CreateTask = () => {
     }
   };
 
-    console.log(currentTask)
+  const [subtaskUsers, setSubtaskUsers] = useState([])
+
   return (
     <DashboardLayout activeMenu="Create Task">
       <div className="mt-5">
@@ -347,7 +376,7 @@ const CreateTask = () => {
 
                 <div className="flex items-center gap-3">
                   {/* 📎 FILE UPLOAD */}
-                  {!isTaskLocked && (
+                  {/* {!isTaskLocked && (
                     <label className="text-xs cursor-pointer text-indigo-600 hover:underline">
                       📎 Upload File
                       <input
@@ -358,7 +387,7 @@ const CreateTask = () => {
                         onChange={(e) => setAiFile(e.target.files[0])}
                       />
                     </label>
-                  )}
+                  )} */}
 
                   {/* ✨ AI BUTTON */}
                   {/* {!isTaskLocked && (
@@ -508,6 +537,7 @@ const CreateTask = () => {
                   setSelectedUsers={(value) =>
                     handleValueChange("assignedTo", value)
                   }
+                  setSubtaskUsers={setSubtaskUsers}
                 />
               </div>
             </div>
@@ -537,7 +567,7 @@ const CreateTask = () => {
                 setTodoList={(value) =>
                   handleValueChange("todoCheckList", value)
                 }
-                users={taskData.project ? projectMembers : []}
+                users={subtaskUsers}
               />
             </div>
             <div className="mt-3">

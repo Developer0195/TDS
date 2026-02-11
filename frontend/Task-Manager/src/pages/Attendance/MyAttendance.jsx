@@ -2,12 +2,15 @@ import React, { useContext, useEffect, useState } from "react";
 import axiosInstance from "../../utils/axiosInstance";
 import { API_PATHS } from "../../utils/apiPaths";
 import { UserContext } from "../../context/userContext";
-import { LuCamera, LuClock } from "react-icons/lu";
+import { LuCamera, LuClock, LuMapPin } from "react-icons/lu";
 import CameraCaptureModal from "../../components/CameraCaptureModal";
 import LocationPopover from "../../components/LocationPopOver";
+import RemarksModal from "../../components/Modals/RemarksModal";
+import toast from "react-hot-toast";
 
 const MyAttendance = () => {
   const { user } = useContext(UserContext);
+
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
 
@@ -16,8 +19,13 @@ const MyAttendance = () => {
   const [loading, setLoading] = useState(false);
 
   const [cameraOpen, setCameraOpen] = useState(false);
-  const [action, setAction] = useState(null); // IN | OUT
+  const [action, setAction] = useState(null); // IN | OUT | CHECKIN
 
+  const [remarksOpen, setRemarksOpen] = useState(false);
+  const [pendingPayload, setPendingPayload] = useState(null);
+  const [requiresCheckins, setRequiresCheckins] = useState(false);
+
+  /* ================= FETCH ================= */
   const fetchMyAttendance = async () => {
     setLoading(true);
 
@@ -27,12 +35,19 @@ const MyAttendance = () => {
       params.endDate = endDate;
     }
 
-    const res = await axiosInstance.get(API_PATHS.ATTENDANCE.MY_ATTENDANCE, {
-      params,
-    });
+    const res = await axiosInstance.get(
+      API_PATHS.ATTENDANCE.MY_ATTENDANCE,
+      { params }
+    );
 
     setToday(res.data.today);
     setHistory(res.data.attendance || []);
+    setRequiresCheckins(
+      res.data.today?.workType === "OFFSITE" &&
+      (res.data.today?.offsiteCheckins?.length || 0) < 3 &&
+      !res.data.today?.punchOut
+    );
+
     setLoading(false);
   };
 
@@ -40,6 +55,7 @@ const MyAttendance = () => {
     fetchMyAttendance();
   }, []);
 
+  /* ================= CAMERA CAPTURE ================= */
   const handleCapture = async (photoBase64) => {
     navigator.geolocation.getCurrentPosition(async (pos) => {
       const payload = {
@@ -48,20 +64,79 @@ const MyAttendance = () => {
         photoBase64,
       };
 
-      if (action === "IN") {
-        await axiosInstance.post(API_PATHS.ATTENDANCE.PUNCH_IN, payload);
-      } else {
-        await axiosInstance.post(API_PATHS.ATTENDANCE.PUNCH_OUT, payload);
-      }
+      try {
+        /* 🔹 PUNCH IN */
+        if (action === "IN") {
+          const res = await axiosInstance.post(
+            API_PATHS.ATTENDANCE.PUNCH_IN,
+            payload
+          );
 
-      setCameraOpen(false);
-      fetchMyAttendance();
+          setRequiresCheckins(res.data.requiresCheckins);
+          toast.success("Punch in successful");
+        }
+
+        /* 🔹 PUNCH OUT */
+        if (action === "OUT") {
+          await axiosInstance.post(
+            API_PATHS.ATTENDANCE.PUNCH_OUT,
+            payload
+          );
+          toast.success("Punch out successful");
+        }
+
+        /* 🔹 OFFSITE CHECK-IN */
+        if (action === "CHECKIN") {
+          const res = await axiosInstance.post(
+            API_PATHS.ATTENDANCE.OFFSITE_CHECKIN,
+            payload
+          );
+
+          toast.success(
+            `Check-in recorded (${res.data.checkinsCompleted}/3)`
+          );
+        }
+
+        setCameraOpen(false);
+        fetchMyAttendance();
+      } catch (err) {
+        /* 🔴 OFFSITE → remarks required */
+        if (err.response?.data?.message?.includes("Remarks")) {
+          setPendingPayload(payload);
+          setCameraOpen(false);
+          setRemarksOpen(true);
+        } else {
+          toast.error(err.response?.data?.message || "Action failed");
+        }
+      }
     });
   };
 
+  /* ================= REMARKS ================= */
+  const submitRemarks = async (text) => {
+    if (!text.trim()) return;
+
+    try {
+      await axiosInstance.post(API_PATHS.ATTENDANCE.PUNCH_IN, {
+        ...pendingPayload,
+        remarks: text,
+      });
+
+      toast.success("Punch in successful");
+      setRemarksOpen(false);
+      setPendingPayload(null);
+      fetchMyAttendance();
+    } catch {
+      toast.error("Failed to submit remarks");
+    }
+  };
+
+  /* ================= UI ================= */
+  const completedCheckins = today?.offsiteCheckins?.length || 0;
+
   return (
     <>
-      {/* TODAY CARD */}
+      {/* ================= TODAY CARD ================= */}
       <div className="bg-white border border-gray-300 rounded-lg p-5 mb-6 max-w-md">
         <p className="text-sm text-gray-500">Employee</p>
         <p className="font-medium">{user?.name}</p>
@@ -72,93 +147,80 @@ const MyAttendance = () => {
           onCapture={handleCapture}
         />
 
+        {/* 🔹 Punch In */}
         {!today?.punchIn && (
           <button
             onClick={() => {
               setAction("IN");
               setCameraOpen(true);
             }}
-            className="btn-primary w-full flex items-center justify-center gap-4 mt-4"
+            className="btn-primary w-full mt-4 flex gap-2 justify-center"
           >
-            <LuCamera size={20} /> Punch In
+            <LuCamera /> Punch In
           </button>
         )}
 
+        {/* 🔹 Punch Out */}
         {today?.punchIn && !today?.punchOut && (
           <button
             onClick={() => {
               setAction("OUT");
               setCameraOpen(true);
             }}
-            className="btn-primary flex items-center justify-center gap-4 w-full mt-4"
+            className="btn-primary w-full mt-4 flex gap-2 justify-center"
           >
-            <LuCamera size={20} /> Punch Out
+            <LuCamera /> Punch Out
           </button>
         )}
 
+        {/* 🔹 Duration */}
         {today?.punchOut && (
-          <div className="mt-4 text-sm flex items-center gap-2">
+          <div className="mt-4 flex items-center gap-2 text-sm">
             <LuClock />
             {Math.floor(today.totalDurationMinutes / 60)}h{" "}
             {today.totalDurationMinutes % 60}m
           </div>
         )}
+
+        {/* 🔴 OFFSITE CHECK-INS */}
+        {requiresCheckins && (
+          <div className="mt-4 border-t pt-3">
+            <p className="text-xs text-gray-500 mb-1">
+              Offsite Check-ins ({completedCheckins}/3)
+            </p>
+
+            <button
+              onClick={() => {
+                setAction("CHECKIN");
+                setCameraOpen(true);
+              }}
+              className="bg-orange-500 text-white w-full py-2 rounded flex gap-2 justify-center text-sm"
+            >
+              <LuMapPin /> Submit Check-in
+            </button>
+          </div>
+        )}
       </div>
 
-      {/* DATE RANGE FILTER */}
-      <div className="bg-white border border-gray-300 rounded-lg p-4 mb-5 max-w-xl">
-        <h4 className="text-xs font-medium text-gray-600 mb-2">
-          Filter by date range
-        </h4>
-
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div>
-            <label className="text-[11px] text-gray-500">Start Date</label>
-            <input
-              type="date"
-              value={startDate}
-              onChange={(e) => setStartDate(e.target.value)}
-              className="mt-1 w-full border border-gray-300 px-2 py-1 text-xs rounded"
-            />
-          </div>
-
-          <div>
-            <label className="text-[11px] text-gray-500">End Date</label>
-            <input
-              type="date"
-              value={endDate}
-              onChange={(e) => setEndDate(e.target.value)}
-              className="mt-1 w-full border border-gray-300 px-2 py-1 text-xs rounded"
-            />
-          </div>
-        </div>
-
-        <button
-          onClick={fetchMyAttendance}
-          className="mt-3 text-xs px-3 py-1 rounded bg-blue-600 text-white"
-        >
-          Apply Filter
-        </button>
-      </div>
-
-      {/* HISTORY */}
+      {/* ================= HISTORY ================= */}
       <div className="bg-white border border-gray-300 rounded-lg">
         <table className="w-full text-sm">
           <thead className="bg-blue-50">
             <tr>
               <th className="px-4 py-3 text-left">Date</th>
-              <th className="px-4 py-3 text-left">Punch In</th>
-              <th className="px-4 py-3 text-left">Punch Out</th>
+              <th className="px-4 py-3 text-left">In</th>
+              <th className="px-4 py-3 text-left">Out</th>
               <th className="px-4 py-3 text-left">Duration</th>
               <th className="px-4 py-3 text-left">Location</th>
               <th className="px-4 py-3 text-left">Work</th>
             </tr>
           </thead>
           <tbody className="divide-y">
-            {console.log(history)}
             {history.map((a) => (
               <tr key={a._id}>
-                <td className="px-4 py-3">{new Date(a.date).toDateString()}</td>
+                <td className="px-4 py-3">
+                  {new Date(a.date).toDateString()}
+                </td>
                 <td className="px-4 py-3">
                   {a.punchIn?.time &&
                     new Date(a.punchIn.time).toLocaleTimeString()}
@@ -175,13 +237,19 @@ const MyAttendance = () => {
                 <td className="px-4 py-3">
                   <LocationPopover location={a?.punchIn?.location} />
                 </td>
-                <td className="px-4 py-3">{a?.workType}</td>
-                
+                <td className="px-4 py-3">{a.workType}</td>
               </tr>
             ))}
           </tbody>
         </table>
       </div>
+
+      {/* ================= REMARKS MODAL ================= */}
+      <RemarksModal
+        open={remarksOpen}
+        onClose={() => setRemarksOpen(false)}
+        onSubmit={submitRemarks}
+      />
     </>
   );
 };

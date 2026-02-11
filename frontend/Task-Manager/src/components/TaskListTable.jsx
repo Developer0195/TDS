@@ -57,9 +57,9 @@ const TaskListTable = ({ tableData }) => {
               Priority
             </th>
 
-            {/* ASSIGNED BY */}
+            {/* ASSIGNED TO */}
             <th className="py-3 px-4 text-gray-800 font-medium text-[13px] hidden md:table-cell">
-              Assigned By
+              Assigned To
             </th>
 
             {/* CREATED ON */}

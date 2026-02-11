@@ -5,7 +5,7 @@ import AvatarGroup from "../AvatarGroup";
 import { LuUser } from "react-icons/lu";
 import { API_PATHS } from "../../utils/apiPaths";
 
-const SelectUsers = ({ disabled, selectedUsers, setSelectedUsers, users: externalUsers }) => {
+const SelectUsers = ({ disabled, selectedUsers, setSelectedUsers, users: externalUsers, setSubtaskUsers }) => {
   const [allUsers, setAllUsers] = useState([]);
   const [isModalOpen, setIsModalOpen] = useState(false); // ✅ FIX
   const [tempSelectedUsers, setTempSelectedUsers] = useState([]);
@@ -28,6 +28,15 @@ const SelectUsers = ({ disabled, selectedUsers, setSelectedUsers, users: externa
         : [...prev, userId]
     );
   };
+
+  const handleSubtaskUsers = (user) => {
+  setSubtaskUsers((prev) =>
+    prev.some((u) => u._id === user._id)
+      ? prev.filter((u) => u._id !== user._id)
+      : [...prev, user]
+  );
+};
+
 
   const handleAssign = () => {
     setSelectedUsers(tempSelectedUsers);
@@ -106,7 +115,7 @@ const SelectUsers = ({ disabled, selectedUsers, setSelectedUsers, users: externa
                 <input
                   type="checkbox"
                   checked={tempSelectedUsers.includes(user._id)}
-                  onChange={() => toggleUserSelection(user._id)}
+                  onChange={() => {toggleUserSelection(user._id); handleSubtaskUsers(user)}}
                 />
               </div>
             ))}

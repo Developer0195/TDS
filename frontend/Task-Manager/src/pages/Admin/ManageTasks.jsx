@@ -10,10 +10,14 @@ const ManageTasks = () => {
   const [projects, setProjects] = useState([]);
   const [allTasks, setAllTasks] = useState([]);
 
+  const today = new Date().toISOString().split("T")[0];
+
+
+
   // task filters
   const [filters, setFilters] = useState({
-    startDate: "",
-    endDate: "",
+    startDate: today,
+    endDate: today,
     status: "",
     projectId: "",
   });
@@ -90,7 +94,7 @@ const ManageTasks = () => {
           <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
             {/* Date From */}
             <div>
-              <label className="text-xs text-gray-500">Start Date</label>
+              <label className="text-xs text-gray-500">Due Start Date</label>
               <input
                 type="date"
                 className="w-full border border-gray-300 rounded px-3 py-2 text-xs"
@@ -103,11 +107,12 @@ const ManageTasks = () => {
 
             {/* Date To */}
             <div>
-              <label className="text-xs text-gray-500">End Date</label>
+              <label className="text-xs text-gray-500">Due End Date</label>
               <input
                 type="date"
                 className="w-full border border-gray-300 rounded px-3 py-2 text-xs"
                 value={filters.endDate}
+                 min={filters.startDate || undefined}
                 onChange={(e) =>
                   setFilters((prev) => ({ ...prev, endDate: e.target.value }))
                 }

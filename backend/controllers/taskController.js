@@ -1,5 +1,6 @@
 const Task = require("../models/Task");
 const addLog = require("../utils/addLogs");
+const mongoose = require("mongoose");
 
 /* ===============================
    GET ALL TASKS
@@ -108,6 +109,11 @@ const getTasks = async (req, res) => {
       };
     }
 
+    if (!startDate && endDate) {
+      filter.dueDate =  {  $gte: new Date(endDate), $lte: new Date(endDate) }
+    }
+
+
     // ✅ Role-based access
     if (req.user.role === "admin") {
       filter.createdBy = req.user._id;
@@ -194,6 +200,66 @@ const getTaskById = async (req, res) => {
 /* ===============================
    CREATE TASK
 ================================ */
+// const createTask = async (req, res) => {
+//   try {
+//     const {
+//       title,
+//       description,
+//       priority,
+//       dueDate,
+//       estimatedHours, // ✅ NEW REQUIRED FIELD
+//       assignedTo,
+//       project,
+//       attachments = [],
+//       todoCheckList = [],
+//     } = req.body;
+
+//     // ✅ Validation
+//     if (!title || !dueDate || !assignedTo?.length) {
+//       return res.status(400).json({ message: "Invalid task data" });
+//     }
+
+//     if (!estimatedHours || estimatedHours < 1) {
+//       return res
+//         .status(400)
+//         .json({ message: "Estimated hours is required (min 1 hour)" });
+//     }
+
+//     // ✅ Normalize Subtasks
+//     const normalizedTodos = todoCheckList.map((t) => ({
+//       text: t.text || t,
+//       completed: t.completed ?? false,
+//       assignedTo: t.assignedTo || null, // ✅ One assignee per subtask
+//     }));
+
+//     // ✅ Create Task
+//     const task = await Task.create({
+//       title,
+//       description,
+//       priority,
+//       dueDate,
+//       estimatedHours, // ✅ Save Hours
+//       assignedTo,
+//       project: project || null,
+//       createdBy: req.user._id,
+//       todoCheckList: normalizedTodos,
+//       attachments,
+//       logs: [
+//         {
+//           action: "TASK_CREATED",
+//           description: "Task created",
+//           performedBy: req.user._id,
+//         },
+//       ],
+//     });
+
+//     res.status(201).json({ message: "Task created", task });
+//   } catch (error) {
+//     res.status(500).json({ message: error.message });
+//   }
+// };
+
+
 const createTask = async (req, res) => {
   try {
     const {
@@ -201,14 +267,14 @@ const createTask = async (req, res) => {
       description,
       priority,
       dueDate,
-      estimatedHours, // ✅ NEW REQUIRED FIELD
+      estimatedHours,
       assignedTo,
       project,
       attachments = [],
       todoCheckList = [],
     } = req.body;
 
-    // ✅ Validation
+    /* ---------------- BASIC VALIDATION ---------------- */
     if (!title || !dueDate || !assignedTo?.length) {
       return res.status(400).json({ message: "Invalid task data" });
     }
@@ -219,20 +285,31 @@ const createTask = async (req, res) => {
         .json({ message: "Estimated hours is required (min 1 hour)" });
     }
 
-    // ✅ Normalize Subtasks
+    /* ---------------- SUBTASK VALIDATION ---------------- */
+    const invalidSubtask = todoCheckList.find(
+      (t) => !t.assignedTo || !String(t.assignedTo).trim()
+    );
+
+    if (invalidSubtask) {
+      return res.status(400).json({
+        message: "Each subtask must have exactly one assignee",
+      });
+    }
+
+    /* ---------------- NORMALIZE SUBTASKS ---------------- */
     const normalizedTodos = todoCheckList.map((t) => ({
       text: t.text || t,
       completed: t.completed ?? false,
-      assignedTo: t.assignedTo || null, // ✅ One assignee per subtask
+      assignedTo: t.assignedTo, // ✅ guaranteed to exist
     }));
 
-    // ✅ Create Task
+    /* ---------------- CREATE TASK ---------------- */
     const task = await Task.create({
       title,
       description,
       priority,
       dueDate,
-      estimatedHours, // ✅ Save Hours
+      estimatedHours,
       assignedTo,
       project: project || null,
       createdBy: req.user._id,
@@ -252,6 +329,8 @@ const createTask = async (req, res) => {
     res.status(500).json({ message: error.message });
   }
 };
+
+
 
 /* ===============================
    UPDATE TASK
@@ -489,26 +568,182 @@ const deleteTask = async (req, res) => {
 //     }
 // };
 
+// const getDashboardData = async (req, res) => {
+//   try {
+//     const { projectId, startDate, endDate, recentStatus, recentPriority,  page = 1,
+//   limit = 10 } = req.query;
+
+
+//   const pageNumber = Number(page);
+// const pageSize = Number(limit);
+// const skip = (pageNumber - 1) * pageSize;
+
+
+//     const baseFilter =
+//       req.user.role === "superadmin" ? {} : { createdBy: req.user._id };
+
+//     // if (projectId === "null") {
+//     //   baseFilter.project = null; // loose tasks
+//     // } else if (projectId) {
+//     //   baseFilter.project = projectId;
+//     // }
+
+//     if (projectId === "null") {
+//   baseFilter.project = null;
+// } else if (projectId) {
+//   baseFilter.project = new mongoose.Types.ObjectId(projectId);
+// }
+
+
+//     // ✅ Date range filter on dueDate
+//     if (startDate && endDate) {
+//       baseFilter.dueDate = {
+//         $gte: new Date(startDate),
+//         $lte: new Date(endDate),
+//       };
+//     }
+
+//     const totalTasks = await Task.countDocuments(baseFilter);
+
+//     const pendingTasks = await Task.countDocuments({
+//       ...baseFilter,
+//       status: "Pending",
+//     });
+
+//     const inProgressTasks = await Task.countDocuments({
+//       ...baseFilter,
+//       status: "In Progress",
+//     });
+
+//     const completedTasks = await Task.countDocuments({
+//       ...baseFilter,
+//       status: "Completed",
+//     });
+
+//     const overdueTasks = await Task.countDocuments({
+//       ...baseFilter,
+//       status: { $ne: "Completed" },
+//       dueDate: { $lt: new Date() },
+//     });
+
+//     const inReviewTasks = await Task.countDocuments({
+//       ...baseFilter,
+//       status: "In Review",
+//     });
+
+//     const onHoldTasks = await Task.countDocuments({
+//       ...baseFilter,
+//       status: "OnHold",
+//     });
+
+//     const priorityAgg = await Task.aggregate([
+//       { $match: baseFilter },
+//       {
+//         $group: {
+//           _id: "$priority",
+//           count: { $sum: 1 },
+//         },
+//       },
+//     ]);
+
+//     const taskPriorityLevels = {
+//       Low: priorityAgg.find((p) => p._id == "Low")?.count || 0,
+//       Medium: priorityAgg.find((p) => p._id == "Medium")?.count || 0,
+//       High: priorityAgg.find((p) => p._id == "High")?.count || 0,
+//     };
+
+//     const recentTasksFilter = { ...baseFilter };
+
+//     if (recentStatus) {
+//       recentTasksFilter.status = recentStatus;
+//     }
+
+//     if (recentPriority) {
+//       recentTasksFilter.priority = recentPriority;
+//     }
+
+//    const [recentTasks, totalRecentTasks] = await Promise.all([
+//   Task.find(recentTasksFilter)
+//     .sort({ createdAt: -1 })
+//     .skip(skip)
+//     .limit(pageSize)
+//     .select("title status priority dueDate createdAt project assignedTo")
+//     .populate("project", "name")
+//     .populate("assignedTo", "name email profileImageUrl"),
+
+//   Task.countDocuments(recentTasksFilter),
+// ]);
+
+
+//     res.status(200).json({
+//       statistics: {
+//         totalTasks,
+//         pendingTasks,
+//         inProgressTasks,
+//         completedTasks,
+//         overdueTasks,
+//         inReviewTasks,
+//         onHoldTasks,
+//       },
+//       charts: {
+//         taskDistribution: {
+//           Pending: pendingTasks,
+//           InProgress: inProgressTasks,
+//           InReview: inReviewTasks,
+//           OnHold: onHoldTasks,
+//           Completed: completedTasks,
+//           All: totalTasks,
+//         },
+//         taskPriorityLevels,
+//       },
+//       recentTasks,
+//       recentTasksPagination: {
+//     currentPage: pageNumber,
+//     totalPages: Math.ceil(totalRecentTasks / pageSize),
+//     totalItems: totalRecentTasks,
+//     pageSize,
+//   },
+//     });
+//   } catch (error) {
+//     res.status(500).json({ message: error.message });
+//   }
+// };
+
+
+
 const getDashboardData = async (req, res) => {
   try {
-    const { projectId, startDate, endDate, recentStatus, recentPriority,  page = 1,
-  limit = 10 } = req.query;
+    const {
+      projectId,
+      startDate,
+      endDate,
+      recentStatus,
+      recentPriority,
+      page = 1,
+      limit = 10,
+    } = req.query;
 
-  const pageNumber = Number(page);
-const pageSize = Number(limit);
-const skip = (pageNumber - 1) * pageSize;
+    const pageNumber = Number(page);
+    const pageSize = Number(limit);
+    const skip = (pageNumber - 1) * pageSize;
 
+    let baseFilter = {};
 
-    const baseFilter =
-      req.user.role === "superadmin" ? {} : { createdBy: req.user._id };
-
-    if (projectId === "null") {
-      baseFilter.project = null; // loose tasks
-    } else if (projectId) {
-      baseFilter.project = projectId;
+    if (req.user.role !== "superadmin") {
+      baseFilter.createdBy = req.user._id;
     }
 
-    // ✅ Date range filter on dueDate
+    /* ---------- PROJECT FILTER ---------- */
+    if (projectId === "null") {
+      baseFilter.$or = [
+        { project: null },
+        { project: { $exists: false } },
+      ];
+    } else if (projectId) {
+      baseFilter.project = new mongoose.Types.ObjectId(projectId);
+    }
+
+    /* ---------- DATE FILTER ---------- */
     if (startDate && endDate) {
       baseFilter.dueDate = {
         $gte: new Date(startDate),
@@ -516,39 +751,24 @@ const skip = (pageNumber - 1) * pageSize;
       };
     }
 
-    const totalTasks = await Task.countDocuments(baseFilter);
+    /* ---------- STATUS COUNTS ---------- */
+    const [
+      totalTasks,
+      pendingTasks,
+      inProgressTasks,
+      completedTasks,
+      inReviewTasks,
+      onHoldTasks,
+    ] = await Promise.all([
+      Task.countDocuments(baseFilter),
+      Task.countDocuments({ ...baseFilter, status: "Pending" }),
+      Task.countDocuments({ ...baseFilter, status: "In Progress" }),
+      Task.countDocuments({ ...baseFilter, status: "Completed" }),
+      Task.countDocuments({ ...baseFilter, status: "In Review" }),
+      Task.countDocuments({ ...baseFilter, status: "OnHold" }),
+    ]);
 
-    const pendingTasks = await Task.countDocuments({
-      ...baseFilter,
-      status: "Pending",
-    });
-
-    const inProgressTasks = await Task.countDocuments({
-      ...baseFilter,
-      status: "In Progress",
-    });
-
-    const completedTasks = await Task.countDocuments({
-      ...baseFilter,
-      status: "Completed",
-    });
-
-    const overdueTasks = await Task.countDocuments({
-      ...baseFilter,
-      status: { $ne: "Completed" },
-      dueDate: { $lt: new Date() },
-    });
-
-    const inReviewTasks = await Task.countDocuments({
-      ...baseFilter,
-      status: "In Review",
-    });
-
-    const onHoldTasks = await Task.countDocuments({
-      ...baseFilter,
-      status: "OnHold",
-    });
-
+    /* ---------- PRIORITY AGG ---------- */
     const priorityAgg = await Task.aggregate([
       { $match: baseFilter },
       {
@@ -559,45 +779,32 @@ const skip = (pageNumber - 1) * pageSize;
       },
     ]);
 
-    const taskPriorityLevels = {
-      Low: priorityAgg.find((p) => p._id === "Low")?.count || 0,
-      Medium: priorityAgg.find((p) => p._id === "Medium")?.count || 0,
-      High: priorityAgg.find((p) => p._id === "High")?.count || 0,
-    };
+    const taskPriorityLevels = { Low: 0, Medium: 0, High: 0 };
 
-    const recentTasksFilter = { ...baseFilter };
+    priorityAgg.forEach((p) => {
+      if (taskPriorityLevels[p._id] !== undefined) {
+        taskPriorityLevels[p._id] = p.count;
+      }
+    });
 
-    if (recentStatus) {
-      recentTasksFilter.status = recentStatus;
-    }
+    /* ---------- RECENT TASKS ---------- */
+    let recentTasksFilter = { ...baseFilter };
 
-    if (recentPriority) {
-      recentTasksFilter.priority = recentPriority;
-    }
+    if (recentStatus) recentTasksFilter.status = recentStatus;
+    if (recentPriority) recentTasksFilter.priority = recentPriority;
 
-   const [recentTasks, totalRecentTasks] = await Promise.all([
-  Task.find(recentTasksFilter)
-    .sort({ createdAt: -1 })
-    .skip(skip)
-    .limit(pageSize)
-    .select("title status priority dueDate createdAt project assignedTo")
-    .populate("project", "name")
-    .populate("assignedTo", "name email profileImageUrl"),
+    const [recentTasks, totalRecentTasks] = await Promise.all([
+      Task.find(recentTasksFilter)
+        .sort({ createdAt: -1 })
+        .skip(skip)
+        .limit(pageSize)
+        .populate("project", "name")
+        .populate("assignedTo", "name email profileImageUrl"),
 
-  Task.countDocuments(recentTasksFilter),
-]);
-
+      Task.countDocuments(recentTasksFilter),
+    ]);
 
     res.status(200).json({
-      statistics: {
-        totalTasks,
-        pendingTasks,
-        inProgressTasks,
-        completedTasks,
-        overdueTasks,
-        inReviewTasks,
-        onHoldTasks,
-      },
       charts: {
         taskDistribution: {
           Pending: pendingTasks,
@@ -611,16 +818,22 @@ const skip = (pageNumber - 1) * pageSize;
       },
       recentTasks,
       recentTasksPagination: {
-    currentPage: pageNumber,
-    totalPages: Math.ceil(totalRecentTasks / pageSize),
-    totalItems: totalRecentTasks,
-    pageSize,
-  },
+        currentPage: pageNumber,
+        totalPages: Math.ceil(totalRecentTasks / pageSize),
+        totalItems: totalRecentTasks,
+        pageSize,
+      },
     });
   } catch (error) {
+    console.error("Dashboard error:", error);
     res.status(500).json({ message: error.message });
   }
 };
+
+
+
+
+
 
 /* ===============================
  USER DASHBOARD DATA (MEMBER)

@@ -67,6 +67,8 @@ const UserSchema = new mongoose.Schema(
       },
       default: [],
     },
+
+    pendingEmail: String
   },
   { timestamps: true },
 );

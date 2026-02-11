@@ -22,7 +22,10 @@ const UserProfile = () => {
   });
 
   const [analytics, setAnalytics] = useState(null);
-  const [loading, setLoading] = useState(false);
+
+  // separate loading states for profile info and password info
+  const [profileLoading, setProfileLoading] = useState(false);
+  const [passwordLoading, setPasswordLoading] = useState(false)
 
   /* ================= FETCH PROFILE ================= */
   const fetchProfile = async () => {
@@ -65,34 +68,52 @@ const UserProfile = () => {
     });
   };
 
-  /* ================= SAVE PROFILE ================= */
   const handleSaveProfile = async () => {
-    try {
-      setLoading(true);
+  try {
+      setPasswordLoading(true)
+    const emailChanged = formData.email !== user.email;
 
-      const res = await axiosInstance.put(
-        API_PATHS.AUTH.UPDATE_PROFILE,
-        {
-          name: formData.name,
-          email: formData.email,
-          phone: formData.phone,
-        }
+    const res = await axiosInstance.put(
+      API_PATHS.AUTH.UPDATE_PROFILE,
+      {
+        name: formData.name,
+        email: formData.email,
+        phone: formData.phone,
+      }
+    );
+
+    // 🟡 EMAIL CHANGE FLOW
+    if (emailChanged) {
+      toast.success(
+        "Verification email sent to your new email. Please verify to complete the update."
       );
 
-      updateUser({
-        ...user,
-        ...res.data,
-      });
+      // ⛔ Do NOT update email in context yet
+      setFormData((prev) => ({
+        ...prev,
+        email: user.email, // revert back until verified
+      }));
 
-      toast.success("Profile updated successfully");
-    } catch (error) {
-      toast.error(
-        error.response?.data?.message || "Failed to update profile"
-      );
-    } finally {
-      setLoading(false);
+      return;
     }
-  };
+
+    // 🟢 NORMAL PROFILE UPDATE
+    updateUser({
+      ...user,
+      ...res.data,
+    });
+
+    toast.success("Profile updated successfully");
+  } catch (error) {
+    toast.error(
+      error.response?.data?.message || "Failed to update profile"
+    );
+  } finally {
+    setProfileLoading(false)
+  }
+};
+
+
 
   /* ================= UPDATE PASSWORD ================= */
   const handleUpdatePassword = async () => {
@@ -107,7 +128,7 @@ const UserProfile = () => {
     }
 
     try {
-      setLoading(true);
+      setPasswordLoading(true);
 
       await axiosInstance.put(
         API_PATHS.AUTH.UPDATE_PROFILE,
@@ -123,7 +144,7 @@ const UserProfile = () => {
         error.response?.data?.message || "Failed to update password"
       );
     } finally {
-      setLoading(false);
+      setPasswordLoading(false);
     }
   };
 
@@ -178,10 +199,10 @@ const UserProfile = () => {
 
           <button
             onClick={handleSaveProfile}
-            disabled={loading}
+            disabled={profileLoading}
             className="mt-4 bg-primary text-white px-4 py-2 rounded"
           >
-            {loading ? "Saving..." : "Save Changes"}
+            {profileLoading ? "Saving..." : "Save Changes"}
           </button>
         </div>
 
@@ -213,10 +234,10 @@ const UserProfile = () => {
 
           <button
             onClick={handleUpdatePassword}
-            disabled={loading}
+            disabled={passwordLoading}
             className="mt-4 bg-primary text-white px-4 py-2 rounded"
           >
-            {loading ? "Updating..." : "Update Password"}
+            {passwordLoading ? "Updating..." : "Update Password"}
           </button>
         </div>
 

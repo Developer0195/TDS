@@ -5,7 +5,6 @@ import { API_PATHS } from "../../utils/apiPaths";
 import { Trash2, ChevronDown } from "lucide-react";
 import toast from "react-hot-toast";
 
-
 const PAGE_SIZE = 10;
 
 const AttendanceLocations = () => {
@@ -14,6 +13,8 @@ const AttendanceLocations = () => {
   const [users, setUsers] = useState([]);
 
   const [selectedUser, setSelectedUser] = useState("");
+  const [selectedUserObj, setSelectedUserObj] = useState(null);
+
   const [selectedLocations, setSelectedLocations] = useState([]);
   const [loading, setLoading] = useState(false);
 
@@ -29,13 +30,26 @@ const AttendanceLocations = () => {
   /* ---------------- Fetch Team Members ---------------- */
   const fetchUsers = async () => {
     const res = await axiosInstance.get(API_PATHS.USERS.GET_ADMIN_TEAM);
-    setUsers(res.data.users || res.data || []);
+    setUsers(res.data || []);
   };
 
   useEffect(() => {
     fetchLocations();
     fetchUsers();
   }, []);
+
+  /* ---------------- Handle User Change ---------------- */
+  const handleUserChange = (userId) => {
+    setSelectedUser(userId);
+
+    const user = users.find((u) => u._id === userId);
+    setSelectedUserObj(user || null);
+
+    // ✅ preselect already assigned locations
+    const assignedIds =
+      user?.assignedLocations?.map((loc) => loc._id) || [];
+    setSelectedLocations(assignedIds);
+  };
 
   /* ---------------- Toggle Location (Max 5) ---------------- */
   const toggleLocation = (id) => {
@@ -44,7 +58,6 @@ const AttendanceLocations = () => {
     } else {
       if (selectedLocations.length >= 5) {
         toast.error("You can assign maximum 5 locations");
-
         return;
       }
       setSelectedLocations([...selectedLocations, id]);
@@ -53,25 +66,39 @@ const AttendanceLocations = () => {
 
   /* ---------------- Assign Locations ---------------- */
   const assignLocations = async () => {
-    if (!selectedUser) return toast.error("Please select a team member");
+  if (!selectedUser) return toast.error("Please select a team member");
 
-    setLoading(true);
-    try {
-      await axiosInstance.put(
-        API_PATHS.LOCATIONS.ASSIGN(selectedUser),
-        { locationIds: selectedLocations }
-      );
-      toast.success("Locations assigned successfully");
+  setLoading(true);
+  try {
+    await axiosInstance.put(
+      API_PATHS.LOCATIONS.ASSIGN(selectedUser),
+      { locationIds: selectedLocations }
+    );
 
-      setSelectedLocations([]);
-    } finally {
-      
-      setLoading(false);
-      toast.error(err.response?.data?.message || "Assignment failed");
-      
+    toast.success("Locations assigned successfully");
 
-    }
-  };
+    // 🔥 UPDATE USER LOCALLY (NO REFRESH)
+    const updatedLocations = locations.filter((loc) =>
+      selectedLocations.includes(loc._id)
+    );
+
+    setUsers((prev) =>
+      prev.map((u) =>
+        u._id === selectedUser
+          ? { ...u, assignedLocations: updatedLocations }
+          : u
+      )
+    );
+
+    setSelectedUserObj((prev) =>
+      prev ? { ...prev, assignedLocations: updatedLocations } : prev
+    );
+  } catch (err) {
+    toast.error(err.response?.data?.message || "Assignment failed");
+  } finally {
+    setLoading(false);
+  }
+};
 
   /* ---------------- Delete Location ---------------- */
   const deleteLocation = async (id) => {
@@ -107,8 +134,8 @@ const AttendanceLocations = () => {
         {/* USER DROPDOWN */}
         <select
           value={selectedUser}
-          onChange={(e) => setSelectedUser(e.target.value)}
-          className="border border-gray-300 p-2 rounded w-full mb-4 text-sm"
+          onChange={(e) => handleUserChange(e.target.value)}
+          className="border border-gray-300 p-2 rounded w-full mb-3 text-sm"
         >
           <option value="">Select Team Member</option>
           {users.map((u) => (
@@ -117,6 +144,25 @@ const AttendanceLocations = () => {
             </option>
           ))}
         </select>
+
+        {/* ✅ SHOW ASSIGNED LOCATIONS */}
+        {selectedUserObj?.assignedLocations?.length > 0 && (
+          <div className="mb-3">
+            <p className="text-xs text-gray-500 mb-1">
+              Currently Assigned Locations
+            </p>
+            <div className="flex flex-wrap gap-2">
+              {selectedUserObj.assignedLocations.map((loc) => (
+                <span
+                  key={loc._id}
+                  className="text-xs bg-gray-100 px-2 py-1 rounded"
+                >
+                  {loc.name}
+                </span>
+              ))}
+            </div>
+          </div>
+        )}
 
         {/* LOCATIONS DROPDOWN */}
         <div className="relative mb-4">

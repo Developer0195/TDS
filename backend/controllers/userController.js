@@ -7,7 +7,7 @@ const bcrypt = require("bcryptjs");
 
 const getUsers = async (req, res) => {
     try {
-        const users = await User.find({ role: "member" })
+        const users = await User.find({ role: "member", emailVerified: true })
             .select("-password");
 
         const usersWithTaskCounts = await Promise.all(
@@ -178,17 +178,87 @@ const updateMyProfile = async (req, res) => {
 // @desc Get logged-in admin's team members
 // @route GET /api/users/team
 // @access Private (Admin)
+// const getAdminTeamMembers = async (req, res) => {
+//   try {
+//     if (req.user.role !== "admin") {
+//       return res.status(403).json({ message: "Access denied" });
+//     }
+
+//     const admin = await User.findById(req.user._id).select("teamMembers");
+
+//     const members = await User.find({
+//       _id: { $in: admin.teamMembers },
+//     }).select("name email profileImageUrl").populate("assignedLocations", "name address radiusInMeters");
+
+//     const membersWithStats = await Promise.all(
+//       members.map(async (member) => {
+//         const pending = await Task.countDocuments({
+//           assignedTo: member._id,
+//           status: "Pending",
+//         });
+
+//         const inProgress = await Task.countDocuments({
+//           assignedTo: member._id,
+//           status: "In Progress",
+//         });
+
+//         const inReview = await Task.countDocuments({
+//           assignedTo: member._id,
+//           status: "In Review",
+//         });
+
+//         const completedTasks = await Task.find({
+//           assignedTo: member._id,
+//           status: "Completed",
+//         });
+
+//         const completed = completedTasks.length;
+
+//         const onTimeCompleted = completedTasks.filter(
+//           (t) => t.completedAt && t.completedAt <= t.dueDate
+//         ).length;
+
+//         const onTimeCompletionRate =
+//           completed === 0
+//             ? 0
+//             : Math.round((onTimeCompleted / completed) * 100);
+
+//         return {
+//           ...member._doc,
+//            assignedLocations: member.assignedLocations || [],
+//           taskCounts: {
+//             pending,
+//             inProgress,
+//             inReview,
+//             completed,
+//           },
+//           onTimeCompletionRate,
+//         };
+//       })
+//     );
+
+//     res.json(membersWithStats);
+//   } catch (error) {
+//     res.status(500).json({ message: error.message });
+//   }
+// };
+
+
 const getAdminTeamMembers = async (req, res) => {
   try {
     if (req.user.role !== "admin") {
       return res.status(403).json({ message: "Access denied" });
     }
 
+    // get admin's team members
     const admin = await User.findById(req.user._id).select("teamMembers");
 
+    // fetch members + assigned locations
     const members = await User.find({
       _id: { $in: admin.teamMembers },
-    }).select("name email profileImageUrl");
+    })
+      .select("name email profileImageUrl assignedLocations")
+      .populate("assignedLocations", "name address radiusInMeters");
 
     const membersWithStats = await Promise.all(
       members.map(async (member) => {
@@ -210,12 +280,12 @@ const getAdminTeamMembers = async (req, res) => {
         const completedTasks = await Task.find({
           assignedTo: member._id,
           status: "Completed",
-        });
+        }).select("completedAt dueDate");
 
         const completed = completedTasks.length;
 
         const onTimeCompleted = completedTasks.filter(
-          (t) => t.completedAt && t.completedAt <= t.dueDate
+          (t) => t.completedAt && t.dueDate && t.completedAt <= t.dueDate
         ).length;
 
         const onTimeCompletionRate =
@@ -224,13 +294,21 @@ const getAdminTeamMembers = async (req, res) => {
             : Math.round((onTimeCompleted / completed) * 100);
 
         return {
-          ...member._doc,
+          _id: member._id,
+          name: member.name,
+          email: member.email,
+          profileImageUrl: member.profileImageUrl,
+
+          // ✅ NEW: assigned locations
+          assignedLocations: member.assignedLocations || [],
+
           taskCounts: {
             pending,
             inProgress,
             inReview,
             completed,
           },
+
           onTimeCompletionRate,
         };
       })
@@ -241,6 +319,7 @@ const getAdminTeamMembers = async (req, res) => {
     res.status(500).json({ message: error.message });
   }
 };
+
 
 // @route GET /api/users/search
 // @access Private (Admin)
@@ -339,12 +418,201 @@ const removeTeamMember = async (req, res) => {
   }
 };
 
+// const getUserAnalytics = async (req, res) => {
+//   try {
+//     const userId = req.params.id;
+//     const {
+//       startDate,
+//       endDate,
+//       page = 1,
+//       limit = 10,
+//     } = req.query;
+
+//     const pageNum = Number(page);
+//     const limitNum = Number(limit);
+//     const skip = (pageNum - 1) * limitNum;
+
+//     let filter = { assignedTo: userId };
+
+//     // ✅ Date filter (by due date)
+//     if (startDate && endDate) {
+//       filter.dueDate = {
+//         $gte: new Date(startDate),
+//         $lte: new Date(endDate),
+//       };
+//     }
+
+//     /* ---------------- ALL TASKS FOR STATS ---------------- */
+//     const allTasks = await Task.find(filter);
+
+//     const stats = {
+//       totalTasks: allTasks.length,
+//       pendingTasks: allTasks.filter(t => t.status === "Pending").length,
+//       inProgressTasks: allTasks.filter(t => t.status === "In Progress").length,
+//       inReviewTasks: allTasks.filter(t => t.status === "In Review").length,
+//       completedTasks: allTasks.filter(t => t.status === "Completed").length,
+//       onHoldTasks: allTasks.filter(t => t.status === "On Hold").length,
+//     };
+
+//     // ✅ On-time completion rate
+//     const completedOnTime = allTasks.filter(
+//       t =>
+//         t.status === "Completed" &&
+//         t.completedAt &&
+//         t.dueDate &&
+//         t.completedAt <= t.dueDate
+//     ).length;
+
+//     const onTimeCompletionRate = stats.completedTasks
+//       ? Math.round((completedOnTime / stats.completedTasks) * 100)
+//       : 0;
+
+//     /* ---------------- CHARTS ---------------- */
+//     const charts = {
+//       taskDistribution: {
+//         Pending: stats.pendingTasks,
+//         "In Progress": stats.inProgressTasks,
+//         "In Review": stats.inReviewTasks,
+//         Completed: stats.completedTasks,
+//         "On Hold": stats.onHoldTasks,
+//       },
+//       taskPriorityLevels: {
+//         Low: allTasks.filter(t => t.priority === "Low").length,
+//         Medium: allTasks.filter(t => t.priority === "Medium").length,
+//         High: allTasks.filter(t => t.priority === "High").length,
+//       },
+//     };
+
+//     /* ---------------- PAGINATED TASKS ---------------- */
+//     const paginatedTasks = await Task.find(filter)
+//       .sort({ createdAt: -1 }) // ✅ latest → oldest
+//       .skip(skip)
+//       .limit(limitNum)
+//       .populate("assignedTo", "name email")
+//       .populate("project", "name");
+
+//     const totalPages = Math.ceil(allTasks.length / limitNum);
+
+//     res.json({
+//       statistics: {
+//         ...stats,
+//         onTimeCompletionRate,
+//       },
+//       charts,
+//       tasks: paginatedTasks,
+//       pagination: {
+//         totalItems: allTasks.length,
+//         currentPage: pageNum,
+//         totalPages,
+//         pageSize: limitNum,
+//       },
+//     });
+//   } catch (error) {
+//     res.status(500).json({ message: error.message });
+//   }
+// };
+
+
+// const getUserAnalytics = async (req, res) => {
+//   try {
+//     const userId = req.params.id;
+//     const {
+//       startDate,
+//       endDate,
+//       status,
+//       priority,
+//       assignedByMe,
+//       page = 1,
+//       limit = 10,
+//     } = req.query;
+
+//     const pageNum = Number(page);
+//     const limitNum = Number(limit);
+//     const skip = (pageNum - 1) * limitNum;
+
+//     let filter = { assignedTo: userId };
+
+//     // 📅 Due date filter
+//     if (startDate && endDate) {
+//       filter.dueDate = {
+//         $gte: new Date(startDate),
+//         $lte: new Date(endDate),
+//       };
+//     }
+
+//     // 🏷 Status filter
+//     if (status) filter.status = status;
+
+//     // ⚡ Priority filter
+//     if (priority) filter.priority = priority;
+
+//     // 👤 Assigned by me
+//     if (assignedByMe === "true") {
+//       filter.createdBy = req.user._id;
+//     }
+
+//     const allTasks = await Task.find(filter);
+
+//     /* ---------------- STATS ---------------- */
+//     const stats = {
+//       totalTasks: allTasks.length,
+//       pendingTasks: allTasks.filter(t => t.status === "Pending").length,
+//       inProgressTasks: allTasks.filter(t => t.status === "In Progress").length,
+//       inReviewTasks: allTasks.filter(t => t.status === "In Review").length,
+//       completedTasks: allTasks.filter(t => t.status === "Completed").length,
+//       onHoldTasks: allTasks.filter(t => t.status === "On Hold").length,
+//     };
+
+//     /* ---------------- CHARTS ---------------- */
+//     const charts = {
+//       taskDistribution: {
+//         Pending: stats.pendingTasks,
+//         "In Progress": stats.inProgressTasks,
+//         "In Review": stats.inReviewTasks,
+//         Completed: stats.completedTasks,
+//         "On Hold": stats.onHoldTasks,
+//       },
+//       taskPriorityLevels: {
+//         Low: allTasks.filter(t => t.priority === "Low").length,
+//         Medium: allTasks.filter(t => t.priority === "Medium").length,
+//         High: allTasks.filter(t => t.priority === "High").length,
+//       },
+//     };
+
+//     /* ---------------- TASK LIST ---------------- */
+//     const tasks = await Task.find(filter)
+//       .sort({ createdAt: -1 })
+//       .skip(skip)
+//       .limit(limitNum)
+//       .populate("assignedTo", "name email")
+//       .populate("createdBy", "name")
+//       .populate("project", "name");
+
+//     res.json({
+//       statistics: stats,
+//       charts,
+//       tasks,
+//       pagination: {
+//         totalItems: allTasks.length,
+//         currentPage: pageNum,
+//         totalPages: Math.ceil(allTasks.length / limitNum),
+//       },
+//     });
+//   } catch (error) {
+//     res.status(500).json({ message: error.message });
+//   }
+// };
+
+
 const getUserAnalytics = async (req, res) => {
   try {
     const userId = req.params.id;
     const {
       startDate,
       endDate,
+      status,
+      priority,
+      assignedByMe,
       page = 1,
       limit = 10,
     } = req.query;
@@ -353,19 +621,49 @@ const getUserAnalytics = async (req, res) => {
     const limitNum = Number(limit);
     const skip = (pageNum - 1) * limitNum;
 
-    let filter = { assignedTo: userId };
+    /* ===============================
+       1️⃣ BASE FILTER (GLOBAL)
+       =============================== */
+    const baseFilter = {
+      assignedTo: userId,
+    };
 
-    // ✅ Date filter (by due date)
+    // 📅 Due date filter (GLOBAL)
     if (startDate && endDate) {
-      filter.dueDate = {
+      baseFilter.dueDate = {
         $gte: new Date(startDate),
         $lte: new Date(endDate),
       };
     }
 
-    /* ---------------- ALL TASKS FOR STATS ---------------- */
-    const allTasks = await Task.find(filter);
+    /* ===============================
+       2️⃣ RECENT TASKS FILTER
+       =============================== */
+    const recentTasksFilter = {
+      ...baseFilter,
+    };
 
+    // 🏷 Status → ONLY recent tasks
+    if (status) {
+      recentTasksFilter.status = status;
+    }
+
+    // ⚡ Priority → ONLY recent tasks
+    if (priority) {
+      recentTasksFilter.priority = priority;
+    }
+
+    // 👤 Assigned by me → ONLY recent tasks
+    if (assignedByMe === "true") {
+      recentTasksFilter.createdBy = req.user._id;
+    }
+
+    /* ===============================
+       📊 ALL TASKS (FOR STATS + CHARTS)
+       =============================== */
+    const allTasks = await Task.find(baseFilter);
+
+    /* ---------------- STATS ---------------- */
     const stats = {
       totalTasks: allTasks.length,
       pendingTasks: allTasks.filter(t => t.status === "Pending").length,
@@ -374,19 +672,6 @@ const getUserAnalytics = async (req, res) => {
       completedTasks: allTasks.filter(t => t.status === "Completed").length,
       onHoldTasks: allTasks.filter(t => t.status === "On Hold").length,
     };
-
-    // ✅ On-time completion rate
-    const completedOnTime = allTasks.filter(
-      t =>
-        t.status === "Completed" &&
-        t.completedAt &&
-        t.dueDate &&
-        t.completedAt <= t.dueDate
-    ).length;
-
-    const onTimeCompletionRate = stats.completedTasks
-      ? Math.round((completedOnTime / stats.completedTasks) * 100)
-      : 0;
 
     /* ---------------- CHARTS ---------------- */
     const charts = {
@@ -404,27 +689,29 @@ const getUserAnalytics = async (req, res) => {
       },
     };
 
-    /* ---------------- PAGINATED TASKS ---------------- */
-    const paginatedTasks = await Task.find(filter)
-      .sort({ createdAt: -1 }) // ✅ latest → oldest
-      .skip(skip)
-      .limit(limitNum)
-      .populate("assignedTo", "name email")
-      .populate("project", "name");
+    /* ===============================
+       📋 RECENT TASKS (FILTERED)
+       =============================== */
+    const [tasks, totalRecentTasks] = await Promise.all([
+      Task.find(recentTasksFilter)
+        .sort({ createdAt: -1 })
+        .skip(skip)
+        .limit(limitNum)
+        .populate("assignedTo", "name email")
+        .populate("createdBy", "name")
+        .populate("project", "name"),
 
-    const totalPages = Math.ceil(allTasks.length / limitNum);
+      Task.countDocuments(recentTasksFilter),
+    ]);
 
     res.json({
-      statistics: {
-        ...stats,
-        onTimeCompletionRate,
-      },
+      statistics: stats,
       charts,
-      tasks: paginatedTasks,
+      tasks,
       pagination: {
-        totalItems: allTasks.length,
+        totalItems: totalRecentTasks,
         currentPage: pageNum,
-        totalPages,
+        totalPages: Math.ceil(totalRecentTasks / limitNum),
         pageSize: limitNum,
       },
     });

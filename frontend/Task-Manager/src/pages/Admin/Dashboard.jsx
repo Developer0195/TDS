@@ -13,7 +13,14 @@ import TaskListTable from "../../components/TaskListTable";
 import CustomPieChart from "../../components/Charts/CustomPieChart";
 import CustomBarChart from "../../components/Charts/CustomBarChart";
 
-const COLORS = ["#8D51FF", "#00B8D8", "#7BCE00"];
+const COLORS = [
+  "#8D51FF", // Pending
+  "#00B8D8", // In Progress
+  "#FACC15", // In Review
+  "#EF4444", // On Hold
+  "#7BCE00", // Completed
+];
+
 
 const Dashboard = () => {
   useUserAuth();
@@ -44,32 +51,35 @@ const Dashboard = () => {
 
   // pagination
   const [recentPage, setRecentPage] = useState(1);
-const RECENT_TASKS_LIMIT = 10;
+  const RECENT_TASKS_LIMIT = 10;
 
-useEffect(() => {
-  setRecentPage(1);
-}, [dateRange, selectedProject, recentFilters]);
-
+  useEffect(() => {
+    setRecentPage(1);
+  }, [dateRange, selectedProject, recentFilters]);
 
   //Prepare chart data
   const prepareChartData = (data) => {
-    const taskDistribution = data?.taskDistribution || null;
-    const taskPriorityLevels = data?.taskPriorityLevels || null;
+  const taskDistribution = data?.taskDistribution || {};
+  const taskPriorityLevels = data?.taskPriorityLevels || {};
 
-    const taskDistributionData = [
-      { status: "Pending", count: taskDistribution?.Pending || 0 },
-      { status: "In Progress", count: taskDistribution?.InProgress || 0 },
-      { status: "Completed", count: taskDistribution?.Completed || 0 },
-    ];
-    const PriorityLevelData = [
-      { priority: "Low", count: taskPriorityLevels?.Low || 0 },
-      { priority: "Medium", count: taskPriorityLevels?.Medium || 0 },
-      { priority: "High", count: taskPriorityLevels?.High || 0 },
-    ];
+  const taskDistributionData = [
+    { status: "Pending", count: taskDistribution.Pending || 0 },
+    { status: "In Progress", count: taskDistribution.InProgress || 0 },
+    { status: "In Review", count: taskDistribution.InReview || 0 },
+    { status: "On Hold", count: taskDistribution.OnHold || 0 },
+    { status: "Completed", count: taskDistribution.Completed || 0 },
+  ];
 
-    setBarChartData(PriorityLevelData);
-    setPieChartData(taskDistributionData);
-  };
+  const PriorityLevelData = [
+    { priority: "Low", count: taskPriorityLevels.Low || 0 },
+    { priority: "Medium", count: taskPriorityLevels.Medium || 0 },
+    { priority: "High", count: taskPriorityLevels.High || 0 },
+  ];
+
+  setPieChartData(taskDistributionData);
+  setBarChartData(PriorityLevelData);
+};
+
 
   const getDashboardData = async () => {
     try {
@@ -82,13 +92,14 @@ useEffect(() => {
             projectId: selectedProject,
             recentStatus: recentFilters.status,
             recentPriority: recentFilters.priority,
-             page: recentPage,
-  limit: RECENT_TASKS_LIMIT,
+            page: recentPage,
+            limit: RECENT_TASKS_LIMIT,
           },
         },
       );
 
       if (response.data) {
+        console.log(response.data)
         setDashboardData(response.data);
         prepareChartData(response.data?.charts || null);
       }
@@ -156,6 +167,7 @@ useEffect(() => {
               type="date"
               className="border border-gray-300 rounded px-3 py-2 text-xs"
               value={dateRange.endDate}
+              min={dateRange.startDate || undefined}
               onChange={(e) =>
                 setDateRange((prev) => ({
                   ...prev,
@@ -318,43 +330,38 @@ useEffect(() => {
             </div>
 
             <TaskListTable tableData={dashboardData?.recentTasks || []} />
-
-         
-
           </div>
 
-             {/* pagination */}
-            {dashboardData?.recentTasksPagination && (
-  <div className="flex items-center justify-between mt-4">
-    <p className="text-xs text-gray-500">
-      Page {dashboardData.recentTasksPagination.currentPage} of{" "}
-      {dashboardData.recentTasksPagination.totalPages}
-    </p>
+          {/* pagination */}
+          {dashboardData?.recentTasksPagination && (
+            <div className="flex items-center justify-between mt-4">
+              <p className="text-xs text-gray-500">
+                Page {dashboardData.recentTasksPagination.currentPage} of{" "}
+                {dashboardData.recentTasksPagination.totalPages}
+              </p>
 
-    <div className="flex gap-2">
-      <button
-        disabled={recentPage === 1}
-        onClick={() => setRecentPage((p) => Math.max(p - 1, 1))}
-        className="px-3 py-1 text-xs border rounded disabled:opacity-50"
-      >
-        Previous
-      </button>
+              <div className="flex gap-2">
+                <button
+                  disabled={recentPage === 1}
+                  onClick={() => setRecentPage((p) => Math.max(p - 1, 1))}
+                  className="px-3 py-1 text-xs border rounded disabled:opacity-50"
+                >
+                  Previous
+                </button>
 
-      <button
-        disabled={
-          recentPage ===
-          dashboardData.recentTasksPagination.totalPages
-        }
-        onClick={() =>
-          setRecentPage((p) => p + 1)
-        }
-        className="px-3 py-1 text-xs border rounded disabled:opacity-50"
-      >
-        Next
-      </button>
-    </div>
-  </div>
-)}
+                <button
+                  disabled={
+                    recentPage ===
+                    dashboardData.recentTasksPagination.totalPages
+                  }
+                  onClick={() => setRecentPage((p) => p + 1)}
+                  className="px-3 py-1 text-xs border rounded disabled:opacity-50"
+                >
+                  Next
+                </button>
+              </div>
+            </div>
+          )}
         </div>
       </div>
     </DashboardLayout>

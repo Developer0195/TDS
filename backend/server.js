@@ -15,6 +15,9 @@ const uploadRoutes = require("./routes/uploadRoutes");
 const projectRoutes = require("./routes/projectRoutes");
 const locationRoutes = require("./routes/locationRoutes.js");
 
+require("./utils/attendance.js")
+
+
 // Middleware to handle CORS
 app.use(
     cors({

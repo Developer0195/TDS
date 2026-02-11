@@ -6,7 +6,7 @@ const {
   punchIn,
   punchOut,
   getMyAttendance,
-  getDailyAttendance, getTeamAttendanceAnalytics, updateAttendanceStatus, adminOverrideAttendance
+  getDailyAttendance, getTeamAttendanceAnalytics, updateAttendanceStatus, adminOverrideAttendance, offsiteCheckIn
 } = require("../controllers/attendanceController");
 
 router.post("/punch-in", protect, punchIn);
@@ -17,6 +17,13 @@ router.get(
   protect,
   getDailyAttendance
 );
+
+router.post(
+  "/check-in",
+  protect, 
+  offsiteCheckIn
+);
+
 
 router.get(
   "/team/analytics",

@@ -2,46 +2,25 @@ import React, { useEffect, useState } from "react";
 import { HiMiniPlus, HiOutlineTrash } from "react-icons/hi2";
 import axiosInstance from "../../utils/axiosInstance";
 import { API_PATHS } from "../../utils/apiPaths";
+import toast from "react-hot-toast";
 
-const TodoListInput = ({ disabled, todoList, setTodoList, users = [] }) => {
-    const [allUsers, setAllUsers] = useState([]);
+const TodoListInput = ({ disabled, todoList, setTodoList, users }) => {
+    console.log(users)
     const [option, setOption] = useState("");
     const [assignedTo, setAssignedTo] = useState("");
-
-     const getAllUsers = async () => {
-        try {
-          const response = await axiosInstance.get(API_PATHS.USERS.GET_ADMIN_TEAM);
-          if (response.data?.length > 0) {
-            setAllUsers(response.data);
-          }
-        } catch (error) {
-          console.error("Error fetching users:", error);
-        }
-      };
-
-      const displayUsers =
-  users && users.length > 0
-    ? users
-    : allUsers;
-
-    useEffect(() => {
-      // If project members are passed, DO NOT fetch all users
-      if (users && users.length > 0) return;
-    
-      getAllUsers();
-    }, [users]);
-
-
 
     /* ===============================
        ADD SUBTASK
     =============================== */
     const handleAddOption = () => {
-        if (!option.trim()) return;
+        if (!option.trim() || !assignedTo){
+            toast.error("Task Name cannot be empty and Task must be assigned to a member");
+            return;
+        }
 
         const newSubtask = {
             text: option.trim(),
-            assignedTo: assignedTo || null,
+            assignedTo: assignedTo,
             completed: false,
         };
 
@@ -121,7 +100,7 @@ const TodoListInput = ({ disabled, todoList, setTodoList, users = [] }) => {
 >
   <option value="">Assign Member (Optional)</option>
 
-  {displayUsers.map((u) => (
+  {users.map((u) => (
     <option key={u._id} value={u._id}>
       {u.name}
     </option>

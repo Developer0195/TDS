@@ -55,6 +55,17 @@ const ManageProjects = () => {
     });
   };
 
+
+  const formatDateDDMMYY = (date) => {
+  const d = new Date(date);
+  const day = String(d.getDate()).padStart(2, "0");
+  const month = String(d.getMonth() + 1).padStart(2, "0");
+  const year = String(d.getFullYear()).slice(-2);
+
+  return `${day}-${month}-${year}`;
+};
+
+
   return (
     <DashboardLayout activeMenu="Manage Projects">
       <div className="my-5">
@@ -208,7 +219,7 @@ const ManageProjects = () => {
 
                 {/* Created */}
                 <div className="col-span-2 text-xs text-gray-500">
-                  {new Date(project.createdAt).toLocaleDateString()}
+                  {formatDateDDMMYY(project.createdAt)}
                 </div>
               </div>
             ))

@@ -61,6 +61,7 @@ export const API_PATHS = {
         PUNCH_IN: "/api/attendance/punch-in",
         PUNCH_OUT: "/api/attendance/punch-out",
         MY_ATTENDANCE: "/api/attendance/my",
+        OFFSITE_CHECKIN: "/api/attendance/check-in",
         DAILY: "/api/attendance/daily",
         TEAM_ANALYTICS: "api/attendance/team/analytics",
         UPDATE_STATUS: (id) => `api/attendance/${id}/status`,

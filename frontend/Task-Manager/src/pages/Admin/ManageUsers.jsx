@@ -7,52 +7,40 @@ import toast from "react-hot-toast";
 import TaskStatusChips from "../../components/TaskStatusChip";
 import { useNavigate } from "react-router-dom";
 
-
-
 const ManageUsers = () => {
   /* =======================
      STATE
   ======================= */
+  const [allUsers, setAllUsers] = useState([]);
+  const [filteredUsers, setFilteredUsers] = useState([]);
   const [teamMembers, setTeamMembers] = useState([]);
   const [searchQuery, setSearchQuery] = useState("");
-  const [searchResults, setSearchResults] = useState([]);
   const [showDropdown, setShowDropdown] = useState(false);
-  const [loading, setLoading] = useState(false);
+
   const navigate = useNavigate();
 
-
-  console.log(teamMembers)
-
   /* =======================
-     FETCH ADMIN TEAM
+     FETCH TEAM MEMBERS
   ======================= */
   const fetchTeamMembers = async () => {
     try {
       const res = await axiosInstance.get(API_PATHS.USERS.GET_ADMIN_TEAM);
       setTeamMembers(res.data || []);
     } catch (error) {
-      console.error(error);
       toast.error("Failed to load team members");
     }
   };
 
   /* =======================
-     SEARCH USERS
+     FETCH ALL USERS
   ======================= */
-  const searchUsers = async (query) => {
-    if (!query.trim()) {
-      setSearchResults([]);
-      return;
-    }
-
+  const fetchAllUsers = async () => {
     try {
-      const res = await axiosInstance.get(
-        API_PATHS.USERS.SEARCH_USERS,
-        { params: { search: query } }
-      );
-      setSearchResults(res.data || []);
+      const res = await axiosInstance.get(API_PATHS.USERS.GET_ALL_USERS);
+      setAllUsers(res.data || []);
+      setFilteredUsers(res.data || []);
     } catch (error) {
-      console.error(error);
+      toast.error("Failed to load users");
     }
   };
 
@@ -67,7 +55,6 @@ const ManageUsers = () => {
 
       toast.success("Member added to team");
       setSearchQuery("");
-      setSearchResults([]);
       setShowDropdown(false);
       fetchTeamMembers();
     } catch (error) {
@@ -83,10 +70,9 @@ const ManageUsers = () => {
       await axiosInstance.delete(
         API_PATHS.USERS.REMOVE_TEAM_MEMBER(memberId)
       );
-
       toast.success("Member removed from team");
       fetchTeamMembers();
-    } catch (error) {
+    } catch {
       toast.error("Failed to remove member");
     }
   };
@@ -96,15 +82,34 @@ const ManageUsers = () => {
   ======================= */
   useEffect(() => {
     fetchTeamMembers();
+    fetchAllUsers();
   }, []);
 
   useEffect(() => {
-    const delay = setTimeout(() => {
-      searchUsers(searchQuery);
-    }, 300);
+    const q = searchQuery.toLowerCase().trim();
 
-    return () => clearTimeout(delay);
-  }, [searchQuery]);
+    if (!q) {
+      setFilteredUsers(allUsers);
+      return;
+    }
+
+    setFilteredUsers(
+      allUsers.filter(
+        (u) =>
+          u.name.toLowerCase().includes(q) ||
+          u.email.toLowerCase().includes(q)
+      )
+    );
+  }, [searchQuery, allUsers]);
+
+  /* =======================
+     USERS NOT IN TEAM
+  ======================= */
+  const teamMemberIds = teamMembers.map((m) => m._id);
+
+  const availableUsers = filteredUsers.filter(
+    (u) => !teamMemberIds.includes(u._id)
+  );
 
   /* =======================
      UI
@@ -113,12 +118,12 @@ const ManageUsers = () => {
     <DashboardLayout activeMenu="Team Members">
       <div className="my-6">
 
-        {/* ================= HEADER ================= */}
+        {/* HEADER */}
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-xl font-medium">Team Members</h2>
         </div>
 
-        {/* ================= ADD MEMBER ================= */}
+        {/* ADD MEMBER */}
         <div className="relative max-w-md mb-6">
           <label className="text-xs text-gray-500 mb-1 block">
             Add Team Member
@@ -128,20 +133,18 @@ const ManageUsers = () => {
             <LuUserPlus className="text-gray-400" />
             <input
               type="text"
-              placeholder="Search users by name"
+              placeholder="Search or select user"
               className="w-full text-sm outline-none"
               value={searchQuery}
-              onChange={(e) => {
-                setSearchQuery(e.target.value);
-                setShowDropdown(true);
-              }}
+              onFocus={() => setShowDropdown(true)}
+              onChange={(e) => setSearchQuery(e.target.value)}
             />
           </div>
 
-          {/* SEARCH DROPDOWN */}
-          {showDropdown && searchResults.length > 0 && (
+          {/* DROPDOWN */}
+          {showDropdown && availableUsers.length > 0 && (
             <div className="absolute z-10 w-full bg-white border border-gray-300 rounded mt-1 shadow max-h-60 overflow-y-auto">
-              {searchResults.map((user) => (
+              {availableUsers.map((user) => (
                 <div
                   key={user._id}
                   className="px-3 py-2 text-sm cursor-pointer hover:bg-gray-100"
@@ -155,18 +158,15 @@ const ManageUsers = () => {
           )}
         </div>
 
-        {/* ================= TABLE ================= */}
+        {/* TEAM TABLE */}
         <div className="border border-gray-300 rounded-lg overflow-hidden bg-white">
-
-          {/* HEADER */}
-          <div className="grid grid-cols-12 gap-3 px-4 py-2 bg-gray-50 text-xs font-medium text-gray-500 border-b border-gray-300">
+          <div className="grid grid-cols-12 gap-3 px-4 py-2 bg-gray-50 text-xs font-medium text-gray-500 border-b">
             <div className="col-span-3">Member</div>
             <div className="col-span-5">Task Status</div>
             <div className="col-span-3">On-Time Completion %</div>
             <div className="col-span-1 text-right">Action</div>
           </div>
 
-          {/* ROWS */}
           {teamMembers.length === 0 ? (
             <p className="p-4 text-sm text-gray-400">
               No team members added yet.
@@ -175,34 +175,30 @@ const ManageUsers = () => {
             teamMembers.map((member) => (
               <div
                 key={member._id}
-                onClick={() =>
-                  navigate(`/admin/users/${member._id}`)
-                }
-                className="cursor-pointer grid grid-cols-12 gap-3 px-4 py-3 border-b border-gray-300 text-sm items-center"
+                onClick={() => navigate(`/admin/users/${member._id}`)}
+                className="cursor-pointer grid grid-cols-12 gap-3 px-4 py-3 border-b text-sm items-center"
               >
-                {/* MEMBER */}
                 <div className="col-span-3">
                   <p className="font-medium">{member.name}</p>
                   <p className="text-xs text-gray-500">{member.email}</p>
                 </div>
 
-                {/* TASK COUNTS */}
-               <div className="col-span-5">
-                <TaskStatusChips taskCounts={member.taskCounts} />
-              </div>
+                <div className="col-span-5">
+                  <TaskStatusChips taskCounts={member.taskCounts} />
+                </div>
 
-
-                {/* ON TIME RATE */}
                 <div className="col-span-3">
                   <span className="text-xs font-medium px-2 py-1 rounded bg-green-100 text-green-700">
                     {member.onTimeCompletionRate}%
                   </span>
                 </div>
 
-                {/* ACTION */}
                 <div className="col-span-1 text-right">
                   <button
-                    onClick={() => removeTeamMember(member._id)}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      removeTeamMember(member._id);
+                    }}
                     className="text-red-500 hover:text-red-700"
                   >
                     <LuTrash2 />

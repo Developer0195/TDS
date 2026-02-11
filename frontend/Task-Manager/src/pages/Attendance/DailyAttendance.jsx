@@ -5,7 +5,7 @@ import LocationPopover from "../../components/LocationPopOver";
 
 const DailyAttendance = () => {
   const [selectedDate, setSelectedDate] = useState(
-    new Date().toISOString().split("T")[0]
+    new Date().toISOString().split("T")[0],
   );
   const [rows, setRows] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -49,6 +49,7 @@ const DailyAttendance = () => {
               <th className="px-4 py-3 text-left">Out</th>
               <th className="px-4 py-3 text-left">Duration</th>
               <th className="px-4 py-3 text-left">Work</th>
+              <th className="px-4 py-3 text-left">Remarks</th>
               <th className="px-4 py-3 text-left">Location</th>
               <th className="px-4 py-3 text-left">Status</th>
             </tr>
@@ -56,28 +57,59 @@ const DailyAttendance = () => {
 
           <tbody className="divide-y">
             {loading ? (
-              <tr><td colSpan="7" className="p-4">Loading…</td></tr>
+              <tr>
+                <td colSpan="7" className="p-4">
+                  Loading…
+                </td>
+              </tr>
             ) : rows.length === 0 ? (
-              <tr><td colSpan="7" className="p-4">No data</td></tr>
+              <tr>
+                <td colSpan="7" className="p-4">
+                  No data
+                </td>
+              </tr>
             ) : (
               rows.map((r) => (
-                <tr key={r.userId} className = "border-b border-gray-300">
+                <tr key={r.userId} className="border-b border-gray-300">
                   <td className="px-4 py-3 font-medium">{r.name}</td>
-                  <td className="px-4 py-3">{r.punchInTime ? new Date(r.punchInTime).toLocaleTimeString() : "—"}</td>
-                  <td className="px-4 py-3">{r.punchOutTime ? new Date(r.punchOutTime).toLocaleTimeString() : "—"}</td>
                   <td className="px-4 py-3">
-                    {r.durationMinutes ? `${Math.floor(r.durationMinutes / 60)}h ${r.durationMinutes % 60}m` : "—"}
+                    {r.punchInTime
+                      ? new Date(r.punchInTime).toLocaleTimeString()
+                      : "—"}
+                  </td>
+                  <td className="px-4 py-3">
+                    {r.punchOutTime
+                      ? new Date(r.punchOutTime).toLocaleTimeString()
+                      : "—"}
+                  </td>
+                  <td className="px-4 py-3">
+                    {r.durationMinutes
+                      ? `${Math.floor(r.durationMinutes / 60)}h ${r.durationMinutes % 60}m`
+                      : "—"}
                   </td>
                   <td className="px-4 py-3">{r.workType || "—"}</td>
-                  <td className="px-4 py-3">
-                   <LocationPopover location={r.location} />
+                  <td className="px-4 py-3 text-xs text-gray-600 max-w-[220px]">
+                    {r.workType === "OFFSITE" ? (
+                      r.remarks ? (
+                        <span title={r.remarks}>{r.remarks}</span>
+                      ) : (
+                        <span className="italic text-gray-400">No remarks</span>
+                      )
+                    ) : (
+                      "—"
+                    )}
                   </td>
                   <td className="px-4 py-3">
-                    <span className={`px-2 py-1 rounded-full text-xs ${
-                      r.attendanceStatus === "Present"
-                        ? "bg-green-100 text-green-700"
-                        : "bg-red-100 text-red-600"
-                    }`}>
+                    <LocationPopover location={r.location} />
+                  </td>
+                  <td className="px-4 py-3">
+                    <span
+                      className={`px-2 py-1 rounded-full text-xs ${
+                        r.attendanceStatus === "Present"
+                          ? "bg-green-100 text-green-700"
+                          : "bg-red-100 text-red-600"
+                      }`}
+                    >
                       {r.attendanceStatus}
                     </span>
                   </td>
