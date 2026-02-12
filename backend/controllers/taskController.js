@@ -1,6 +1,7 @@
 const Task = require("../models/Task");
 const addLog = require("../utils/addLogs");
 const mongoose = require("mongoose");
+const cloudinary = require("../config/cloudinary");
 
 /* ===============================
    GET ALL TASKS
@@ -401,39 +402,227 @@ const updateTaskStatus = async (req, res) => {
 /* ===============================
    UPDATE CHECKLIST
 ================================ */
+// const updateTaskChecklist = async (req, res) => {
+//   try {
+//     const task = await Task.findById(req.params.id);
+//     console.log(task);
+//     if (!task) return res.status(404).json({ message: "Task not found" });
+
+//     task.todoCheckList = req.body.todoCheckList.map((t) => ({
+//       text: t.text,
+//       completed: t.completed ?? false,
+//       assignedTo: t.assignedTo,
+//     }));
+
+//     const completed = task.todoCheckList.filter((t) => t.completed).length;
+//     const total = task.todoCheckList.length;
+
+//     task.progress = total ? Math.round((completed / total) * 100) : 0;
+
+//     if (task.progress === 100) {
+//       task.status = "In Review";
+//       addLog(task, "TASK_IN_REVIEW", "Moved to In Review", req.user._id);
+//     } else if (task.progress > 0) {
+//       task.status = "In Progress";
+//     } else {
+//       task.status = "Pending";
+//     }
+
+//     await task.save();
+//     res.json({ message: "Checklist updated", task });
+//   } catch (error) {
+//     res.status(500).json({ message: error.message });
+//     console.log(error);
+//   }
+// };
+
 const updateTaskChecklist = async (req, res) => {
   try {
     const task = await Task.findById(req.params.id);
-    console.log(task);
-    if (!task) return res.status(404).json({ message: "Task not found" });
 
-    task.todoCheckList = req.body.todoCheckList.map((t) => ({
-      text: t.text,
-      completed: t.completed ?? false,
-      assignedTo: t.assignedTo,
-    }));
+    if (!task) {
+      return res.status(404).json({ message: "Task not found" });
+    }
 
-    const completed = task.todoCheckList.filter((t) => t.completed).length;
+    const incomingChecklist = req.body.todoCheckList;
+
+    task.todoCheckList = task.todoCheckList.map((existing) => {
+      const incoming = incomingChecklist.find(
+        (t) => t._id.toString() === existing._id.toString()
+      );
+
+      if (!incoming) return existing;
+
+      // Only assigned user can modify
+      if (
+        existing.assignedTo.toString() ===
+        req.user._id.toString()
+      ) {
+        existing.completed = incoming.completed;
+        existing.completedAt = incoming.completed
+          ? new Date()
+          : null;
+      }
+
+      return existing;
+    });
+
+    // Recalculate progress only
+    const completedCount = task.todoCheckList.filter(
+      (t) => t.completed
+    ).length;
+
     const total = task.todoCheckList.length;
 
-    task.progress = total ? Math.round((completed / total) * 100) : 0;
+    task.progress = total
+      ? Math.round((completedCount / total) * 100)
+      : 0;
 
-    if (task.progress === 100) {
-      task.status = "In Review";
-      addLog(task, "TASK_IN_REVIEW", "Moved to In Review", req.user._id);
-    } else if (task.progress > 0) {
-      task.status = "In Progress";
-    } else {
+    // 🚫 DO NOT TOUCH STATUS HERE
+
+    await task.save();
+
+    res.status(200).json({
+      message: "Checklist updated",
+      task,
+    });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: error.message });
+  }
+};
+
+const updateSubtask = async (req, res) => {
+  try {
+    const { taskId, subtaskId } = req.params;
+    const completed = req.body.completed === "true";
+
+    if (!req.file && req.body.completed === undefined) {
+      return res.status(400).json({
+        message: "Nothing to update",
+      });
+    }
+
+    const task = await Task.findById(taskId);
+    if (!task)
+      return res.status(404).json({ message: "Task not found" });
+
+    const subtask = task.todoCheckList.id(subtaskId);
+    if (!subtask)
+      return res.status(404).json({ message: "Subtask not found" });
+
+    if (
+      subtask.assignedTo.toString() !==
+      req.user._id.toString()
+    ) {
+      return res.status(403).json({
+        message: "Not authorized",
+      });
+    }
+
+    /* ===============================
+       UPDATE COMPLETION
+    =============================== */
+
+    subtask.completed = completed;
+    subtask.completedAt = completed ? new Date() : null;
+
+    /* ===============================
+       DELETE FILE IF UNCHECKED
+    =============================== */
+
+    if (!completed && subtask.document?.public_id) {
+      await cloudinary.uploader.destroy(
+        subtask.document.public_id
+      );
+      subtask.document = undefined;
+    }
+
+    /* ===============================
+       UPLOAD NEW FILE (BUFFER ONLY)
+    =============================== */
+    console.log(req.file)
+    if (req.file) {
+      // Delete old file
+      if (subtask.document?.public_id) {
+        const res = await cloudinary.uploader.destroy(
+          subtask.document.public_id
+        );
+        console.log(res)
+      }
+
+      const result = await new Promise((resolve, reject) => {
+        const stream =
+          cloudinary.uploader.upload_stream(
+            { folder: "task-attachments" },
+            (error, result) => {
+              if (error) reject(error);
+              else resolve(result);
+            }
+          );
+        stream.end(req.file.buffer);
+      });
+
+      console.log(result)
+
+      subtask.set("document", {
+  fileName: req.file.originalname,
+  fileUrl: result.secure_url,
+  public_id: result.public_id,
+  uploadedBy: req.user._id,
+  uploadedAt: new Date(),
+});
+
+    }
+
+    /* ===============================
+       AUTO STATUS LOGIC
+    =============================== */
+
+    const total = task.todoCheckList.length;
+    const completedCount = task.todoCheckList.filter(
+      (t) => t.completed
+    ).length;
+
+    task.progress = total
+      ? Math.round((completedCount / total) * 100)
+      : 0;
+
+    if (completedCount === 0) {
       task.status = "Pending";
+    } else if (completedCount === total) {
+      task.status = "Completed";
+      task.completedAt = new Date();
+    } else {
+      task.status = "In Progress";
     }
 
     await task.save();
-    res.json({ message: "Checklist updated", task });
-  } catch (error) {
-    res.status(500).json({ message: error.message });
-    console.log(error);
+
+    const populatedTask = await Task.findById(task._id)
+      .populate("assignedTo", "name email profileImageUrl")
+      .populate("todoCheckList.assignedTo", "name profileImageUrl")
+      .populate("comments.commentedBy", "name profileImageUrl");
+
+    res.json({
+      message: "Subtask updated successfully",
+      task: populatedTask,
+    });
+
+  } catch (err) {
+    console.error("UPDATE ERROR:", err);
+    res.status(500).json({
+      message: "Update failed",
+    });
   }
 };
+
+
+
+
+
+
+
 
 /* ===============================
    ADD COMMENT
@@ -494,6 +683,91 @@ const deleteTask = async (req, res) => {
     res.status(500).json({ message: error.message });
   }
 };
+
+
+/* ======================================
+   UPLOAD FILE FOR A SPECIFIC SUBTASK
+====================================== */
+const uploadSubtaskFile = async (req, res) => {
+  try {
+    const { taskId, subtaskId } = req.params;
+
+    if (!req.file) {
+      return res.status(400).json({
+        message: "No file provided",
+      });
+    }
+
+    const task = await Task.findById(taskId);
+    if (!task) {
+      return res.status(404).json({
+        message: "Task not found",
+      });
+    }
+
+    const subtask = task.todoCheckList.id(subtaskId);
+    if (!subtask) {
+      return res.status(404).json({
+        message: "Subtask not found",
+      });
+    }
+
+    // ✅ SECURITY: Only assigned user can upload
+    if (
+      subtask.assignedTo.toString() !==
+      req.user._id.toString()
+    ) {
+      return res.status(403).json({
+        message: "Not authorized to upload file for this subtask",
+      });
+    }
+
+    // Upload to Cloudinary
+    const uploadStream = cloudinary.uploader.upload_stream(
+      { folder: "subtask-documents" },
+      async (error, result) => {
+        if (error) {
+          console.error("Cloudinary upload error:", error);
+          return res.status(500).json({
+            message: "Cloudinary upload failed",
+          });
+        }
+
+        // Save file inside subtask
+        subtask.document = {
+          fileName: req.file.originalname,
+          fileUrl: result.secure_url,
+          uploadedBy: req.user._id,
+          uploadedAt: new Date(),
+        };
+
+        await task.save();
+
+        // Optional: add log
+        task.logs.push({
+          action: "SUBTASK_FILE_UPLOADED",
+          description: `File uploaded for subtask "${subtask.text}"`,
+          performedBy: req.user._id,
+        });
+
+        await task.save();
+
+        res.status(200).json({
+          message: "File uploaded successfully",
+          task,
+        });
+      }
+    );
+
+    uploadStream.end(req.file.buffer);
+  } catch (error) {
+    console.error("Subtask upload error:", error);
+    res.status(500).json({
+      message: "Upload failed",
+    });
+  }
+};
+
 
 /* ===============================
  DASHBOARD DATA (ADMIN / SUPERADMIN)
@@ -1147,4 +1421,6 @@ module.exports = {
   getUserDashboardData,
   addComment,
   getUserAnalyticsByAdmin,
+  uploadSubtaskFile,
+  updateSubtask
 };

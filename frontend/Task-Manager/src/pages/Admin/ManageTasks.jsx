@@ -19,6 +19,10 @@ const ManageTasks = () => {
     projectId: "",
   });
 
+  useEffect(() => {
+    filters.endDate = filters.startDate
+  }, [filters.startDate])
+
   // pagination
   // pagination
   const [page, setPage] = useState(1);

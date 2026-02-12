@@ -41,6 +41,7 @@ const subTaskSchema = new mongoose.Schema({
       type: Date,
       default: Date.now,
     },
+    public_id: String,
   },
 
   createdAt: {

@@ -39,6 +39,11 @@ export const API_PATHS = {
         ADD_COMMENT: (taskId) => `/api/tasks/${taskId}/comments`,
         GET_USER_ANALYTICS: (userId) => `/api/tasks/user/${userId}/analytics`,
         AI_ESTIMATE: "/api/tasks/ai/estimate",
+        UPLOAD_SUBTASK_FILE: (taskId, subtaskId) =>
+  `/api/tasks/${taskId}/subtasks/${subtaskId}/upload`,
+         UPDATE_SUBTASK: (taskId, subtaskId) =>
+        `/api/tasks/${taskId}/subtasks/${subtaskId}`,
+
     },
 
     LOCATIONS: {

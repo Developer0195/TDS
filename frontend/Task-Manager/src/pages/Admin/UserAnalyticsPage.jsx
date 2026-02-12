@@ -266,7 +266,7 @@ import { API_PATHS } from "../../utils/apiPaths";
 import InfoCard from "../../components/Cards/InfoCards";
 import CustomPieChart from "../../components/Charts/CustomPieChart";
 import CustomBarChart from "../../components/Charts/CustomBarChart";
-import UserTaskListTable from "../../components/UserTaskListTable";
+import UserTaskListTable from "../../components/AdminUserTaskListTable";
 
 const COLORS = ["#8D51FF", "#00B8D8", "#7BCE00", "#F59E0B", "#EF4444"];
 const PAGE_SIZE = 10;
@@ -499,7 +499,7 @@ const UserAnalyticsPage = () => {
           </label>
         </div>
 
-        <UserTaskListTable tasks={analytics?.tasks || []} />
+        <UserTaskListTable tableData={analytics?.tasks || []} />
 
         {/* PAGINATION */}
         {pagination && pagination.totalPages > 1 && (
