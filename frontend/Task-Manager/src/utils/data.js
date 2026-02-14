@@ -91,7 +91,7 @@ export const SIDE_MENU_USER_DATA = [
         id: "04",
         label: "Attendance",
         icon: LuMapPinCheckInside,
-        path: "/attendance",
+        path: "/user/attendance",
     },
     {
         id: "05",

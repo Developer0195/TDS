@@ -14,6 +14,7 @@ const cloudinary = require("./config/cloudinary");
 const uploadRoutes = require("./routes/uploadRoutes");
 const projectRoutes = require("./routes/projectRoutes");
 const locationRoutes = require("./routes/locationRoutes.js");
+const weeklyTaskRoutes = require("./routes/weeklyTaskRoutes.js");
 
 require("./utils/attendance.js")
 
@@ -43,6 +44,8 @@ app.use("/api/attendance", attendanceRoutes);
 app.use("/api/upload", uploadRoutes);
 app.use("/api/projects", projectRoutes);
 app.use("/api/locations", locationRoutes)
+app.use("/api/weekly-tasks", weeklyTaskRoutes);
+
 
 
 //Server uploads folder

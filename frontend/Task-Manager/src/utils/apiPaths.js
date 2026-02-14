@@ -46,6 +46,15 @@ export const API_PATHS = {
 
     },
 
+    WEEKLY_TASKS: {
+  CREATE: "/api/weekly-tasks",
+  UPDATE: (id) => `/api/weekly-tasks/${id}`,
+  GET_MY_CURRENT: "/api/weekly-tasks/my/current",
+  GET_BY_ID: (id) => `/api/weekly-tasks/${id}`,
+  GET_MY_HISTORY: "/api/weekly-tasks/my/history"
+},
+
+
     LOCATIONS: {
   GET_ALL: "/api/locations",                 // Get all active locations (Admin)
   CREATE: "/api/locations",                  // Create a new location (Admin)

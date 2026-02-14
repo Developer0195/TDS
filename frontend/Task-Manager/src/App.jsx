@@ -23,6 +23,8 @@ import { Toaster } from 'react-hot-toast';
 
 import UserProfile from "./pages/Profile/UserProfile";
 import UserAnalyticsPage from './pages/Admin/UserAnalyticsPage';
+import WeeklyTasks from './pages/Users/WeeklyTasks';
+import MyAttendance from './pages/Users/UserAttendance';
 
 /* ✅ ROOT COMPONENT — MUST EXIST */
 const Root = () => {
@@ -66,6 +68,8 @@ const App = () => {
             <Route path="/user/dashboard" element={<UserDashboard />} />
             <Route path="/user/my-tasks" element={<Mytasks />} />
             <Route path="/user/task-details/:id" element={<ViewTaskDetails />} />
+            <Route path = "/user/weekly-tasks" element = {<WeeklyTasks />} />
+            <Route path = "/user/attendance" element = {<MyAttendance />} />
           </Route>
 
           {/* Attendance (Admin + Member) */}

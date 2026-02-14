@@ -387,7 +387,7 @@
 
 //   return (
 //     <div className="border border-gray-100 rounded-md p-3 mb-2 bg-gray-50">
-      
+
 //       {/* Top Row */}
 //       <div className="flex items-center justify-between">
 //         <div className="flex items-center gap-3">
@@ -438,7 +438,6 @@
 //   );
 // };
 
-
 // const Attachment = ({ file, index, onClick }) => (
 //   <div
 //     className="flex justify-between bg-gray-50 border border-gray-100 px-3 py-2 rounded-md mb-2 cursor-pointer"
@@ -454,10 +453,6 @@
 //     <LuSquareArrowOutUpRight className="text-gray-400" />
 //   </div>
 // );
-
-
-
-
 
 import React, { useEffect, useState, useContext } from "react";
 import { useParams } from "react-router-dom";
@@ -478,9 +473,7 @@ const ViewTaskDetails = () => {
 
   const getTaskDetailsByID = async () => {
     try {
-      const res = await axiosInstance.get(
-        API_PATHS.TASKS.GET_TASK_BY_ID(id)
-      );
+      const res = await axiosInstance.get(API_PATHS.TASKS.GET_TASK_BY_ID(id));
       setTask(res.data);
     } catch {
       toast.error("Failed to load task");
@@ -508,21 +501,18 @@ const ViewTaskDetails = () => {
     <DashboardLayout activeMenu="My Tasks">
       <div className="mt-6">
         <div className="bg-white border border-blue-100 rounded-xl p-6 shadow-sm">
-
           {/* HEADER */}
           <div className="flex justify-between items-start border-b border-blue-50 pb-4">
             <div>
               <h2 className="text-lg font-semibold text-gray-800">
                 {task.title}
               </h2>
-              <p className="text-xs text-gray-500 mt-1">
-                {task.description}
-              </p>
+              <p className="text-xs text-gray-500 mt-1">{task.description}</p>
             </div>
 
             <div
               className={`text-xs px-3 py-1 rounded-full border ${getStatusStyles(
-                task.status
+                task.status,
               )}`}
             >
               {task.status}
@@ -530,12 +520,10 @@ const ViewTaskDetails = () => {
           </div>
 
           {/* META */}
-          <div className="grid grid-cols-3 gap-6 mt-4 text-xs text-gray-600">
+          <div className="grid grid-cols-4 gap-6 mt-4 text-xs text-gray-600">
             <div>
               <p className="text-gray-400">Priority</p>
-              <p className="mt-1 font-medium text-gray-700">
-                {task.priority}
-              </p>
+              <p className="mt-1 font-medium text-gray-700">{task.priority}</p>
             </div>
 
             <div>
@@ -548,13 +536,25 @@ const ViewTaskDetails = () => {
             <div>
               <p className="text-gray-400 mb-1">Assigned To</p>
               <AvatarGroup
-                avatars={
-                  task.assignedTo?.map(
-                    (u) => u.profileImageUrl
-                  ) || []
-                }
+                avatars={task.assignedTo?.map((u) => u.profileImageUrl) || []}
                 maxVisible={5}
               />
+            </div>
+
+              {/* assigned by */}
+              {console.log(task)}
+            <div>
+              <p className="text-gray-400 mb-1">Assigned By</p>
+              <div className="flex items-center gap-2 mt-1">
+                <img
+                  src={task?.createdBy?.profileImageUrl}
+                  alt=""
+                  className="w-6 h-6 rounded-full"
+                />
+                <p className="font-medium text-gray-700">
+                  {task?.createdBy?.name}
+                </p>
+              </div>
             </div>
           </div>
 
@@ -577,9 +577,7 @@ const ViewTaskDetails = () => {
 
           {/* COMMENTS */}
           <div className="mt-8 border-t border-blue-50 pt-6">
-            <p className="text-xs font-semibold text-gray-500 mb-3">
-              Comments
-            </p>
+            <p className="text-xs font-semibold text-gray-500 mb-3">Comments</p>
 
             {task.comments?.map((c) => (
               <div
@@ -600,9 +598,7 @@ const ViewTaskDetails = () => {
                   </span>
                 </div>
 
-                <p className="text-xs text-gray-700">
-                  {c.message}
-                </p>
+                <p className="text-xs text-gray-700">{c.message}</p>
               </div>
             ))}
 
@@ -618,12 +614,7 @@ export default ViewTaskDetails;
 
 /* ================= SUBTASK CARD ================= */
 
-const SubtaskCard = ({
-  item,
-  taskId,
-  userId,
-  onUpdated,
-}) => {
+const SubtaskCard = ({ item, taskId, userId, onUpdated }) => {
   const assignedUserId =
     typeof item.assignedTo === "object"
       ? item.assignedTo?._id
@@ -635,11 +626,9 @@ const SubtaskCard = ({
   const [file, setFile] = useState(null);
   const [loading, setLoading] = useState(false);
 
-  const hasChanges =
-    completed !== item.completed || file !== null;
+  const hasChanges = completed !== item.completed || file !== null;
 
-    console.log("Uploading file:", file);
-
+  console.log("Uploading file:", file);
 
   const handleUpdate = async () => {
     if (!isAssignedToMe || !hasChanges) return;
@@ -652,23 +641,20 @@ const SubtaskCard = ({
       setLoading(true);
 
       const res = await axiosInstance.put(
-  API_PATHS.TASKS.UPDATE_SUBTASK(taskId, item._id),
-  formData,
-  {
-    headers: {
-      "Content-Type": "multipart/form-data",
-    },
-  }
-);
-
+        API_PATHS.TASKS.UPDATE_SUBTASK(taskId, item._id),
+        formData,
+        {
+          headers: {
+            "Content-Type": "multipart/form-data",
+          },
+        },
+      );
 
       toast.success(res.data.message);
       onUpdated(res.data.task);
       setFile(null);
     } catch (err) {
-      toast.error(
-        err.response?.data?.message || "Update failed"
-      );
+      toast.error(err.response?.data?.message || "Update failed");
     } finally {
       setLoading(false);
     }
@@ -676,21 +662,16 @@ const SubtaskCard = ({
 
   return (
     <div className="border border-blue-100 bg-blue-50/30 rounded-lg p-4 mb-3">
-
       <div className="flex justify-between items-center">
         <div className="flex items-center gap-3">
           <input
             type="checkbox"
             checked={completed}
             disabled={!isAssignedToMe}
-            onChange={() =>
-              setCompleted(!completed)
-            }
+            onChange={() => setCompleted(!completed)}
             className="w-4 h-4 accent-blue-600"
           />
-          <span className="text-sm text-gray-700">
-            {item.text}
-          </span>
+          <span className="text-sm text-gray-700">{item.text}</span>
         </div>
 
         <div className="flex items-center gap-2">
@@ -699,9 +680,7 @@ const SubtaskCard = ({
             alt=""
             className="w-6 h-6 rounded-full border border-white"
           />
-          <span className="text-xs text-gray-600">
-            {item.assignedTo?.name}
-          </span>
+          <span className="text-xs text-gray-600">{item.assignedTo?.name}</span>
         </div>
       </div>
 
@@ -727,17 +706,11 @@ const SubtaskCard = ({
             <input
               type="file"
               hidden
-              onChange={(e) =>
-                setFile(e.target.files[0])
-              }
+              onChange={(e) => setFile(e.target.files[0])}
             />
           </label>
 
-          {file && (
-            <span className="text-xs text-gray-600">
-              {file.name}
-            </span>
-          )}
+          {file && <span className="text-xs text-gray-600">{file.name}</span>}
 
           <button
             onClick={handleUpdate}
@@ -770,16 +743,14 @@ const CommentBox = ({ taskId, onUpdated }) => {
 
       const res = await axiosInstance.post(
         API_PATHS.TASKS.ADD_COMMENT(taskId),
-        { message: comment }
+        { message: comment },
       );
 
       toast.success("Comment added");
       onUpdated(res.data.task);
       setComment("");
     } catch (err) {
-      toast.error(
-        err.response?.data?.message || "Failed to add comment"
-      );
+      toast.error(err.response?.data?.message || "Failed to add comment");
     } finally {
       setLoading(false);
     }

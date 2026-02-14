@@ -186,7 +186,8 @@ const getTaskById = async (req, res) => {
       .populate("project", "name description members")
       .populate("comments.commentedBy", "name profileImageUrl")
       // ✅ IMPORTANT: populate subtask assignees
-      .populate("todoCheckList.assignedTo", "name email profileImageUrl");
+      .populate("todoCheckList.assignedTo", "name email profileImageUrl")
+       .populate("createdBy", "name email profileImageUrl");
 
     if (!task) {
       return res.status(404).json({ message: "Task not found" });

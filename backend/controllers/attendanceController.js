@@ -1,12 +1,12 @@
 const Attendance = require("../models/Attendance");
-const Task = require("../models/Task")
-const {getDistance} = require("../utils/distance");
-const {isWithinAnyLocation} = require("../utils/distance");
+const Task = require("../models/Task");
+const { getDistance } = require("../utils/distance");
+const { isWithinAnyLocation } = require("../utils/distance");
 const cloudinary = require("../config/cloudinary");
 const calculateDurationMinutes = require("../utils/time");
 const { OFFICE_LOCATION, RADIUS_METERS } = require("../config/geofence");
 const User = require("../models/User");
-const Location = require("../models/Location")
+const Location = require("../models/Location");
 
 // const punchIn = async (req, res) => {
 //     try {
@@ -56,7 +56,6 @@ const Location = require("../models/Location")
 //         res.status(500).json({ message: error.message });
 //     }
 // };
-
 
 // const punchIn = async (req, res) => {
 //   try {
@@ -170,7 +169,6 @@ const Location = require("../models/Location")
 //     }
 // };
 
-
 const punchIn = async (req, res) => {
   try {
     const { latitude, longitude, photoBase64, remarks } = req.body;
@@ -197,8 +195,7 @@ const punchIn = async (req, res) => {
     });
 
     /* 🔹 Fetch user + assigned locations */
-    const user = await User.findById(req.user.id)
-      .populate("assignedLocations");
+    const user = await User.findById(req.user.id).populate("assignedLocations");
 
     let workType = "OFFSITE";
     let distance = null;
@@ -208,21 +205,20 @@ const punchIn = async (req, res) => {
       const match = isWithinAnyLocation(
         latitude,
         longitude,
-        user.assignedLocations
+        user.assignedLocations,
       );
 
       if (match.matched) {
         workType = "WFO";
         distance = match.distance;
       }
-    }
+    } else {
     /* 🔹 CASE 2: Fallback to default office */
-    else {
       distance = getDistance(
         latitude,
         longitude,
         OFFICE_LOCATION.latitude,
-        OFFICE_LOCATION.longitude
+        OFFICE_LOCATION.longitude,
       );
 
       if (distance <= RADIUS_METERS) {
@@ -230,7 +226,7 @@ const punchIn = async (req, res) => {
       }
     }
 
-    /* 🔴 OFFSITE → remarks mandatory */
+    /* OFFSITE → remarks mandatory */
     if (workType === "OFFSITE" && !remarks) {
       return res.status(400).json({
         message: "Remarks are required for offsite work",
@@ -261,8 +257,6 @@ const punchIn = async (req, res) => {
     res.status(500).json({ message: error.message });
   }
 };
-
-
 
 const punchOut = async (req, res) => {
   try {
@@ -323,14 +317,14 @@ const punchOut = async (req, res) => {
     const punchOutTime = new Date();
     const durationMinutes = calculateDurationMinutes(
       attendance.punchIn.time,
-      punchOutTime
+      punchOutTime,
     );
 
     const distance = getDistance(
       latitude,
       longitude,
       OFFICE_LOCATION.latitude,
-      OFFICE_LOCATION.longitude
+      OFFICE_LOCATION.longitude,
     );
 
     attendance.punchOut = {
@@ -354,7 +348,6 @@ const punchOut = async (req, res) => {
   }
 };
 
-
 const offsiteCheckIn = async (req, res) => {
   try {
     const { latitude, longitude, photoBase64 } = req.body;
@@ -373,14 +366,14 @@ const offsiteCheckIn = async (req, res) => {
       date: today,
     });
 
-    /* 🔴 Must punch in first */
+    /* Must punch in first */
     if (!attendance || !attendance.punchIn?.time) {
       return res.status(400).json({
         message: "Punch in required before check-in",
       });
     }
 
-    /* 🔴 Only OFFSITE users */
+    /* Only OFFSITE users */
     if (attendance.workType !== "OFFSITE") {
       return res.status(400).json({
         message: "Check-ins are only required for offsite work",
@@ -389,19 +382,33 @@ const offsiteCheckIn = async (req, res) => {
 
     const checkins = attendance.offsiteCheckins || [];
 
-    /* 🔴 Max 3 check-ins */
+    /* Max 3 check-ins */
     if (checkins.length >= 3) {
       return res.status(400).json({
         message: "Maximum offsite check-ins completed",
       });
     }
 
-    /* 🔴 Enforce 2-hour gap */
+    /* Enforce 2-hour gap */
+    const now = new Date();
+
+    /* ⛔ FIRST CHECK-IN → must be 2 hours after punch-in */
+    if (checkins.length === 0) {
+      const punchInTime = new Date(attendance.punchIn.time);
+
+      const diffMinutes = (now.getTime() - punchInTime.getTime()) / (1000 * 60);
+
+      if (diffMinutes < 120) {
+        return res.status(400).json({
+          message: "First check-in allowed after 2 hours from punch-in",
+          nextAllowedInMinutes: Math.ceil(120 - diffMinutes),
+        });
+      }
+    }
+
+    /* ⛔ NEXT CHECK-INS → must be 2 hours after last check-in */
     if (checkins.length > 0) {
-      const lastCheckinTime = new Date(
-        checkins[checkins.length - 1].time
-      );
-      const now = new Date();
+      const lastCheckinTime = new Date(checkins[checkins.length - 1].time);
 
       const diffMinutes =
         (now.getTime() - lastCheckinTime.getTime()) / (1000 * 60);
@@ -424,7 +431,7 @@ const offsiteCheckIn = async (req, res) => {
       latitude,
       longitude,
       OFFICE_LOCATION.latitude,
-      OFFICE_LOCATION.longitude
+      OFFICE_LOCATION.longitude,
     );
 
     /* ✅ Save check-in */
@@ -451,9 +458,6 @@ const offsiteCheckIn = async (req, res) => {
   }
 };
 
-
-
-
 // const getMyAttendance = async (req, res) => {
 //     try {
 //         const attendance = await Attendance.find({
@@ -475,7 +479,6 @@ const offsiteCheckIn = async (req, res) => {
 //         res.status(500).json({ message: error.message });
 //     }
 // };
-
 
 const getMyAttendance = async (req, res) => {
   try {
@@ -515,7 +518,6 @@ const getMyAttendance = async (req, res) => {
     res.status(500).json({ message: error.message });
   }
 };
-
 
 // const getDailyAttendance = async (req, res) => {
 //   try {
@@ -595,7 +597,6 @@ const getMyAttendance = async (req, res) => {
 //   }
 // };
 
-
 const getDailyAttendance = async (req, res) => {
   try {
     const { date } = req.query;
@@ -606,7 +607,7 @@ const getDailyAttendance = async (req, res) => {
     /* 🔹 Admin + team members */
     const admin = await User.findById(req.user._id).populate(
       "teamMembers",
-      "name"
+      "name",
     );
 
     const teamMembers = admin.teamMembers || [];
@@ -619,7 +620,7 @@ const getDailyAttendance = async (req, res) => {
 
     const rows = teamMembers.map((member) => {
       const record = attendanceRecords.find(
-        (a) => a.user.toString() === member._id.toString()
+        (a) => a.user.toString() === member._id.toString(),
       );
 
       /* 🔹 No record = Absent */
@@ -651,7 +652,7 @@ const getDailyAttendance = async (req, res) => {
           : null,
 
         overriddenByAdmin: record.overriddenByAdmin || false,
-        remarks: record.punchIn?.remarks || null
+        remarks: record.punchIn?.remarks || null,
       };
     });
 
@@ -663,8 +664,6 @@ const getDailyAttendance = async (req, res) => {
     res.status(500).json({ message: error.message });
   }
 };
-
-
 
 // const getTeamAttendanceAnalytics = async (req, res) => {
 //   try {
@@ -772,7 +771,7 @@ const getTeamAttendanceAnalytics = async (req, res) => {
 
     const admin = await User.findById(req.user._id).populate(
       "teamMembers",
-      "name email"
+      "name email",
     );
 
     const teamMembers = admin.teamMembers || [];
@@ -784,7 +783,7 @@ const getTeamAttendanceAnalytics = async (req, res) => {
 
     const result = teamMembers.map((member) => {
       const memberRecords = attendanceRecords.filter(
-        (a) => a.user.toString() === member._id.toString()
+        (a) => a.user.toString() === member._id.toString(),
       );
 
       /* 🔹 Build date range ONLY till today */
@@ -852,7 +851,6 @@ const getTeamAttendanceAnalytics = async (req, res) => {
   }
 };
 
-
 const updateAttendanceStatus = async (req, res) => {
   try {
     const { attendanceId } = req.params;
@@ -883,7 +881,6 @@ const updateAttendanceStatus = async (req, res) => {
   }
 };
 
-
 const adminOverrideAttendance = async (req, res) => {
   try {
     const { userId, date, attendanceStatus, reason } = req.body;
@@ -909,7 +906,7 @@ const adminOverrideAttendance = async (req, res) => {
         upsert: true, // ✅ create if missing
         new: true,
         setDefaultsOnInsert: true,
-      }
+      },
     );
 
     res.json({
@@ -921,11 +918,13 @@ const adminOverrideAttendance = async (req, res) => {
   }
 };
 
-
-
-
-
-
-
-
-module.exports = { punchIn, punchOut, getMyAttendance, offsiteCheckIn, getDailyAttendance, getTeamAttendanceAnalytics, updateAttendanceStatus, adminOverrideAttendance };
+module.exports = {
+  punchIn,
+  punchOut,
+  getMyAttendance,
+  offsiteCheckIn,
+  getDailyAttendance,
+  getTeamAttendanceAnalytics,
+  updateAttendanceStatus,
+  adminOverrideAttendance,
+};

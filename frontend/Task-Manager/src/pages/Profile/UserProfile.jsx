@@ -70,7 +70,7 @@ const UserProfile = () => {
 
   const handleSaveProfile = async () => {
   try {
-      setPasswordLoading(true)
+      setProfileLoading(true)
     const emailChanged = formData.email !== user.email;
 
     const res = await axiosInstance.put(
