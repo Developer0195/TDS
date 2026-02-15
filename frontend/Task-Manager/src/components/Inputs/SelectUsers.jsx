@@ -1,18 +1,28 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useContext } from "react";
 import axiosInstance from "../../utils/axiosInstance";
 import Modal from "../Modal";
 import AvatarGroup from "../AvatarGroup";
 import { LuUser } from "react-icons/lu";
 import { API_PATHS } from "../../utils/apiPaths";
+import { UserContext } from "../../context/userContext";
 
 const SelectUsers = ({ disabled, selectedUsers, setSelectedUsers, users: externalUsers }) => {
   const [allUsers, setAllUsers] = useState([]);
   const [isModalOpen, setIsModalOpen] = useState(false); // ✅ FIX
   const [tempSelectedUsers, setTempSelectedUsers] = useState([]);
+  const {user}= useContext(UserContext);
+  console.log(user)
 
   const getAllUsers = async () => {
     try {
-      const response = await axiosInstance.get(API_PATHS.USERS.GET_ADMIN_TEAM);
+      let response = null;
+      if(user.role == "admin"){
+        response = await axiosInstance.get(API_PATHS.USERS.GET_ADMIN_TEAM);
+      }
+      if(user.role == "superadmin"){
+        response = await axiosInstance.get(API_PATHS.USERS.GET_ALL_USERS);
+      }
+      
       if (response.data?.length > 0) {
         setAllUsers(response.data);
       }

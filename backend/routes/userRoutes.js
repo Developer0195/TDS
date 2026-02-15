@@ -22,7 +22,7 @@
 
 
 const express = require("express");
-const { adminOnly, protect } = require("../middlewares/authMiddleware");
+const { adminOnly, superadminOnly, protect } = require("../middlewares/authMiddleware");
 
 const {
   getUsers,
@@ -31,12 +31,13 @@ const {
   getMyProfile,
   updateMyProfile,
 
-  // 🆕 Team-based controllers
   getAdminTeamMembers,
   addTeamMember,
   removeTeamMember,
   searchUsers,
-  getUserAnalytics
+  getUserAnalytics,
+  getAssignableUsers,
+  getAllUsersForSuperadmin
 } = require("../controllers/userController");
 
 const router = express.Router();
@@ -51,25 +52,41 @@ router.put("/me/profile", protect, updateMyProfile);
    TEAM MANAGEMENT (ADMIN)
 ========================= */
 router.get("/team", protect, adminOnly, getAdminTeamMembers);
-router.post("/team", protect, adminOnly, addTeamMember);
+router.post("/team", protect,  adminOnly, addTeamMember);
 router.delete("/team/:memberId", protect, adminOnly, removeTeamMember);
 
 /* =========================
    SEARCH USERS (ADMIN)
 ========================= */
-router.get("/search", protect, adminOnly, searchUsers);
+router.get("/search", protect, adminOnly,  searchUsers);
 
 /* =========================
    USER MANAGEMENT
 ========================= */
-router.get("/", protect, adminOnly, getUsers);
+router.get(
+  "/assignable-users",
+  protect,
+  getAssignableUsers
+);
+
+router.get(
+  "/superadmin",
+  protect,
+  superadminOnly, 
+  getAllUsersForSuperadmin
+);
+
+router.get("/", protect, getUsers);
 router.delete("/:id", protect, adminOnly, deleteUser);
-router.get("/:id", protect, getUserById); // ⚠️ ALWAYS LAST
+router.get("/:id", protect, getUserById);
 
 router.get(
   "/:id/analytics",
   protect,
   getUserAnalytics
 );
+
+
+
 
 module.exports = router;

@@ -61,18 +61,18 @@ const TaskRow = ({ task, onClick }) => {
 
       {/* ASSIGNED TO */}
       <div className="col-span-2 flex flex-wrap gap-2">
-        {task.assignedTo?.slice(0, 3).map((u) => (
+        {task.assignedTo?.slice(0, 2).map((u) => (
           <div
             key={u}
-            className="w-10 h-7 px-2 py-1 rounded-lg bg-gray-200 text-xs flex items-center justify-center"
+            className=" h-7 px-2 py-1 rounded-lg bg-gray-200 text-xs flex items-center justify-center"
             title="Assigned user"
           >
             {u?.name}
           </div>
         ))}
-        {task.assignedTo?.length > 3 && (
+        {task.assignedTo?.length > 2 && (
           <span className="text-xs text-gray-500">
-            +{task.assignedTo.length - 3}
+            +{task.assignedTo.length - 2}
           </span>
         )}
       </div>

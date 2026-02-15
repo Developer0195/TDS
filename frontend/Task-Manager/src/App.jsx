@@ -26,6 +26,14 @@ import UserAnalyticsPage from './pages/Admin/UserAnalyticsPage';
 import WeeklyTasks from './pages/Users/WeeklyTasks';
 import MyAttendance from './pages/Users/UserAttendance';
 
+import SuperAdminDashboard from "./pages/SuperAdmin/Dashboard"
+import SuperAdminCreateProject from "./pages/SuperAdmin/CreateProject"
+import SuperAdminCreateTask from "./pages/SuperAdmin/CreateTask"
+import SuperAdminManageProjects from "./pages/SuperAdmin/ManageProjects"
+import SuperAdminManageTasks from "./pages/SuperAdmin/ManageTasks"
+import SuperAdminManageUsers from "./pages/SuperAdmin/ManageUsers"
+import SuperAdminUserAnalytics from "./pages/SuperAdmin/UserAnalyticsPage"
+
 /* ✅ ROOT COMPONENT — MUST EXIST */
 const Root = () => {
   const { user, loading } = useContext(UserContext);
@@ -51,6 +59,17 @@ const App = () => {
           <Route path="/login" element={<Login />} />
           <Route path="/signup" element={<Signup />} />
           <Route path="/verify-email" element={<VerifyEmail />} />
+
+          {/* SuperAdmin Routes */}
+           <Route element={<PrivateRoute allowedRoles={["superadmin"]} />}>
+            <Route path="/superadmin/dashboard" element={<SuperAdminDashboard />} />
+            <Route path="/superadmin/tasks" element={<SuperAdminManageTasks />} />
+            <Route path="/superadmin/create-task" element={<SuperAdminCreateTask />} />
+            <Route path="/superadmin/create-project" element={<SuperAdminCreateProject />} />
+            <Route path="/superadmin/projects" element={<SuperAdminManageProjects />} />
+            <Route path="/superadmin/users" element={<SuperAdminManageUsers />} />
+            <Route path="/superadmin/users/:id" element={<SuperAdminUserAnalytics />} />
+          </Route>
 
           {/* Admin Routes */}
           <Route element={<PrivateRoute allowedRoles={["admin"]} />}>

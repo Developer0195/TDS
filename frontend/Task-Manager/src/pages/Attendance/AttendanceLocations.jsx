@@ -1,13 +1,15 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useContext } from "react";
 import axiosInstance from "../../utils/axiosInstance";
 import AddLocationModal from "../../components/Modals/AddLocationModal";
 import { API_PATHS } from "../../utils/apiPaths";
 import { Trash2, ChevronDown } from "lucide-react";
 import toast from "react-hot-toast";
+import { UserContext } from "../../context/userContext";
 
 const PAGE_SIZE = 10;
 
 const AttendanceLocations = () => {
+  const {user} = useContext(UserContext);
   const [showModal, setShowModal] = useState(false);
   const [locations, setLocations] = useState([]);
   const [users, setUsers] = useState([]);
@@ -29,8 +31,17 @@ const AttendanceLocations = () => {
 
   /* ---------------- Fetch Team Members ---------------- */
   const fetchUsers = async () => {
-    const res = await axiosInstance.get(API_PATHS.USERS.GET_ADMIN_TEAM);
-    setUsers(res.data || []);
+    let res = null;
+    if(user.role == "admin"){
+      res = await axiosInstance.get(API_PATHS.USERS.GET_ADMIN_TEAM);
+    }
+    else{
+      res = await axiosInstance.get(API_PATHS.USERS.GET_ALL_USERS);
+    }
+    if(res.data){
+      setUsers(res.data || []);
+    }
+    
   };
 
   useEffect(() => {

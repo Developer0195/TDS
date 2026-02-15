@@ -1,14 +1,15 @@
 const express = require("express");
 const router = express.Router();
 const locationController = require("../controllers/locationController");
-const { protect } = require("../middlewares/authMiddleware");
+const { protect, adminOnly, superadminOnly } = require("../middlewares/authMiddleware");
 
 // Admin only
-router.post("/", protect, locationController.createLocation);
+router.post("/", protect, adminOnly, locationController.createLocation);
 
 router.delete(
   "/:locationId",
 protect,
+adminOnly, 
   locationController.deleteLocation
 );
 
@@ -16,6 +17,7 @@ protect,
 router.put(
   "/assign/:userId",
   protect,
+  adminOnly, 
   locationController.assignLocationsToUser
 );
 

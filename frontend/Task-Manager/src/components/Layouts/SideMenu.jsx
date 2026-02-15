@@ -1,7 +1,7 @@
 import React, { useContext, useEffect, useState } from "react";
 import { UserContext } from "../../context/userContext";
 import { useNavigate } from "react-router-dom";
-import { SIDE_MENU_DATA, SIDE_MENU_USER_DATA } from "../../utils/data";
+import { SIDE_MENU_DATA, SIDE_MENU_USER_DATA, SIDE_MENU_SUPERADMIN_DATA } from "../../utils/data";
 
 const SideMenu = ({ activeMenu }) => {
   const DEFAULT_AVATAR =
@@ -28,9 +28,20 @@ const SideMenu = ({ activeMenu }) => {
 
   useEffect(() => {
     if (user) {
-      setSideMenuData(
-        user.role === "admin" ? SIDE_MENU_DATA : SIDE_MENU_USER_DATA
-      );
+      // setSideMenuData(
+      //   user.role === "admin" ? SIDE_MENU_DATA : SIDE_MENU_USER_DATA
+      // );
+
+      if(user.role === "superadmin"){
+          setSideMenuData(SIDE_MENU_SUPERADMIN_DATA);
+      }
+      else if(user.role === "admin"){
+        setSideMenuData(SIDE_MENU_DATA)
+      }
+      else{
+        setSideMenuData(SIDE_MENU_USER_DATA)
+      }
+
     }
   }, [user]);
 
@@ -53,6 +64,12 @@ const SideMenu = ({ activeMenu }) => {
         {user?.role === "admin" && (
           <span className="text-[10px] font-medium text-white bg-primary px-3 py-0.5 rounded mt-2">
             Admin
+          </span>
+        )}
+
+        {user?.role === "superadmin" && (
+          <span className="text-[10px] font-medium text-white bg-primary px-3 py-0.5 rounded mt-2">
+            Super Admin
           </span>
         )}
 

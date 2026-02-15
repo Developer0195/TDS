@@ -39,6 +39,13 @@ const DailyAttendance = () => {
         />
       </div>
 
+      {rows.length === 0 && new Date(selectedDate).getDay() === 0 && (
+  <div className="bg-blue-50 border border-blue-200 text-blue-700 text-sm p-3 rounded mb-4">
+    Sunday – Weekly Off
+  </div>
+)}
+
+
       {/* TABLE */}
       <div className="bg-white border border-gray-300 rounded-lg ">
         <table className="w-full text-sm">
@@ -102,7 +109,7 @@ const DailyAttendance = () => {
                   <td className="px-4 py-3">
                     <LocationPopover location={r.location} />
                   </td>
-                  <td className="px-4 py-3">
+                  {/* <td className="px-4 py-3">
                     <span
                       className={`px-2 py-1 rounded-full text-xs ${
                         r.attendanceStatus === "Present"
@@ -112,7 +119,28 @@ const DailyAttendance = () => {
                     >
                       {r.attendanceStatus}
                     </span>
-                  </td>
+                  </td> */}
+
+                  <td className="px-4 py-3">
+  {r.attendanceStatus === "Holiday" ? (
+    <span className="px-2 py-1 rounded-full text-xs bg-yellow-100 text-yellow-700">
+      Holiday {r.holidayName ? `- ${r.holidayName}` : ""}
+    </span>
+  ) : (
+    <span
+      className={`px-2 py-1 rounded-full text-xs ${
+        r.attendanceStatus === "Present"
+          ? "bg-green-100 text-green-700"
+          : r.attendanceStatus === "Delayed"
+          ? "bg-orange-100 text-orange-700"
+          : "bg-red-100 text-red-600"
+      }`}
+    >
+      {r.attendanceStatus}
+    </span>
+  )}
+</td>
+
                 </tr>
               ))
             )}

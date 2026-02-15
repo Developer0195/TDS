@@ -7,6 +7,7 @@ const calculateDurationMinutes = require("../utils/time");
 const { OFFICE_LOCATION, RADIUS_METERS } = require("../config/geofence");
 const User = require("../models/User");
 const Location = require("../models/Location");
+const Holiday = require("../models/Holiday");
 
 // const punchIn = async (req, res) => {
 //     try {
@@ -213,7 +214,7 @@ const punchIn = async (req, res) => {
         distance = match.distance;
       }
     } else {
-    /* 🔹 CASE 2: Fallback to default office */
+      /* 🔹 CASE 2: Fallback to default office */
       distance = getDistance(
         latitude,
         longitude,
@@ -597,73 +598,73 @@ const getMyAttendance = async (req, res) => {
 //   }
 // };
 
-const getDailyAttendance = async (req, res) => {
-  try {
-    const { date } = req.query;
+// const getDailyAttendance = async (req, res) => {
+//   try {
+//     const { date } = req.query;
 
-    const selectedDate = date ? new Date(date) : new Date();
-    selectedDate.setHours(0, 0, 0, 0);
+//     const selectedDate = date ? new Date(date) : new Date();
+//     selectedDate.setHours(0, 0, 0, 0);
 
-    /* 🔹 Admin + team members */
-    const admin = await User.findById(req.user._id).populate(
-      "teamMembers",
-      "name",
-    );
+//     /* 🔹 Admin + team members */
+//     const admin = await User.findById(req.user._id).populate(
+//       "teamMembers",
+//       "name",
+//     );
 
-    const teamMembers = admin.teamMembers || [];
+//     const teamMembers = admin.teamMembers || [];
 
-    /* 🔹 Attendance records for the day */
-    const attendanceRecords = await Attendance.find({
-      user: { $in: teamMembers.map((m) => m._id) },
-      date: selectedDate,
-    }).lean();
+//     /* 🔹 Attendance records for the day */
+//     const attendanceRecords = await Attendance.find({
+//       user: { $in: teamMembers.map((m) => m._id) },
+//       date: selectedDate,
+//     }).lean();
 
-    const rows = teamMembers.map((member) => {
-      const record = attendanceRecords.find(
-        (a) => a.user.toString() === member._id.toString(),
-      );
+//     const rows = teamMembers.map((member) => {
+//       const record = attendanceRecords.find(
+//         (a) => a.user.toString() === member._id.toString(),
+//       );
 
-      /* 🔹 No record = Absent */
-      if (!record) {
-        return {
-          userId: member._id,
-          name: member.name,
-          attendanceStatus: "Absent",
-        };
-      }
+//       /* 🔹 No record = Absent */
+//       if (!record) {
+//         return {
+//           userId: member._id,
+//           name: member.name,
+//           attendanceStatus: "Absent",
+//         };
+//       }
 
-      return {
-        userId: member._id,
-        name: member.name,
+//       return {
+//         userId: member._id,
+//         name: member.name,
 
-        punchInTime: record.punchIn?.time || null,
-        punchOutTime: record.punchOut?.time || null,
-        durationMinutes: record.totalDurationMinutes || null,
+//         punchInTime: record.punchIn?.time || null,
+//         punchOutTime: record.punchOut?.time || null,
+//         durationMinutes: record.totalDurationMinutes || null,
 
-        workType: record.workType || null, // WFO | OFFSITE
-        attendanceStatus: record.attendanceStatus, // Present | Absent | Delayed
+//         workType: record.workType || null, // WFO | OFFSITE
+//         attendanceStatus: record.attendanceStatus, // Present | Absent | Delayed
 
-        location: record.punchIn?.location
-          ? {
-              latitude: record.punchIn.location.latitude,
-              longitude: record.punchIn.location.longitude,
-              distance: record.punchIn.distance,
-            }
-          : null,
+//         location: record.punchIn?.location
+//           ? {
+//               latitude: record.punchIn.location.latitude,
+//               longitude: record.punchIn.location.longitude,
+//               distance: record.punchIn.distance,
+//             }
+//           : null,
 
-        overriddenByAdmin: record.overriddenByAdmin || false,
-        remarks: record.punchIn?.remarks || null,
-      };
-    });
+//         overriddenByAdmin: record.overriddenByAdmin || false,
+//         remarks: record.punchIn?.remarks || null,
+//       };
+//     });
 
-    res.json({
-      date: selectedDate,
-      rows,
-    });
-  } catch (error) {
-    res.status(500).json({ message: error.message });
-  }
-};
+//     res.json({
+//       date: selectedDate,
+//       rows,
+//     });
+//   } catch (error) {
+//     res.status(500).json({ message: error.message });
+//   }
+// };
 
 // const getTeamAttendanceAnalytics = async (req, res) => {
 //   try {
@@ -753,14 +754,227 @@ const getDailyAttendance = async (req, res) => {
 //   }
 // };
 
+const getDailyAttendance = async (req, res) => {
+  try {
+    const { date } = req.query;
+
+    /* ================= DATE ================= */
+    const selectedDate = date ? new Date(date) : new Date();
+    selectedDate.setHours(0, 0, 0, 0);
+
+    const day = selectedDate.getDay();
+
+if (day === 0) {
+  return res.json({
+    date: selectedDate,
+    isSunday: true,
+    rows: [],
+  });
+}
+
+    const holiday = await Holiday.findOne({ date: selectedDate });
+
+    let usersToFetch = [];
+
+    /* ================= ROLE LOGIC ================= */
+
+    // 🔵 ADMIN → Only team members
+    if (req.user.role === "admin") {
+      const admin = await User.findById(req.user._id).populate(
+        "teamMembers",
+        "name role",
+      );
+
+      usersToFetch = admin.teamMembers || [];
+    }
+
+    // 🟣 SUPERADMIN → All admins + members
+    else if (req.user.role === "superadmin") {
+      usersToFetch = await User.find({
+        role: { $in: ["admin", "member"] },
+        emailVerified: true,
+      }).select("name role");
+    }
+
+    // 👤 MEMBER (optional handling)
+    else {
+      return res.status(403).json({ message: "Access denied" });
+    }
+
+    /* ================= ATTENDANCE ================= */
+
+    const attendanceRecords = await Attendance.find({
+      user: { $in: usersToFetch.map((u) => u._id) },
+      date: selectedDate,
+    }).lean();
+
+    /* ================= RESPONSE ROWS ================= */
+
+    const rows = usersToFetch.map((user) => {
+      const record = attendanceRecords.find(
+        (a) => a.user.toString() === user._id.toString(),
+      );
+
+      if (holiday) {
+        return {
+          userId: user._id,
+          name: user.name,
+          attendanceStatus: "Holiday",
+          holidayName: holiday.name,
+        };
+      }
+
+      if (!record) {
+        return {
+          userId: user._id,
+          name: user.name,
+          role: user.role,
+          attendanceStatus: "Absent",
+        };
+      }
+
+      return {
+        userId: user._id,
+        name: user.name,
+        role: user.role,
+
+        punchInTime: record.punchIn?.time || null,
+        punchOutTime: record.punchOut?.time || null,
+        durationMinutes: record.totalDurationMinutes || null,
+
+        workType: record.workType || null,
+        attendanceStatus: record.attendanceStatus,
+
+        location: record.punchIn?.location
+          ? {
+              latitude: record.punchIn.location.latitude,
+              longitude: record.punchIn.location.longitude,
+              distance: record.punchIn.distance,
+            }
+          : null,
+
+        overriddenByAdmin: record.overriddenByAdmin || false,
+        remarks: record.punchIn?.remarks || null,
+      };
+    });
+
+    res.json({
+      date: selectedDate,
+      rows,
+    });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+// const getTeamAttendanceAnalytics = async (req, res) => {
+//   try {
+//     const { startDate, endDate } = req.query;
+
+//     const start = new Date(startDate);
+//     const rawEnd = new Date(endDate);
+
+//     start.setHours(0, 0, 0, 0);
+//     rawEnd.setHours(23, 59, 59, 999);
+
+//     // 🔹 Clamp end date to TODAY
+//     const today = new Date();
+//     today.setHours(23, 59, 59, 999);
+
+//     const effectiveEnd = rawEnd > today ? today : rawEnd;
+
+//     const admin = await User.findById(req.user._id).populate(
+//       "teamMembers",
+//       "name email",
+//     );
+
+//     const teamMembers = admin.teamMembers || [];
+
+//     const attendanceRecords = await Attendance.find({
+//       user: { $in: teamMembers.map((m) => m._id) },
+//       date: { $gte: start, $lte: effectiveEnd },
+//     }).lean();
+
+//     const result = teamMembers.map((member) => {
+//       const memberRecords = attendanceRecords.filter(
+//         (a) => a.user.toString() === member._id.toString(),
+//       );
+
+//       /* 🔹 Build date range ONLY till today */
+//       const allDates = [];
+//       const cursor = new Date(start);
+//       cursor.setHours(0, 0, 0, 0);
+
+//       while (cursor <= effectiveEnd) {
+//         allDates.push(new Date(cursor));
+//         cursor.setDate(cursor.getDate() + 1);
+//       }
+
+//       /* 🔹 Map records */
+//       const recordMap = {};
+//       memberRecords.forEach((a) => {
+//         recordMap[new Date(a.date).toDateString()] = a;
+//       });
+
+//       let presentDays = 0;
+//       let absentDays = 0;
+//       let delayedDays = 0;
+
+//       allDates.forEach((d) => {
+//         const rec = recordMap[d.toDateString()];
+
+//         if (!rec) {
+//           absentDays++; // ✅ only past days exist here
+//         } else if (rec.attendanceStatus === "Present") {
+//           presentDays++;
+//         } else if (rec.attendanceStatus === "Delayed") {
+//           delayedDays++;
+//         } else {
+//           absentDays++;
+//         }
+//       });
+
+//       const calendar = memberRecords.map((a) => ({
+//         attendanceId: a._id,
+//         date: a.date,
+//         status: a.attendanceStatus,
+//         overriddenByAdmin: a.overriddenByAdmin || false,
+//       }));
+
+//       return {
+//         userId: member._id,
+//         name: member.name,
+//         stats: {
+//           presentDays,
+//           absentDays,
+//           delayedDays,
+//         },
+//         calendar,
+//       };
+//     });
+
+//     res.json({
+//       range: {
+//         startDate: start,
+//         endDate: effectiveEnd,
+//       },
+//       members: result,
+//     });
+//   } catch (error) {
+//     res.status(500).json({ message: error.message });
+//   }
+// };
+
 const getTeamAttendanceAnalytics = async (req, res) => {
   try {
     const { startDate, endDate } = req.query;
 
-    const start = new Date(startDate);
-    const rawEnd = new Date(endDate);
+    /* ================= DATE RANGE ================= */
 
+    const start = new Date(startDate);
     start.setHours(0, 0, 0, 0);
+
+    const rawEnd = new Date(endDate);
     rawEnd.setHours(23, 59, 59, 999);
 
     // 🔹 Clamp end date to TODAY
@@ -769,34 +983,65 @@ const getTeamAttendanceAnalytics = async (req, res) => {
 
     const effectiveEnd = rawEnd > today ? today : rawEnd;
 
-    const admin = await User.findById(req.user._id).populate(
-      "teamMembers",
-      "name email",
-    );
+    let usersToAnalyze = [];
 
-    const teamMembers = admin.teamMembers || [];
+    /* ================= ROLE LOGIC ================= */
+
+    // 🔵 ADMIN → Only team members
+    if (req.user.role === "admin") {
+      const admin = await User.findById(req.user._id).populate(
+        "teamMembers",
+        "name email role",
+      );
+
+      usersToAnalyze = admin.teamMembers || [];
+    }
+
+    // 🟣 SUPERADMIN → All admins + members
+    else if (req.user.role === "superadmin") {
+      usersToAnalyze = await User.find({
+        role: { $in: ["admin", "member"] },
+        emailVerified: true,
+      }).select("name email role");
+    } else {
+      return res.status(403).json({ message: "Access denied" });
+    }
+
+    /* ================= FETCH ATTENDANCE ================= */
 
     const attendanceRecords = await Attendance.find({
-      user: { $in: teamMembers.map((m) => m._id) },
+      user: { $in: usersToAnalyze.map((u) => u._id) },
       date: { $gte: start, $lte: effectiveEnd },
     }).lean();
 
-    const result = teamMembers.map((member) => {
+    /* ================= FETCH HOLIDAY================= */
+
+    const holidays = await Holiday.find({
+      date: { $gte: start, $lte: effectiveEnd },
+    }).lean();
+
+    const holidayMap = {};
+    holidays.forEach((h) => {
+      holidayMap[new Date(h.date).toDateString()] = true;
+    });
+
+    /* ================= BUILD RESPONSE ================= */
+
+    const result = usersToAnalyze.map((user) => {
       const memberRecords = attendanceRecords.filter(
-        (a) => a.user.toString() === member._id.toString(),
+        (a) => a.user.toString() === user._id.toString(),
       );
 
-      /* 🔹 Build date range ONLY till today */
+      /* 🔹 Build date range till effectiveEnd */
       const allDates = [];
       const cursor = new Date(start);
-      cursor.setHours(0, 0, 0, 0);
 
       while (cursor <= effectiveEnd) {
         allDates.push(new Date(cursor));
         cursor.setDate(cursor.getDate() + 1);
       }
 
-      /* 🔹 Map records */
+      /* 🔹 Map attendance by date */
       const recordMap = {};
       memberRecords.forEach((a) => {
         recordMap[new Date(a.date).toDateString()] = a;
@@ -806,11 +1051,32 @@ const getTeamAttendanceAnalytics = async (req, res) => {
       let absentDays = 0;
       let delayedDays = 0;
 
+      // allDates.forEach((d) => {
+      //   const rec = recordMap[d.toDateString()];
+
+      //   if (!rec) {
+      //     absentDays++;
+      //   } else if (rec.attendanceStatus === "Present") {
+      //     presentDays++;
+      //   } else if (rec.attendanceStatus === "Delayed") {
+      //     delayedDays++;
+      //   } else {
+      //     absentDays++;
+      //   }
+      // });
+
       allDates.forEach((d) => {
         const rec = recordMap[d.toDateString()];
+        const day = d.getDay();
+
+        if (day === 0) return;
+        // 🔥 Skip holidays completely
+        if (holidayMap[d.toDateString()]) {
+          return; // do not count absent or present
+        }
 
         if (!rec) {
-          absentDays++; // ✅ only past days exist here
+          absentDays++;
         } else if (rec.attendanceStatus === "Present") {
           presentDays++;
         } else if (rec.attendanceStatus === "Delayed") {
@@ -828,8 +1094,9 @@ const getTeamAttendanceAnalytics = async (req, res) => {
       }));
 
       return {
-        userId: member._id,
-        name: member.name,
+        userId: user._id,
+        name: user.name,
+        role: user.role,
         stats: {
           presentDays,
           absentDays,
@@ -844,6 +1111,10 @@ const getTeamAttendanceAnalytics = async (req, res) => {
         startDate: start,
         endDate: effectiveEnd,
       },
+       holidays: holidays.map(h => ({
+          date: h.date,
+          name: h.name,
+        })),
       members: result,
     });
   } catch (error) {

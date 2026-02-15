@@ -3,6 +3,17 @@ const addLog = require("../utils/addLogs");
 const mongoose = require("mongoose");
 const cloudinary = require("../config/cloudinary");
 
+const getDateRange = (startDate, endDate) => {
+  const start = new Date(startDate);
+  start.setHours(0, 0, 0, 0);
+
+  const end = new Date(endDate);
+  end.setHours(23, 59, 59, 999);
+
+  return { start, end };
+};
+
+
 /* ===============================
    GET ALL TASKS
 ================================ */
@@ -86,6 +97,7 @@ const getTasks = async (req, res) => {
       endDate,
       page = 1,
       limit = 10,
+       createdBy, 
     } = req.query;
 
     let filter = {};
@@ -103,12 +115,19 @@ const getTasks = async (req, res) => {
     }
 
     // ✅ Date range filter (due date)
-    if (startDate && endDate) {
-      filter.dueDate = {
-        $gte: new Date(startDate),
-        $lte: new Date(endDate),
-      };
-    }
+  if (startDate && endDate) {
+  const [sy, sm, sd] = startDate.split("-");
+  const [ey, em, ed] = endDate.split("-");
+
+  const start = new Date(sy, sm - 1, sd, 0, 0, 0, 0);
+  const end = new Date(ey, em - 1, ed, 23, 59, 59, 999);
+
+  filter.dueDate = {
+    $gte: start,
+    $lte: end,
+  };
+}
+
 
     if (!startDate && endDate) {
       filter.dueDate =  {  $gte: new Date(endDate), $lte: new Date(endDate) }
@@ -121,6 +140,16 @@ const getTasks = async (req, res) => {
     } else if (req.user.role === "member") {
       filter.assignedTo = req.user._id;
     }
+
+    // ✅ Superadmin createdBy filter
+if (req.user.role === "superadmin" && createdBy) {
+  if (createdBy === "me") {
+    filter.createdBy = req.user._id;
+  } else {
+    filter.createdBy = createdBy;
+  }
+}
+
 
     // ✅ Pagination math
     const pageNumber = Number(page);
@@ -306,12 +335,15 @@ const createTask = async (req, res) => {
       assignedTo: t.assignedTo, // ✅ guaranteed to exist
     }));
 
+    const parsedDueDate = new Date(dueDate);
+    parsedDueDate.setHours(23, 59, 59, 999);
+
     /* ---------------- CREATE TASK ---------------- */
     const task = await Task.create({
       title,
       description,
       priority,
-      dueDate,
+      dueDate: parsedDueDate,
       estimatedHours,
       assignedTo,
       project: project || null,
@@ -346,6 +378,12 @@ const updateTask = async (req, res) => {
       return res.status(400).json({
         message: "Estimated hours must be at least 1",
       });
+    }
+
+     if (req.body.dueDate) {
+      const parsedDueDate = new Date(req.body.dueDate);
+      parsedDueDate.setHours(23, 59, 59, 999);
+      req.body.dueDate = parsedDueDate;
     }
 
     if (req.user.role === "admin") filter.createdBy = req.user._id;
@@ -666,7 +704,7 @@ const deleteTask = async (req, res) => {
   try {
     const filter = { _id: req.params.id };
 
-    if (req.user.role === "admin") {
+    if (req.user.role === "admin" || req.user.role === "superadmin") {
       filter.createdBy = req.user._id;
     } else {
       return res.status(403).json({
@@ -1020,12 +1058,26 @@ const getDashboardData = async (req, res) => {
     }
 
     /* ---------- DATE FILTER ---------- */
+    // if (startDate && endDate) {
+    //   baseFilter.dueDate = {
+    //     $gte: new Date(startDate),
+    //     $lte: new Date(endDate),
+    //   };
+    // }
+
     if (startDate && endDate) {
-      baseFilter.dueDate = {
-        $gte: new Date(startDate),
-        $lte: new Date(endDate),
-      };
-    }
+  const start = new Date(startDate);
+  start.setHours(0, 0, 0, 0);
+
+  const end = new Date(endDate);
+  end.setHours(23, 59, 59, 999);
+
+  baseFilter.dueDate = {
+    $gte: start,
+    $lte: end,
+  };
+}
+
 
     /* ---------- STATUS COUNTS ---------- */
     const [
@@ -1075,7 +1127,8 @@ const getDashboardData = async (req, res) => {
         .skip(skip)
         .limit(pageSize)
         .populate("project", "name")
-        .populate("assignedTo", "name email profileImageUrl"),
+        .populate("assignedTo", "name email profileImageUrl")
+        .populate("createdBy", "name profileImageUrl"),
 
       Task.countDocuments(recentTasksFilter),
     ]);
@@ -1105,11 +1158,6 @@ const getDashboardData = async (req, res) => {
     res.status(500).json({ message: error.message });
   }
 };
-
-
-
-
-
 
 /* ===============================
  USER DASHBOARD DATA (MEMBER)
@@ -1219,12 +1267,26 @@ const getUserDashboardData = async (req, res) => {
     }
 
     /* ================= DUE DATE FILTER ================= */
+    // if (dueStartDate && dueEndDate) {
+    //   baseFilter.dueDate = {
+    //     $gte: new Date(dueStartDate),
+    //     $lte: new Date(dueEndDate),
+    //   };
+    // }
+
     if (dueStartDate && dueEndDate) {
-      baseFilter.dueDate = {
-        $gte: new Date(dueStartDate),
-        $lte: new Date(dueEndDate),
-      };
-    }
+  const start = new Date(dueStartDate);
+  start.setHours(0, 0, 0, 0);
+
+  const end = new Date(dueEndDate);
+  end.setHours(23, 59, 59, 999);
+
+  baseFilter.dueDate = {
+    $gte: start,
+    $lte: end,
+  };
+}
+
 
     /* ================= CREATED DATE FILTER ================= */
     if (createdStartDate && createdEndDate) {

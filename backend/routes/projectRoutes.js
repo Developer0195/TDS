@@ -1,7 +1,7 @@
 const express = require("express");
 const router = express.Router();
 
-const { protect } = require("../middlewares/authMiddleware");
+const { protect, adminOnly, superadminOnly} = require("../middlewares/authMiddleware");
 
 const {
   createProject,
@@ -12,7 +12,7 @@ const {
 } = require("../controllers/projectController");
 
 // ✅ Create Project
-router.post("/create", protect, createProject);
+router.post("/create", protect, adminOnly,  createProject);
 
 // ✅ Get All Projects
 router.get("/", protect, getProjects);
@@ -21,9 +21,9 @@ router.get("/", protect, getProjects);
 router.get("/:id", protect, getProjectById);
 
 // ✅ Update Project
-router.put("/:id", protect, updateProject);
+router.put("/:id", protect, adminOnly, updateProject);
 
 // ✅ Delete Project
-router.delete("/:id", protect, deleteProject);
+router.delete("/:id", protect, adminOnly, deleteProject);
 
 module.exports = router;

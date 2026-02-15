@@ -5,175 +5,334 @@ const bcrypt = require("bcryptjs");
 // @route GET / api / users /
 // @access Private (Admin)
 
+// const getUsers = async (req, res) => {
+//   try {
+//     const users = await User.find({
+//       role: "member",
+//       emailVerified: true,
+//     }).select("-password");
+
+//     const usersWithTaskCounts = await Promise.all(
+//       users.map(async (user) => {
+//         const pendingTasks = await Task.countDocuments({
+//           assignedTo: user._id,
+//           status: "Pending",
+//         });
+
+//         const inProgressTasks = await Task.countDocuments({
+//           assignedTo: user._id,
+//           status: "In Progress",
+//         });
+
+//         const completedTasks = await Task.countDocuments({
+//           assignedTo: user._id,
+//           status: "Completed",
+//         });
+
+//         return {
+//           ...user._doc,
+
+//           // existing counts (UI already uses these)
+//           pendingTasks,
+//           inProgressTasks,
+//           completedTasks,
+
+//           // ✅ ensure analytics always exists
+//           analytics: user.analytics || {
+//             tasksCompleted: completedTasks,
+//             onTimePercentage: 0,
+//             avgDelayMinutes: 0,
+//             avgWorkingHours: {
+//               weekly: 0,
+//               monthly: 0,
+//               yearly: 0,
+//             },
+//           },
+//         };
+//       }),
+//     );
+
+//     res.json(usersWithTaskCounts);
+//   } catch (error) {
+//     res.status(500).json({
+//       message: "Server error",
+//       error: error.message,
+//     });
+//   }
+// };
+
+
 const getUsers = async (req, res) => {
-    try {
-        const users = await User.find({ role: "member", emailVerified: true })
-            .select("-password");
+  try {
 
-        const usersWithTaskCounts = await Promise.all(
-            users.map(async (user) => {
-                const pendingTasks = await Task.countDocuments({
-                    assignedTo: user._id,
-                    status: "Pending",
-                });
+    const users = await User.find({
+      role: { $in: ["member"] },
+      emailVerified: true,
+    }).select("-password");
 
-                const inProgressTasks = await Task.countDocuments({
-                    assignedTo: user._id,
-                    status: "In Progress",
-                });
-
-                const completedTasks = await Task.countDocuments({
-                    assignedTo: user._id,
-                    status: "Completed",
-                });
-
-                return {
-                    ...user._doc,
-
-                    // existing counts (UI already uses these)
-                    pendingTasks,
-                    inProgressTasks,
-                    completedTasks,
-
-                    // ✅ ensure analytics always exists
-                    analytics: user.analytics || {
-                        tasksCompleted: completedTasks,
-                        onTimePercentage: 0,
-                        avgDelayMinutes: 0,
-                        avgWorkingHours: {
-                            weekly: 0,
-                            monthly: 0,
-                            yearly: 0,
-                        },
-                    },
-                };
-            })
-        );
-
-        res.json(usersWithTaskCounts);
-    } catch (error) {
-        res.status(500).json({
-            message: "Server error",
-            error: error.message,
+    const usersWithStats = await Promise.all(
+      users.map(async (user) => {
+        const pending = await Task.countDocuments({
+          assignedTo: user._id,
+          status: "Pending",
         });
-    }
+
+        const inProgress = await Task.countDocuments({
+          assignedTo: user._id,
+          status: "In Progress",
+        });
+
+        const inReview = await Task.countDocuments({
+          assignedTo: user._id,
+          status: "In Review",
+        });
+
+        const completedTasks = await Task.find({
+          assignedTo: user._id,
+          status: "Completed",
+        }).select("completedAt dueDate");
+
+        const completed = completedTasks.length;
+
+        const onTimeCompleted = completedTasks.filter(
+          (t) =>
+            t.completedAt &&
+            t.dueDate &&
+            t.completedAt <= t.dueDate
+        ).length;
+
+        const onTimeCompletionRate =
+          completed === 0
+            ? 0
+            : Math.round((onTimeCompleted / completed) * 100);
+
+        return {
+          ...user._doc,
+
+          taskCounts: {
+            pending,
+            inProgress,
+            inReview,
+            completed,
+          },
+
+          onTimeCompletionRate,
+
+          analytics: user.analytics || {
+            tasksCompleted: completed,
+            onTimePercentage: onTimeCompletionRate,
+            avgDelayMinutes: 0,
+            avgWorkingHours: {
+              weekly: 0,
+              monthly: 0,
+              yearly: 0,
+            },
+          },
+        };
+      }),
+    );
+
+    res.json(usersWithStats);
+  } catch (error) {
+    res.status(500).json({
+      message: "Server error",
+      error: error.message,
+    });
+  }
 };
+
+const getAllUsersForSuperadmin = async (req, res) => {
+  console.log("Request received")
+  try {
+    /* ================= ROLE CHECK ================= */
+
+    if (req.user.role !== "superadmin") {
+      return res.status(403).json({
+        message: "Access denied. Superadmin only.",
+      });
+    }
+
+    /* ================= FETCH USERS ================= */
+
+    const users = await User.find({
+      role: { $in: ["admin", "member"] },
+      emailVerified: true,
+    })
+      .select("-password")
+      .lean();
+
+    /* ================= ADD TASK STATS ================= */
+
+    const usersWithStats = await Promise.all(
+      users.map(async (user) => {
+
+        const [
+          pending,
+          inProgress,
+          inReview,
+          completed,
+        ] = await Promise.all([
+          Task.countDocuments({ assignedTo: user._id, status: "Pending" }),
+          Task.countDocuments({ assignedTo: user._id, status: "In Progress" }),
+          Task.countDocuments({ assignedTo: user._id, status: "In Review" }),
+          Task.countDocuments({ assignedTo: user._id, status: "Completed" }),
+        ]);
+
+        const completedTasks = await Task.find({
+          assignedTo: user._id,
+          status: "Completed",
+        }).select("completedAt dueDate");
+
+        const onTimeCompleted = completedTasks.filter(
+          (t) =>
+            t.completedAt &&
+            t.dueDate &&
+            t.completedAt <= t.dueDate
+        ).length;
+
+        const onTimeCompletionRate =
+          completed === 0
+            ? 0
+            : Math.round((onTimeCompleted / completed) * 100);
+
+        return {
+          ...user,
+
+          taskCounts: {
+            pending,
+            inProgress,
+            inReview,
+            completed,
+          },
+
+          onTimeCompletionRate,
+        };
+      })
+    );
+
+    res.status(200).json({
+      users: usersWithStats,
+    });
+
+  } catch (error) {
+    console.error("Superadmin users fetch error:", error);
+    res.status(500).json({
+      message: "Server error",
+    });
+  }
+};
+
 
 
 // @desc Get user by ID
 // @route GET / api / users /: id
 // @access Private
 const getUserById = async (req, res) => {
-    try {
-        const user = await User.findById(req.params.id).select("-password");
-        if (!user) return res.status(404).json({ message: "user not found" })
-        res.json(user);
-    } catch (error) {
-        res.status(500).json({ message: "Server error", error: error.message })
-    }
+  try {
+    const user = await User.findById(req.params.id).select("-password");
+    if (!user) return res.status(404).json({ message: "user not found" });
+    res.json(user);
+  } catch (error) {
+    res.status(500).json({ message: "Server error", error: error.message });
+  }
 };
 
 // @desc Delete a user (Admin only)
 // @route DELETE /api/users/:id
 // @access Private (Admin)
 const deleteUser = async (req, res) => {
-    try {
-        const userId = req.params.id;
+  try {
+    const userId = req.params.id;
 
-        // Find user
-        const user = await User.findById(userId);
-        if (!user) {
-            return res.status(404).json({ message: "User not found" });
-        }
-
-        // Prevent deleting admin users
-        if (user.role === "admin") {
-            return res.status(400).json({
-                message: "Admin users cannot be deleted",
-            });
-        }
-
-        // ❗ Check if user has any task in progress
-        const inProgressTaskExists = await Task.exists({
-            assignedTo: userId,
-            status: "In Progress",
-        });
-
-        if (inProgressTaskExists) {
-            return res.status(400).json({
-                message:
-                    "User cannot be deleted because they have tasks in progress",
-            });
-        }
-
-        // Optional: delete user's tasks (Pending / Completed only)
-        // await Task.deleteMany({ assignedTo: userId });
-
-        // Delete user
-        await user.deleteOne();
-
-        res.json({
-            message: "User deleted successfully",
-        });
-
-    } catch (error) {
-        res.status(500).json({
-            message: "Server error",
-            error: error.message,
-        });
+    // Find user
+    const user = await User.findById(userId);
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
     }
+
+    // Prevent deleting admin users
+    if (user.role === "admin") {
+      return res.status(400).json({
+        message: "Admin users cannot be deleted",
+      });
+    }
+
+    // ❗ Check if user has any task in progress
+    const inProgressTaskExists = await Task.exists({
+      assignedTo: userId,
+      status: "In Progress",
+    });
+
+    if (inProgressTaskExists) {
+      return res.status(400).json({
+        message: "User cannot be deleted because they have tasks in progress",
+      });
+    }
+
+    // Optional: delete user's tasks (Pending / Completed only)
+    // await Task.deleteMany({ assignedTo: userId });
+
+    // Delete user
+    await user.deleteOne();
+
+    res.json({
+      message: "User deleted successfully",
+    });
+  } catch (error) {
+    res.status(500).json({
+      message: "Server error",
+      error: error.message,
+    });
+  }
 };
 
 // @desc Get logged-in user's profile
 // @route GET /api/users/me/profile
 // @access Private
 const getMyProfile = async (req, res) => {
-    try {
-        const user = await User.findById(req.user._id).select("-password");
+  try {
+    const user = await User.findById(req.user._id).select("-password");
 
-        if (!user) {
-            return res.status(404).json({ message: "User not found" });
-        }
-
-        res.json(user);
-    } catch (error) {
-        res.status(500).json({
-            message: "Server error",
-            error: error.message,
-        });
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
     }
+
+    res.json(user);
+  } catch (error) {
+    res.status(500).json({
+      message: "Server error",
+      error: error.message,
+    });
+  }
 };
 
 // @desc Update logged-in user's profile (restricted fields)
 // @route PUT /api/users/me/profile
 // @access Private
 const updateMyProfile = async (req, res) => {
-    try {
-        // Only allow these fields to be updated by user
-        const allowedFields = ["name", "phone", "skills"];
+  try {
+    // Only allow these fields to be updated by user
+    const allowedFields = ["name", "phone", "skills"];
 
-        const updates = {};
-        allowedFields.forEach((field) => {
-            if (req.body[field] !== undefined) {
-                updates[field] = req.body[field];
-            }
-        });
+    const updates = {};
+    allowedFields.forEach((field) => {
+      if (req.body[field] !== undefined) {
+        updates[field] = req.body[field];
+      }
+    });
 
-        const updatedUser = await User.findByIdAndUpdate(
-            req.user._id,
-            updates,
-            { new: true }
-        ).select("-password");
+    const updatedUser = await User.findByIdAndUpdate(req.user._id, updates, {
+      new: true,
+    }).select("-password");
 
-        res.json(updatedUser);
-    } catch (error) {
-        res.status(500).json({
-            message: "Server error",
-            error: error.message,
-        });
-    }
+    res.json(updatedUser);
+  } catch (error) {
+    res.status(500).json({
+      message: "Server error",
+      error: error.message,
+    });
+  }
 };
-
 
 // @desc Get logged-in admin's team members
 // @route GET /api/users/team
@@ -243,10 +402,9 @@ const updateMyProfile = async (req, res) => {
 //   }
 // };
 
-
 const getAdminTeamMembers = async (req, res) => {
   try {
-    if (req.user.role !== "admin") {
+    if (req.user.role !== "admin" && req.user.role !== "superadmin") {
       return res.status(403).json({ message: "Access denied" });
     }
 
@@ -285,13 +443,11 @@ const getAdminTeamMembers = async (req, res) => {
         const completed = completedTasks.length;
 
         const onTimeCompleted = completedTasks.filter(
-          (t) => t.completedAt && t.dueDate && t.completedAt <= t.dueDate
+          (t) => t.completedAt && t.dueDate && t.completedAt <= t.dueDate,
         ).length;
 
         const onTimeCompletionRate =
-          completed === 0
-            ? 0
-            : Math.round((onTimeCompleted / completed) * 100);
+          completed === 0 ? 0 : Math.round((onTimeCompleted / completed) * 100);
 
         return {
           _id: member._id,
@@ -311,7 +467,7 @@ const getAdminTeamMembers = async (req, res) => {
 
           onTimeCompletionRate,
         };
-      })
+      }),
     );
 
     res.json(membersWithStats);
@@ -319,7 +475,6 @@ const getAdminTeamMembers = async (req, res) => {
     res.status(500).json({ message: error.message });
   }
 };
-
 
 // @route GET /api/users/search
 // @access Private (Admin)
@@ -342,16 +497,12 @@ const searchUsers = async (req, res) => {
   }
 };
 
-
-
-
-
 // @desc Add a team member to admin
 // @route POST /api/users/team
 // @access Private (Admin)
 const addTeamMember = async (req, res) => {
   try {
-    if (req.user.role !== "admin") {
+    if (req.user.role !== "admin" && req.user.role !== "superadmin") {
       return res.status(403).json({ message: "Access denied" });
     }
 
@@ -391,13 +542,12 @@ const addTeamMember = async (req, res) => {
   }
 };
 
-
 // @desc Remove a team member from admin
 // @route DELETE /api/users/team/:memberId
 // @access Private (Admin)
 const removeTeamMember = async (req, res) => {
   try {
-    if (req.user.role !== "admin") {
+    if (req.user.role !== "admin" && req.user.role !== "superadmin") {
       return res.status(403).json({ message: "Access denied" });
     }
 
@@ -512,7 +662,6 @@ const removeTeamMember = async (req, res) => {
 //   }
 // };
 
-
 // const getUserAnalytics = async (req, res) => {
 //   try {
 //     const userId = req.params.id;
@@ -603,7 +752,6 @@ const removeTeamMember = async (req, res) => {
 //   }
 // };
 
-
 const getUserAnalytics = async (req, res) => {
   try {
     const userId = req.params.id;
@@ -666,11 +814,12 @@ const getUserAnalytics = async (req, res) => {
     /* ---------------- STATS ---------------- */
     const stats = {
       totalTasks: allTasks.length,
-      pendingTasks: allTasks.filter(t => t.status === "Pending").length,
-      inProgressTasks: allTasks.filter(t => t.status === "In Progress").length,
-      inReviewTasks: allTasks.filter(t => t.status === "In Review").length,
-      completedTasks: allTasks.filter(t => t.status === "Completed").length,
-      onHoldTasks: allTasks.filter(t => t.status === "On Hold").length,
+      pendingTasks: allTasks.filter((t) => t.status === "Pending").length,
+      inProgressTasks: allTasks.filter((t) => t.status === "In Progress")
+        .length,
+      inReviewTasks: allTasks.filter((t) => t.status === "In Review").length,
+      completedTasks: allTasks.filter((t) => t.status === "Completed").length,
+      onHoldTasks: allTasks.filter((t) => t.status === "On Hold").length,
     };
 
     /* ---------------- CHARTS ---------------- */
@@ -683,9 +832,9 @@ const getUserAnalytics = async (req, res) => {
         "On Hold": stats.onHoldTasks,
       },
       taskPriorityLevels: {
-        Low: allTasks.filter(t => t.priority === "Low").length,
-        Medium: allTasks.filter(t => t.priority === "Medium").length,
-        High: allTasks.filter(t => t.priority === "High").length,
+        Low: allTasks.filter((t) => t.priority === "Low").length,
+        Medium: allTasks.filter((t) => t.priority === "Medium").length,
+        High: allTasks.filter((t) => t.priority === "High").length,
       },
     };
 
@@ -720,18 +869,39 @@ const getUserAnalytics = async (req, res) => {
   }
 };
 
+const getAssignableUsers = async (req, res) => {
+  try {
+    console.log("call received")
+    // 🔐 Only admin & superadmin can fetch
+    if (!["admin", "superadmin"].includes(req.user.role)) {
+      return res.status(403).json({ message: "Access denied" });
+    }
 
+    const users = await User.find({
+      role: { $in: ["admin", "superadmin"] },
+    }).select("_id name email role");
+
+    console.log("users ", users)
+    res.json({
+      users,
+    });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
 
 
 module.exports = {
-    getUsers,
-    getUserById,
-    deleteUser,
-    getMyProfile,
-    updateMyProfile,
-    getAdminTeamMembers,
+  getUsers,
+  getUserById,
+  deleteUser,
+  getMyProfile,
+  updateMyProfile,
+  getAdminTeamMembers,
   addTeamMember,
   searchUsers,
   removeTeamMember,
-  getUserAnalytics
+  getUserAnalytics,
+  getAssignableUsers,
+  getAllUsersForSuperadmin
 };

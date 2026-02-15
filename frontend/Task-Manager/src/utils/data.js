@@ -107,6 +107,63 @@ export const SIDE_MENU_USER_DATA = [
     },
 ];
 
+export const SIDE_MENU_SUPERADMIN_DATA = [
+    {
+        id: "01",
+        label: "Dashboard",
+        icon: LuLayoutDashboard,
+        path: "/superadmin/dashboard",
+    },
+    {
+        id: "02",
+        label: "Manage Tasks",
+        icon: LuClipboardCheck,
+        path: "/superadmin/tasks",
+    },
+    {
+        id: "03",
+        label: "Create Task",
+        icon: LuSquarePlus,
+        path: "/superadmin/create-task",
+    },
+    {
+        id: "04",
+        label: "Create Project",
+        icon: LuFolderPlus,
+        path: "/superadmin/create-project",
+    }, 
+    {
+        id: "05",
+        label: "Manage Projects",
+        icon: LuClipboardCheck,
+        path: "/superadmin/projects",
+    },   
+    {
+        id: "06",
+        label: "User Management",
+        icon: LuUsers,
+        path: "/superadmin/users",
+    },
+    {
+        id: "07",
+        label: "Attendance",
+        icon: LuMapPinCheckInside,
+        path: "/attendance",
+    },
+    {
+        id: "08",
+        label: "Profile",
+        icon: FaUser,
+        path: "/profile",
+    },
+    {
+        id: "09",
+        label: "Logout",
+        icon: LuLogOut,
+        path: "logout",
+    },
+];
+
 /* 🔽 THESE WERE MISSING — REQUIRED BY CreateTask.jsx */
 
 export const PRIORITY_DATA = [

@@ -1,5 +1,5 @@
 const MembersChip = ({ members = [] }) => {
-  const visible = members.slice(0, 3);
+  const visible = members.slice(0, 2);
   const remaining = members.length - visible.length;
 
   if (members.length === 0) {

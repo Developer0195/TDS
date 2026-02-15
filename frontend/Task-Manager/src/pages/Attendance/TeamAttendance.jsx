@@ -396,9 +396,16 @@ const EditAttendanceModal = ({
   range,
   calendar,
   onSubmit,
+ holidays
 }) => {
   const [selectedDate, setSelectedDate] = useState(null);
   const [status, setStatus] = useState("Present");
+
+  const holidayMap = {};
+holidays.forEach((h) => {
+  holidayMap[new Date(h.date).toDateString()] = h.name;
+});
+
 
   const today = new Date();
   today.setHours(0, 0, 0, 0);
@@ -447,6 +454,35 @@ const EditAttendanceModal = ({
           Edit Attendance – {member.name}
         </h3>
 
+      <div className="flex flex-wrap gap-3 text-xs mb-4">
+  <div className="flex items-center gap-1">
+    <span className="w-3 h-3 rounded bg-green-500"></span>
+    <span>Present</span>
+  </div>
+
+  <div className="flex items-center gap-1">
+    <span className="w-3 h-3 rounded bg-red-500"></span>
+    <span>Absent</span>
+  </div>
+
+  <div className="flex items-center gap-1">
+    <span className="w-3 h-3 rounded bg-orange-400"></span>
+    <span>Delayed</span>
+  </div>
+
+  <div className="flex items-center gap-1">
+    <span className="w-3 h-3 rounded bg-yellow-300"></span>
+    <span>Holiday / Sunday</span>
+  </div>
+
+  <div className="flex items-center gap-1">
+    <span className="w-3 h-3 rounded bg-gray-200"></span>
+    <span>Future</span>
+  </div>
+</div>
+
+
+
         <div className="grid grid-cols-7 gap-1 text-xs mb-4">
           {["Su", "Mo", "Tu", "We", "Th", "Fr", "Sa"].map((d) => (
             <div key={d} className="text-center text-gray-500">
@@ -454,32 +490,74 @@ const EditAttendanceModal = ({
             </div>
           ))}
 
+
           {allDates.map((d) => {
             const key = d.toDateString();
             const isSelected =
               selectedDate &&
               d.toDateString() === selectedDate.toDateString();
 
-            let cellStyle = "bg-gray-200";
+            // let cellStyle = "bg-gray-200";
 
-            if (statusByDate[key]) {
-              cellStyle = statusStyles[statusByDate[key]];
-            } else if (d < today) {
-              cellStyle = statusStyles["Absent"];
-            }
+            // if (statusByDate[key]) {
+            //   cellStyle = statusStyles[statusByDate[key]];
+            // } else if (d < today) {
+            //   cellStyle = statusStyles["Absent"];
+            // }
+
+
+         let cellStyle = "bg-gray-200";
+const isHoliday = holidayMap[key];
+const isSunday = d.getDay() === 0;
+
+if (isHoliday || isSunday) {
+  cellStyle = "bg-yellow-300 text-black";
+} 
+else if (statusByDate[key]) {
+  cellStyle = statusStyles[statusByDate[key]];
+} 
+else if (d < today) {
+  cellStyle = statusStyles["Absent"];
+}
+
 
             return (
-              <button
-                key={key}
-                disabled={d > today}
-                onClick={() => d <= today && setSelectedDate(d)}
-                className={`h-8 rounded flex items-center justify-center
-                  ${isSelected ? "ring-2 ring-blue-600" : cellStyle}
-                  ${d > today ? "opacity-40 cursor-not-allowed" : ""}
-                `}
-              >
-                {d.getDate()}
-              </button>
+              // <button
+              //   key={key}
+              //   disabled={d > today}
+              //   onClick={() => d <= today && setSelectedDate(d)}
+              //   className={`h-8 rounded flex items-center justify-center
+              //     ${isSelected ? "ring-2 ring-blue-600" : cellStyle}
+              //     ${d > today ? "opacity-40 cursor-not-allowed" : ""}
+              //   `}
+              // >
+              //   {d.getDate()}
+              // </button>
+
+             <button
+  key={key}
+  disabled={d > today || isHoliday || isSunday}
+  onClick={() =>
+    d <= today && !isHoliday && !isSunday && setSelectedDate(d)
+  }
+  className={`h-8 rounded flex items-center justify-center
+    ${isSelected ? "ring-2 ring-blue-600" : cellStyle}
+    ${d > today || isHoliday || isSunday
+      ? "opacity-50 cursor-not-allowed"
+      : ""}
+  `}
+  title={
+    isHoliday
+      ? holidayMap[key]
+      : isSunday
+      ? "Sunday (Weekly Off)"
+      : ""
+  }
+>
+  {d.getDate()}
+</button>
+
+
             );
           })}
         </div>
@@ -526,6 +604,9 @@ const TeamAttendance = () => {
   const [editOpen, setEditOpen] = useState(false);
   const [editMember, setEditMember] = useState(null);
 
+  const [holidays, setHolidays] = useState([]);
+
+
   const fetchAnalytics = async () => {
     try {
       setLoading(true);
@@ -539,6 +620,8 @@ const TeamAttendance = () => {
         }
       );
       setMembers(res.data.members || []);
+      setHolidays(res.data.holidays || []);
+
     } finally {
       setLoading(false);
     }
@@ -613,6 +696,35 @@ const TeamAttendance = () => {
         )}
       </div>
 
+      {/* LEGEND */}
+<div className="flex flex-wrap gap-3 text-xs mb-4">
+  <div className="flex items-center gap-1">
+    <span className="w-3 h-3 rounded bg-green-500"></span>
+    <span>Present</span>
+  </div>
+
+  <div className="flex items-center gap-1">
+    <span className="w-3 h-3 rounded bg-red-500"></span>
+    <span>Absent</span>
+  </div>
+
+  <div className="flex items-center gap-1">
+    <span className="w-3 h-3 rounded bg-orange-400"></span>
+    <span>Delayed</span>
+  </div>
+
+  <div className="flex items-center gap-1">
+    <span className="w-3 h-3 rounded bg-yellow-300"></span>
+    <span>Holiday</span>
+  </div>
+
+  <div className="flex items-center gap-1">
+    <span className="w-3 h-3 rounded bg-gray-200"></span>
+    <span>Future / No Data</span>
+  </div>
+</div>
+
+
       <div className="bg-white border border-gray-300 rounded-lg overflow-hidden">
         <table className="w-full text-sm">
           <thead className="bg-gray-50">
@@ -671,6 +783,7 @@ const TeamAttendance = () => {
           range={range}
           calendar={editMember?.calendar || []}
           onSubmit={submitOverride}
+           holidays={holidays}
         />
       )}
     </>

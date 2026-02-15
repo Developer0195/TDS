@@ -1,7 +1,12 @@
 import React from "react";
 import moment from "moment";
+import { UserContext } from "../context/userContext";
+import { useContext } from "react";
 
 const TaskListTable = ({ tableData }) => {
+  const { user } = useContext(UserContext);
+  const isSuperAdmin = user.role == "superadmin";
+
   const getStatusBadgeColor = (status) => {
     switch (status) {
       case "Completed":
@@ -61,6 +66,12 @@ const TaskListTable = ({ tableData }) => {
             <th className="py-3 px-4 text-gray-800 font-medium text-[13px] hidden md:table-cell">
               Assigned To
             </th>
+
+            {isSuperAdmin && (
+              <th className="py-3 px-4 text-gray-800 font-medium text-[13px] hidden md:table-cell">
+                Assigned By
+              </th>
+            )}
 
             {/* CREATED ON */}
             <th className="py-3 px-4 text-gray-800 font-medium text-[13px] hidden md:table-cell">
@@ -124,6 +135,13 @@ const TaskListTable = ({ tableData }) => {
                   ))}
                 </div>
               </td>
+
+              {/* ASSIGNED BY - ONLY SUPERADMIN */}
+              {isSuperAdmin && (
+                <td className="py-4 px-4 text-gray-700 text-[13px] hidden md:table-cell">
+                  {task.createdBy?.name || "N/A"}
+                </td>
+              )}
 
               {/* CREATED DATE */}
               <td className="py-4 px-4 text-gray-700 text-[13px] hidden md:table-cell">

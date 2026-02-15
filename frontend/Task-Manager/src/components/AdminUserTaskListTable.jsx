@@ -32,6 +32,8 @@ const TaskListTable = ({ tableData }) => {
     }
   };
 
+  console.log(tableData)
+
   return (
     <div className="overflow-x-auto p-0 rounded-lg mt-3">
       <table className="min-w-full">
@@ -57,7 +59,7 @@ const TaskListTable = ({ tableData }) => {
               Priority
             </th>
 
-            {/* ASSIGNED TO */}
+            {/* ASSIGNED By*/}
             <th className="py-3 px-4 text-gray-800 font-medium text-[13px] hidden md:table-cell">
               Assigned By
             </th>
@@ -110,10 +112,10 @@ const TaskListTable = ({ tableData }) => {
                 </span>
               </td>
 
-              {/* Assigned to */}
+              {/* Assigned by */}
               <td>
                 <div className="flex flex-wrap gap-1">
-                  {task.assignedTo?.map((user) => (
+                  {/* {task.assignedTo?.map((user) => (
                     <div
                       key={user._id}
                       className="px-2 py-0.5 text-xs rounded-full bg-gray-100 text-gray-700"
@@ -121,7 +123,13 @@ const TaskListTable = ({ tableData }) => {
                     >
                       {user.name}
                     </div>
-                  ))}
+                  ))} */}
+                   <div
+                      key={task?.createdBy?._id}
+                      className="px-2 py-0.5 text-xs rounded-full bg-gray-100 text-gray-700"
+                    >
+                      {task?.createdBy?.name}
+                    </div>
                 </div>
               </td>
 

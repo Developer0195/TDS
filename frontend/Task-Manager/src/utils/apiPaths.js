@@ -23,6 +23,8 @@ export const API_PATHS = {
         REMOVE_TEAM_MEMBER: (id) => `/api/users/team/${id}`,
         SEARCH_USERS: "/api/users/search",
         GET_USER_ANALYTICS: (id) => `/api/users/${id}/analytics`,
+        GET_ASSIGNABLE_USERS: "/api/users/assignable-users",
+        GET_SUPERADMIN_USERS: "/api/users/superadmin"
     },
 
     TASKS: {

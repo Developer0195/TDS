@@ -1,6 +1,6 @@
 const express = require("express");
 const router = express.Router();
-const { protect } = require("../middlewares/authMiddleware");
+const { protect, adminOnly, superadminOnly } = require("../middlewares/authMiddleware");
 
 const {
   punchIn,
@@ -15,6 +15,7 @@ router.get("/my", protect, getMyAttendance);
 router.get(
   "/daily",
   protect,
+  adminOnly,
   getDailyAttendance
 );
 
@@ -34,6 +35,7 @@ router.get(
 router.put(
   "/:attendanceId/status",
   protect,
+  adminOnly,
   updateAttendanceStatus
 );
 
@@ -41,6 +43,7 @@ router.put(
 router.put(
   "/admin/override",
   protect,
+  adminOnly, 
   adminOverrideAttendance
 );
 

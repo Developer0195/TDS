@@ -13,68 +13,95 @@ const generateToken = (userId) => {
 // @route POST /api/auth/register
 // @access Public
 
+
+
+
 // const registerUser = async (req, res) => {
-//     try {
-//         const { name, email, password, profileImageUrl, adminInviteToken } =
-//             req.body;
-//         // Check if user already exists
-//         const userExists = await User.findOne({ email });
-//         if (userExists) {
-//             return res.status(400).json({ message: "User already exists" });
-//         }
+//   try {
+//     const { name, email, password, profileImageUrl, adminInviteToken } = req.body;
 
-//         // Determine user role: Admin if correct token is provided, otherwise Member
-//         let role = "member";
-//         if (
-//             adminInviteToken &&
-//             adminInviteToken === process.env.ADMIN_INVITE_TOKEN
-//         ) {
-//             role = "admin"
-//         }
+//     const userExists = await User.findOne({ email });
+//     if (userExists) {
+//       return res.status(400).json({ message: "User already exists" });
+//     }
 
-//         // Hash password
-//         const salt = await bcrypt.genSalt(10);
-//         const hashedPassword = await bcrypt.hash(password, salt);
+//     let role = "member";
+//     if (adminInviteToken === process.env.ADMIN_INVITE_TOKEN) {
+//       role = "admin";
+//     }
 
-//         // Create new user
-//         const user = await User.create({
-//             name,
-//             email,
-//             password: hashedPassword,
-//             profileImageUrl,
-//             role,
-//         });
+//     const salt = await bcrypt.genSalt(10);
+//     const hashedPassword = await bcrypt.hash(password, salt);
 
-//         // Return user data with JWT
-//         res.status(201).json({
-//             _id: user._id,
-//             name: user.name,
-//             email: user.email,
-//             role: user.role,
-//             profileImageUrl: user.profileImageUrl,
-//             token: generateToken(user._id),
-//         });
-//     } catch (error) {
-//         res.status(500).json({ message: "Server error", error: error.message });
+//     const emailToken = crypto.randomBytes(32).toString("hex");
 
-//     };
-// }
+//     await User.create({
+//       name,
+//       email,
+//       password: hashedPassword,
+//       profileImageUrl,
+//       role,
+//       emailVerified: false,
+//       emailVerificationToken: emailToken,
+//       emailVerificationExpires: Date.now() + 1000 * 60 * 60, // 1 hour
+//     });
 
+//     // 📧 Send email
+//     await sendVerificationEmail(email, emailToken);
 
+//     res.status(200).json({
+//       message: "Verification email sent. Please check your inbox.",
+//     });
+//   } catch (error) {
+//     res.status(500).json({ message: error.message });
+//   }
+// };
 
 
 const registerUser = async (req, res) => {
   try {
-    const { name, email, password, profileImageUrl, adminInviteToken } = req.body;
+    const {
+      name,
+      email,
+      password,
+      profileImageUrl,
+      adminInviteToken,
+      superAdminCode,
+      memberInviteToken
+    } = req.body;
+
 
     const userExists = await User.findOne({ email });
     if (userExists) {
       return res.status(400).json({ message: "User already exists" });
     }
 
-    let role = "member";
-    if (adminInviteToken === process.env.ADMIN_INVITE_TOKEN) {
+    let role = null;
+
+    // SUPER ADMIN (highest priority check first)
+    if (superAdminCode && superAdminCode === process.env.SUPERADMIN_INVITE_TOKEN) {
+      role = "superadmin";
+    }
+    // ADMIN
+    else if (
+      adminInviteToken &&
+      adminInviteToken === process.env.ADMIN_INVITE_TOKEN
+    ) {
       role = "admin";
+    }
+
+    else if (
+      memberInviteToken &&
+      memberInviteToken === process.env.TEAM_MEMBER_INVITE_TOKEN
+    ) {
+      role = "member";
+    }
+
+    // ❌ NO VALID TOKEN
+    else {
+      return res.status(403).json({
+        message: "Invalid or missing invite token",
+      });
     }
 
     const salt = await bcrypt.genSalt(10);
@@ -93,7 +120,6 @@ const registerUser = async (req, res) => {
       emailVerificationExpires: Date.now() + 1000 * 60 * 60, // 1 hour
     });
 
-    // 📧 Send email
     await sendVerificationEmail(email, emailToken);
 
     res.status(200).json({
@@ -103,6 +129,7 @@ const registerUser = async (req, res) => {
     res.status(500).json({ message: error.message });
   }
 };
+
 
 
 // const verifyEmail = async (req, res) => {
