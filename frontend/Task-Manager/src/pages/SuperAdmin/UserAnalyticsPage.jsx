@@ -424,7 +424,7 @@ const UserAnalyticsPage = () => {
           className="form-input text-xs h-8"
           value={filters.startDate}
           onChange={(e) =>
-            setFilters((p) => ({ ...p, startDate: e.target.value }))
+            setFilters((p) => ({ ...p, startDate: e.target.value,  endDate: e.target.value}))
           }
         />
         <input

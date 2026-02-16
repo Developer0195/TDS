@@ -17,6 +17,9 @@ const ManageUsers = () => {
   const [searchQuery, setSearchQuery] = useState("");
   const [showDropdown, setShowDropdown] = useState(false);
 
+  
+
+
   const navigate = useNavigate();
 
   /* =======================
@@ -43,6 +46,9 @@ const ManageUsers = () => {
       toast.error("Failed to load users");
     }
   };
+
+
+
 
   /* =======================
      ADD TEAM MEMBER
@@ -160,11 +166,12 @@ const ManageUsers = () => {
 
         {/* TEAM TABLE */}
         <div className="border border-gray-300 rounded-lg overflow-hidden bg-white">
-          <div className="grid grid-cols-12 gap-3 px-4 py-2 bg-gray-50 text-xs font-medium text-gray-500 border-b">
+          <div className="grid grid-cols-13 gap-3 px-4 py-2 bg-gray-50 text-xs font-medium text-gray-500 border-b">
             <div className="col-span-3">Member</div>
             <div className="col-span-5">Task Status</div>
             <div className="col-span-3">On-Time Completion %</div>
             <div className="col-span-1 text-right">Action</div>
+            <div className="col-span-1 text-right">Weekly Task</div>
           </div>
 
           {teamMembers.length === 0 ? (
@@ -176,7 +183,7 @@ const ManageUsers = () => {
               <div
                 key={member._id}
                 onClick={() => navigate(`/admin/users/${member._id}`)}
-                className="cursor-pointer grid grid-cols-12 gap-3 px-4 py-3 border-b text-sm items-center"
+                className="cursor-pointer grid grid-cols-13 gap-3 px-4 py-3 border-b text-sm items-center"
               >
                 <div className="col-span-3">
                   <p className="font-medium">{member.name}</p>
@@ -204,6 +211,20 @@ const ManageUsers = () => {
                     <LuTrash2 />
                   </button>
                 </div>
+
+                
+                {/* WEEKLY TASK BUTTON */}
+<div
+  className="col-span-1 flex justify-center"
+  onClick={(e) => {
+    e.stopPropagation(); // 🔥 Prevent row navigation
+     navigate(`/admin/users/${member._id}/weekly-tasks`);
+  }}
+>
+  <button className="text-xs bg-indigo-100 text-indigo-700 px-2 py-1 rounded hover:bg-indigo-200">
+    View
+  </button>
+</div>
               </div>
             ))
           )}

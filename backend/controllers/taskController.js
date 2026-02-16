@@ -13,7 +13,6 @@ const getDateRange = (startDate, endDate) => {
   return { start, end };
 };
 
-
 /* ===============================
    GET ALL TASKS
 ================================ */
@@ -87,7 +86,6 @@ const getDateRange = (startDate, endDate) => {
 //   }
 // };
 
-
 const getTasks = async (req, res) => {
   try {
     const {
@@ -97,7 +95,7 @@ const getTasks = async (req, res) => {
       endDate,
       page = 1,
       limit = 10,
-       createdBy, 
+      createdBy,
     } = req.query;
 
     let filter = {};
@@ -115,24 +113,22 @@ const getTasks = async (req, res) => {
     }
 
     // ✅ Date range filter (due date)
-  if (startDate && endDate) {
-  const [sy, sm, sd] = startDate.split("-");
-  const [ey, em, ed] = endDate.split("-");
+    if (startDate && endDate) {
+      const [sy, sm, sd] = startDate.split("-");
+      const [ey, em, ed] = endDate.split("-");
 
-  const start = new Date(sy, sm - 1, sd, 0, 0, 0, 0);
-  const end = new Date(ey, em - 1, ed, 23, 59, 59, 999);
+      const start = new Date(sy, sm - 1, sd, 0, 0, 0, 0);
+      const end = new Date(ey, em - 1, ed, 23, 59, 59, 999);
 
-  filter.dueDate = {
-    $gte: start,
-    $lte: end,
-  };
-}
-
-
-    if (!startDate && endDate) {
-      filter.dueDate =  {  $gte: new Date(endDate), $lte: new Date(endDate) }
+      filter.dueDate = {
+        $gte: start,
+        $lte: end,
+      };
     }
 
+    if (!startDate && endDate) {
+      filter.dueDate = { $gte: new Date(endDate), $lte: new Date(endDate) };
+    }
 
     // ✅ Role-based access
     if (req.user.role === "admin") {
@@ -142,14 +138,13 @@ const getTasks = async (req, res) => {
     }
 
     // ✅ Superadmin createdBy filter
-if (req.user.role === "superadmin" && createdBy) {
-  if (createdBy === "me") {
-    filter.createdBy = req.user._id;
-  } else {
-    filter.createdBy = createdBy;
-  }
-}
-
+    if (req.user.role === "superadmin" && createdBy) {
+      if (createdBy === "me") {
+        filter.createdBy = req.user._id;
+      } else {
+        filter.createdBy = createdBy;
+      }
+    }
 
     // ✅ Pagination math
     const pageNumber = Number(page);
@@ -160,8 +155,8 @@ if (req.user.role === "superadmin" && createdBy) {
     const [tasks, totalTasks] = await Promise.all([
       Task.find(filter)
         .sort({ createdAt: -1 })
-        .skip(skip)              // 🔥 pagination
-        .limit(pageSize)         // 🔥 pagination
+        .skip(skip) // 🔥 pagination
+        .limit(pageSize) // 🔥 pagination
         .populate("assignedTo", "name email profileImageUrl")
         .populate("project", "name")
         .populate("createdBy", "name email"),
@@ -195,8 +190,6 @@ if (req.user.role === "superadmin" && createdBy) {
   }
 };
 
-
-
 /* ===============================
    GET TASK BY ID
 ================================ */
@@ -216,7 +209,7 @@ const getTaskById = async (req, res) => {
       .populate("comments.commentedBy", "name profileImageUrl")
       // ✅ IMPORTANT: populate subtask assignees
       .populate("todoCheckList.assignedTo", "name email profileImageUrl")
-       .populate("createdBy", "name email profileImageUrl");
+      .populate("createdBy", "name email profileImageUrl");
 
     if (!task) {
       return res.status(404).json({ message: "Task not found" });
@@ -227,7 +220,6 @@ const getTaskById = async (req, res) => {
     res.status(500).json({ message: error.message });
   }
 };
-
 
 /* ===============================
    CREATE TASK
@@ -291,7 +283,6 @@ const getTaskById = async (req, res) => {
 //   }
 // };
 
-
 const createTask = async (req, res) => {
   try {
     const {
@@ -319,7 +310,7 @@ const createTask = async (req, res) => {
 
     /* ---------------- SUBTASK VALIDATION ---------------- */
     const invalidSubtask = todoCheckList.find(
-      (t) => !t.assignedTo || !String(t.assignedTo).trim()
+      (t) => !t.assignedTo || !String(t.assignedTo).trim(),
     );
 
     if (invalidSubtask) {
@@ -365,8 +356,6 @@ const createTask = async (req, res) => {
   }
 };
 
-
-
 /* ===============================
    UPDATE TASK
 ================================ */
@@ -380,7 +369,7 @@ const updateTask = async (req, res) => {
       });
     }
 
-     if (req.body.dueDate) {
+    if (req.body.dueDate) {
       const parsedDueDate = new Date(req.body.dueDate);
       parsedDueDate.setHours(23, 59, 59, 999);
       req.body.dueDate = parsedDueDate;
@@ -487,37 +476,28 @@ const updateTaskChecklist = async (req, res) => {
 
     task.todoCheckList = task.todoCheckList.map((existing) => {
       const incoming = incomingChecklist.find(
-        (t) => t._id.toString() === existing._id.toString()
+        (t) => t._id.toString() === existing._id.toString(),
       );
 
       if (!incoming) return existing;
 
       // Only assigned user can modify
-      if (
-        existing.assignedTo.toString() ===
-        req.user._id.toString()
-      ) {
+      if (existing.assignedTo.toString() === req.user._id.toString()) {
         existing.completed = incoming.completed;
-        existing.completedAt = incoming.completed
-          ? new Date()
-          : null;
+        existing.completedAt = incoming.completed ? new Date() : null;
       }
 
       return existing;
     });
 
     // Recalculate progress only
-    const completedCount = task.todoCheckList.filter(
-      (t) => t.completed
-    ).length;
+    const completedCount = task.todoCheckList.filter((t) => t.completed).length;
 
     const total = task.todoCheckList.length;
 
-    task.progress = total
-      ? Math.round((completedCount / total) * 100)
-      : 0;
+    task.progress = total ? Math.round((completedCount / total) * 100) : 0;
 
-    // 🚫 DO NOT TOUCH STATUS HERE
+    // DO NOT TOUCH STATUS HERE
 
     await task.save();
 
@@ -543,17 +523,12 @@ const updateSubtask = async (req, res) => {
     }
 
     const task = await Task.findById(taskId);
-    if (!task)
-      return res.status(404).json({ message: "Task not found" });
+    if (!task) return res.status(404).json({ message: "Task not found" });
 
     const subtask = task.todoCheckList.id(subtaskId);
-    if (!subtask)
-      return res.status(404).json({ message: "Subtask not found" });
+    if (!subtask) return res.status(404).json({ message: "Subtask not found" });
 
-    if (
-      subtask.assignedTo.toString() !==
-      req.user._id.toString()
-    ) {
+    if (subtask.assignedTo.toString() !== req.user._id.toString()) {
       return res.status(403).json({
         message: "Not authorized",
       });
@@ -571,47 +546,43 @@ const updateSubtask = async (req, res) => {
     =============================== */
 
     if (!completed && subtask.document?.public_id) {
-      await cloudinary.uploader.destroy(
-        subtask.document.public_id
-      );
+      await cloudinary.uploader.destroy(subtask.document.public_id);
       subtask.document = undefined;
     }
 
     /* ===============================
        UPLOAD NEW FILE (BUFFER ONLY)
     =============================== */
-    console.log(req.file)
+    console.log(req.file);
     if (req.file) {
       // Delete old file
       if (subtask.document?.public_id) {
         const res = await cloudinary.uploader.destroy(
-          subtask.document.public_id
+          subtask.document.public_id,
         );
-        console.log(res)
+        console.log(res);
       }
 
       const result = await new Promise((resolve, reject) => {
-        const stream =
-          cloudinary.uploader.upload_stream(
-            { folder: "task-attachments" },
-            (error, result) => {
-              if (error) reject(error);
-              else resolve(result);
-            }
-          );
+        const stream = cloudinary.uploader.upload_stream(
+          { folder: "task-attachments" },
+          (error, result) => {
+            if (error) reject(error);
+            else resolve(result);
+          },
+        );
         stream.end(req.file.buffer);
       });
 
-      console.log(result)
+      console.log(result);
 
       subtask.set("document", {
-  fileName: req.file.originalname,
-  fileUrl: result.secure_url,
-  public_id: result.public_id,
-  uploadedBy: req.user._id,
-  uploadedAt: new Date(),
-});
-
+        fileName: req.file.originalname,
+        fileUrl: result.secure_url,
+        public_id: result.public_id,
+        uploadedBy: req.user._id,
+        uploadedAt: new Date(),
+      });
     }
 
     /* ===============================
@@ -619,19 +590,24 @@ const updateSubtask = async (req, res) => {
     =============================== */
 
     const total = task.todoCheckList.length;
-    const completedCount = task.todoCheckList.filter(
-      (t) => t.completed
-    ).length;
+    const completedCount = task.todoCheckList.filter((t) => t.completed).length;
 
-    task.progress = total
-      ? Math.round((completedCount / total) * 100)
-      : 0;
+    task.progress = total ? Math.round((completedCount / total) * 100) : 0;
 
     if (completedCount === 0) {
       task.status = "Pending";
     } else if (completedCount === total) {
-      task.status = "Completed";
-      task.completedAt = new Date();
+      // 🔥 Move to In Review, NOT Completed
+      if (task.status !== "In Review") {
+        task.status = "In Review";
+
+        addLog(
+          task,
+          "TASK_IN_REVIEW",
+          "All subtasks completed. Task moved to In Review.",
+          req.user._id,
+        );
+      }
     } else {
       task.status = "In Progress";
     }
@@ -647,7 +623,6 @@ const updateSubtask = async (req, res) => {
       message: "Subtask updated successfully",
       task: populatedTask,
     });
-
   } catch (err) {
     console.error("UPDATE ERROR:", err);
     res.status(500).json({
@@ -655,13 +630,6 @@ const updateSubtask = async (req, res) => {
     });
   }
 };
-
-
-
-
-
-
-
 
 /* ===============================
    ADD COMMENT
@@ -723,7 +691,6 @@ const deleteTask = async (req, res) => {
   }
 };
 
-
 /* ======================================
    UPLOAD FILE FOR A SPECIFIC SUBTASK
 ====================================== */
@@ -752,10 +719,7 @@ const uploadSubtaskFile = async (req, res) => {
     }
 
     // ✅ SECURITY: Only assigned user can upload
-    if (
-      subtask.assignedTo.toString() !==
-      req.user._id.toString()
-    ) {
+    if (subtask.assignedTo.toString() !== req.user._id.toString()) {
       return res.status(403).json({
         message: "Not authorized to upload file for this subtask",
       });
@@ -795,7 +759,7 @@ const uploadSubtaskFile = async (req, res) => {
           message: "File uploaded successfully",
           task,
         });
-      }
+      },
     );
 
     uploadStream.end(req.file.buffer);
@@ -806,7 +770,6 @@ const uploadSubtaskFile = async (req, res) => {
     });
   }
 };
-
 
 /* ===============================
  DASHBOARD DATA (ADMIN / SUPERADMIN)
@@ -887,11 +850,9 @@ const uploadSubtaskFile = async (req, res) => {
 //     const { projectId, startDate, endDate, recentStatus, recentPriority,  page = 1,
 //   limit = 10 } = req.query;
 
-
 //   const pageNumber = Number(page);
 // const pageSize = Number(limit);
 // const skip = (pageNumber - 1) * pageSize;
-
 
 //     const baseFilter =
 //       req.user.role === "superadmin" ? {} : { createdBy: req.user._id };
@@ -907,7 +868,6 @@ const uploadSubtaskFile = async (req, res) => {
 // } else if (projectId) {
 //   baseFilter.project = new mongoose.Types.ObjectId(projectId);
 // }
-
 
 //     // ✅ Date range filter on dueDate
 //     if (startDate && endDate) {
@@ -988,7 +948,6 @@ const uploadSubtaskFile = async (req, res) => {
 //   Task.countDocuments(recentTasksFilter),
 // ]);
 
-
 //     res.status(200).json({
 //       statistics: {
 //         totalTasks,
@@ -1023,8 +982,6 @@ const uploadSubtaskFile = async (req, res) => {
 //   }
 // };
 
-
-
 const getDashboardData = async (req, res) => {
   try {
     const {
@@ -1049,10 +1006,7 @@ const getDashboardData = async (req, res) => {
 
     /* ---------- PROJECT FILTER ---------- */
     if (projectId === "null") {
-      baseFilter.$or = [
-        { project: null },
-        { project: { $exists: false } },
-      ];
+      baseFilter.$or = [{ project: null }, { project: { $exists: false } }];
     } else if (projectId) {
       baseFilter.project = new mongoose.Types.ObjectId(projectId);
     }
@@ -1066,18 +1020,17 @@ const getDashboardData = async (req, res) => {
     // }
 
     if (startDate && endDate) {
-  const start = new Date(startDate);
-  start.setHours(0, 0, 0, 0);
+      const start = new Date(startDate);
+      start.setHours(0, 0, 0, 0);
 
-  const end = new Date(endDate);
-  end.setHours(23, 59, 59, 999);
+      const end = new Date(endDate);
+      end.setHours(23, 59, 59, 999);
 
-  baseFilter.dueDate = {
-    $gte: start,
-    $lte: end,
-  };
-}
-
+      baseFilter.dueDate = {
+        $gte: start,
+        $lte: end,
+      };
+    }
 
     /* ---------- STATUS COUNTS ---------- */
     const [
@@ -1230,7 +1183,6 @@ const getDashboardData = async (req, res) => {
 //   }
 // };
 
-
 const getUserDashboardData = async (req, res) => {
   try {
     const userId = req.user._id;
@@ -1258,10 +1210,7 @@ const getUserDashboardData = async (req, res) => {
 
     /* ================= PROJECT FILTER ================= */
     if (projectId === "null") {
-      baseFilter.$or = [
-        { project: null },
-        { project: { $exists: false } },
-      ];
+      baseFilter.$or = [{ project: null }, { project: { $exists: false } }];
     } else if (projectId) {
       baseFilter.project = new mongoose.Types.ObjectId(projectId);
     }
@@ -1275,18 +1224,17 @@ const getUserDashboardData = async (req, res) => {
     // }
 
     if (dueStartDate && dueEndDate) {
-  const start = new Date(dueStartDate);
-  start.setHours(0, 0, 0, 0);
+      const start = new Date(dueStartDate);
+      start.setHours(0, 0, 0, 0);
 
-  const end = new Date(dueEndDate);
-  end.setHours(23, 59, 59, 999);
+      const end = new Date(dueEndDate);
+      end.setHours(23, 59, 59, 999);
 
-  baseFilter.dueDate = {
-    $gte: start,
-    $lte: end,
-  };
-}
-
+      baseFilter.dueDate = {
+        $gte: start,
+        $lte: end,
+      };
+    }
 
     /* ================= CREATED DATE FILTER ================= */
     if (createdStartDate && createdEndDate) {
@@ -1392,8 +1340,6 @@ const getUserDashboardData = async (req, res) => {
   }
 };
 
-
-
 /* ===============================
  USER ANALYTICS (ADMIN)
 ================================ */
@@ -1485,5 +1431,5 @@ module.exports = {
   addComment,
   getUserAnalyticsByAdmin,
   uploadSubtaskFile,
-  updateSubtask
+  updateSubtask,
 };

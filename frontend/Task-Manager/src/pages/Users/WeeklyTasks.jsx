@@ -151,7 +151,26 @@ const WeeklyTasks = () => {
         {/* ================= CURRENT WEEK ================= */}
         {activeTab === "current" && (
           <div className="bg-white border border-blue-100 rounded-xl p-6 shadow-sm">
-            <h2 className="text-lg font-semibold text-gray-800">Weekly Task</h2>
+            <div className="flex justify-between items-center">
+  <h2 className="text-lg font-semibold text-gray-800">
+    Weekly Task
+  </h2>
+
+  {task && (
+    <span
+      className={`text-xs px-3 py-1 rounded-full ${
+        task.status === "Approved"
+          ? "bg-green-100 text-green-700"
+          : task.status === "Rejected"
+          ? "bg-red-100 text-red-700"
+          : "bg-yellow-100 text-yellow-700"
+      }`}
+    >
+      {task.status}
+    </span>
+  )}
+</div>
+
 
             <div className="mt-5 space-y-4">
               {/* Name */}

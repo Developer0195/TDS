@@ -11,6 +11,7 @@ import toast from "react-hot-toast";
 const MyAttendance = () => {
   const { user } = useContext(UserContext);
 
+
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
 
@@ -41,7 +42,13 @@ const MyAttendance = () => {
     );
 
     setToday(res.data.today);
-    setHistory(res.data.attendance || []);
+    const filteredAttendance =
+  (res.data.attendance || []).filter(
+    (a) => a.punchIn || a.punchOut
+  );
+
+setHistory(filteredAttendance);
+
     setRequiresCheckins(
       res.data.today?.workType === "OFFSITE" &&
       (res.data.today?.offsiteCheckins?.length || 0) < 3 &&
@@ -53,7 +60,7 @@ const MyAttendance = () => {
 
   useEffect(() => {
     fetchMyAttendance();
-  }, []);
+  }, [startDate, endDate]);
 
   /* ================= CAMERA CAPTURE ================= */
   const handleCapture = async (photoBase64) => {
@@ -201,6 +208,45 @@ const MyAttendance = () => {
           </div>
         )}
       </div>
+
+      {/* ================= FILTER ================= */}
+<div className="bg-white border border-gray-300 rounded-lg p-4 mb-4 flex gap-4 items-end">
+  <div className="flex flex-col">
+    <label className="text-xs text-gray-500 mb-1">Start Date</label>
+    <input
+      type="date"
+      value={startDate}
+      onChange={(e) => {
+        setStartDate(e.target.value);
+        setEndDate(e.target.value); // reset end date
+      }}
+      className="border border-gray-300 rounded px-3 py-2 text-sm"
+    />
+  </div>
+
+  <div className="flex flex-col">
+    <label className="text-xs text-gray-500 mb-1">End Date</label>
+    <input
+      type="date"
+      value={endDate}
+      min={startDate}
+      onChange={(e) => setEndDate(e.target.value)}
+      className="border border-gray-300 rounded px-3 py-2 text-sm"
+    />
+  </div>
+
+  <button
+    onClick={() => {
+      setStartDate("");
+      setEndDate("");
+      fetchMyAttendance();
+    }}
+    className="bg-gray-200 px-4 py-2 text-sm rounded"
+  >
+    Reset
+  </button>
+</div>
+
 
       {/* ================= HISTORY ================= */}
       <div className="bg-white border border-gray-300 rounded-lg">

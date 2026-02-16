@@ -1,4 +1,6 @@
 import moment from "moment";
+import { useContext } from "react";
+import { UserContext } from "../context/userContext";
 
 const statusStyles = {
   Pending: "bg-yellow-100 text-yellow-700",
@@ -17,11 +19,12 @@ const priorityStyles = {
 const TaskRow = ({ task, onClick }) => {
   const totalTodos = task.todoCheckList?.length || 0;
   const completedTodos = task.completedTodoCount || 0;
+  const {user} = useContext(UserContext);
 
   return (
     <div
       onClick={onClick}
-      className="grid grid-cols-12 gap-3 items-center px-4 py-3 border-b border-gray-300 hover:bg-gray-50 cursor-pointer text-sm"
+      className={`grid ${user.role == "admin"? "grid-cols-12": "grid-cols-13"} gap-3 items-center px-4 py-3 border-b border-gray-300 hover:bg-gray-50 cursor-pointer text-sm`}
     >
       {/* TASK NAME */}
       <div className="col-span-3 font-medium truncate">
@@ -76,6 +79,18 @@ const TaskRow = ({ task, onClick }) => {
           </span>
         )}
       </div>
+
+{/* assigned by */}
+        {user.role == "superadmin" && <div className="col-span-1 flex flex-wrap gap-2">
+          <div
+            key={task?.createdBy?._id}
+            className=" h-7 px-2 py-1 rounded-lg bg-gray-200 text-xs flex items-center justify-center"
+            title="Assigned user"
+          >
+            {task?.createdBy?.name}
+          </div>
+     
+      </div>}
     </div>
   );
 };

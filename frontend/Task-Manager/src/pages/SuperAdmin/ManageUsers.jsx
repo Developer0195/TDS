@@ -14,6 +14,7 @@ const ManageUsers = () => {
   const [filteredUsers, setFilteredUsers] = useState([]);
   const [searchQuery, setSearchQuery] = useState("");
 
+
   console.log(users)
 
   const navigate = useNavigate();
@@ -34,6 +35,9 @@ const ManageUsers = () => {
     }
   };
 
+
+
+  
   /* =======================
      LOAD ON MOUNT
   ======================= */
@@ -87,11 +91,13 @@ const ManageUsers = () => {
         {/* USERS TABLE */}
         <div className="border border-gray-300 rounded-lg overflow-hidden bg-white">
           {/* TABLE HEADER */}
-          <div className="grid grid-cols-12 gap-3 px-4 py-2 bg-gray-50 text-xs font-medium text-gray-500 border-b">
+          <div className="grid grid-cols-13 gap-3 px-4 py-2 bg-gray-50 text-xs font-medium text-gray-500 border-b">
             <div className="col-span-3">User</div>
             <div className="col-span-2">Role</div>
             <div className="col-span-4">Task Status</div>
             <div className="col-span-3">On-Time Completion %</div>
+            <div className="col-span-1">Weekly Tasks</div>
+
           </div>
 
           {/* TABLE BODY */}
@@ -103,8 +109,8 @@ const ManageUsers = () => {
             filteredUsers.map((user) => (
               <div
                 key={user._id}
-                onClick={() => navigate(`/admin/users/${user._id}`)}
-                className="cursor-pointer grid grid-cols-12 gap-3 px-4 py-3 border-b text-sm items-center hover:bg-gray-50"
+                onClick={() => navigate(`/superadmin/users/${user._id}`)}
+                className="cursor-pointer grid grid-cols-13 gap-3 px-4 py-3 border-b text-sm items-center hover:bg-gray-50"
               >
                 {/* USER INFO */}
                 <div className="col-span-3">
@@ -138,11 +144,28 @@ const ManageUsers = () => {
                     {user.onTimeCompletionRate || 0}%
                   </span>
                 </div>
+
+
+                {/* WEEKLY TASK BUTTON */}
+<div
+  className="col-span-1 flex justify-center"
+  onClick={(e) => {
+    e.stopPropagation(); // 🔥 Prevent row navigation
+     navigate(`/superadmin/users/${user._id}/weekly-tasks`);
+  }}
+>
+  <button className="text-xs bg-indigo-100 text-indigo-700 px-2 py-1 rounded hover:bg-indigo-200">
+    View
+  </button>
+</div>
+
               </div>
             ))
           )}
         </div>
       </div>
+
+     
     </DashboardLayout>
   );
 };

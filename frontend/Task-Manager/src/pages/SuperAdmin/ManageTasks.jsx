@@ -55,7 +55,7 @@ const ManageTasks = () => {
 
   /* ---------------- TASK CLICK ---------------- */
   const handleClick = (taskData) => {
-    navigate(`/admin/create-task`, { state: { taskId: taskData._id } });
+    navigate(`/superadmin/create-task`, { state: { taskId: taskData._id } });
   };
 
   /* ---------------- FETCH PROJECTS ---------------- */
@@ -213,7 +213,7 @@ const ManageTasks = () => {
         {/* TASK LIST */}
         <div className="border border-gray-300 rounded-lg overflow-hidden bg-white">
           {/* Header */}
-          <div className="grid grid-cols-12 gap-3 px-4 py-2 bg-gray-50 text-xs font-medium text-gray-500 border-b border-gray-300">
+          <div className="grid grid-cols-13 gap-3 px-4 py-2 bg-gray-50 text-xs font-medium text-gray-500 border-b border-gray-300">
             <div className="col-span-3">Task</div>
             <div className="col-span-2">Status</div>
             <div className="col-span-1">Priority</div>
@@ -221,6 +221,7 @@ const ManageTasks = () => {
             <div className="col-span-1">Created</div>
             <div className="col-span-1">Due</div>
             <div className="col-span-2">Assigned To</div>
+             <div className="col-span-1">Assigned By</div>
           </div>
 
           {/* Rows */}

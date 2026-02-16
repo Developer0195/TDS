@@ -49,12 +49,14 @@ export const API_PATHS = {
     },
 
     WEEKLY_TASKS: {
-  CREATE: "/api/weekly-tasks",
-  UPDATE: (id) => `/api/weekly-tasks/${id}`,
-  GET_MY_CURRENT: "/api/weekly-tasks/my/current",
-  GET_BY_ID: (id) => `/api/weekly-tasks/${id}`,
-  GET_MY_HISTORY: "/api/weekly-tasks/my/history"
-},
+        CREATE: "/api/weekly-tasks",
+        UPDATE: (id) => `/api/weekly-tasks/${id}`,
+        UPDATE_STATUS: (id) => `/api/weekly-tasks/${id}/status`,
+        GET_MY_CURRENT: "/api/weekly-tasks/my/current",
+        GET_BY_ID: (id) => `/api/weekly-tasks/${id}`,
+        GET_MY_HISTORY: "/api/weekly-tasks/my/history",
+        GET_BY_USER: (userId) => `/api/weekly-tasks/user/${userId}`,
+        },
 
 
     LOCATIONS: {

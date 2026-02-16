@@ -99,7 +99,7 @@ const ManageProjects = () => {
     className="w-full border border-gray-300 rounded px-3 py-2 text-xs"
     value={filters.startDate}
     onChange={(e) =>
-      setFilters((prev) => ({ ...prev, startDate: e.target.value }))
+      setFilters((prev) => ({ ...prev, startDate: e.target.value, endDate: e.target.value }))
     }
   />
 </div>

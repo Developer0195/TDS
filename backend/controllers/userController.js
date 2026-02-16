@@ -62,9 +62,87 @@ const bcrypt = require("bcryptjs");
 // };
 
 
+// const getUsers = async (req, res) => {
+//   try {
+
+//     const users = await User.find({
+//       role: { $in: ["member"] },
+//       emailVerified: true,
+//     }).select("-password");
+
+//     const usersWithStats = await Promise.all(
+//       users.map(async (user) => {
+//         const pending = await Task.countDocuments({
+//           assignedTo: user._id,
+//           status: "Pending",
+//         });
+
+//         const inProgress = await Task.countDocuments({
+//           assignedTo: user._id,
+//           status: "In Progress",
+//         });
+
+//         const inReview = await Task.countDocuments({
+//           assignedTo: user._id,
+//           status: "In Review",
+//         });
+
+//         const completedTasks = await Task.find({
+//           assignedTo: user._id,
+//           status: "Completed",
+//         }).select("completedAt dueDate");
+
+//         const completed = completedTasks.length;
+
+//         const onTimeCompleted = completedTasks.filter(
+//           (t) =>
+//             t.completedAt &&
+//             t.dueDate &&
+//             t.completedAt <= t.dueDate
+//         ).length;
+
+//         const onTimeCompletionRate =
+//           completed === 0
+//             ? 0
+//             : Math.round((onTimeCompleted / completed) * 100);
+
+//         return {
+//           ...user._doc,
+
+//           taskCounts: {
+//             pending,
+//             inProgress,
+//             inReview,
+//             completed,
+//           },
+
+//           onTimeCompletionRate,
+
+//           analytics: user.analytics || {
+//             tasksCompleted: completed,
+//             onTimePercentage: onTimeCompletionRate,
+//             avgDelayMinutes: 0,
+//             avgWorkingHours: {
+//               weekly: 0,
+//               monthly: 0,
+//               yearly: 0,
+//             },
+//           },
+//         };
+//       }),
+//     );
+
+//     res.json(usersWithStats);
+//   } catch (error) {
+//     res.status(500).json({
+//       message: "Server error",
+//       error: error.message,
+//     });
+//   }
+// };
+
 const getUsers = async (req, res) => {
   try {
-
     const users = await User.find({
       role: { $in: ["member"] },
       emailVerified: true,
@@ -72,39 +150,85 @@ const getUsers = async (req, res) => {
 
     const usersWithStats = await Promise.all(
       users.map(async (user) => {
-        const pending = await Task.countDocuments({
-          assignedTo: user._id,
-          status: "Pending",
+        /* ===============================
+           1️⃣ TASK STATUS COUNTS (TASK LEVEL)
+           =============================== */
+
+        const [pending, inProgress, inReview] = await Promise.all([
+          Task.countDocuments({
+            assignedTo: user._id,
+            status: "Pending",
+          }),
+          Task.countDocuments({
+            assignedTo: user._id,
+            status: "In Progress",
+          }),
+          Task.countDocuments({
+            assignedTo: user._id,
+            status: "In Review",
+          }),
+        ]);
+
+        /* ===============================
+           2️⃣ SUBTASK PERFORMANCE (SUBTASK LEVEL)
+           =============================== */
+
+        const tasks = await Task.find({
+          "todoCheckList.assignedTo": user._id,
+        }).select("todoCheckList dueDate");
+
+        let totalAssignedSubtasks = 0;
+        let completedSubtasks = 0;
+        let onTimeCompleted = 0;
+        let totalDelayMinutes = 0;
+
+        tasks.forEach((task) => {
+          task.todoCheckList.forEach((subtask) => {
+            if (
+              subtask.assignedTo &&
+              subtask.assignedTo.toString() === user._id.toString()
+            ) {
+              totalAssignedSubtasks++;
+
+              if (subtask.completed) {
+                completedSubtasks++;
+
+                if (subtask.completedAt && task.dueDate) {
+                  const completedAt = new Date(subtask.completedAt);
+                  const dueDate = new Date(task.dueDate);
+
+                  if (completedAt <= dueDate) {
+                    onTimeCompleted++;
+                  } else {
+                    const delayMinutes =
+                      (completedAt - dueDate) / (1000 * 60);
+                    totalDelayMinutes += delayMinutes;
+                  }
+                }
+              }
+            }
+          });
         });
 
-        const inProgress = await Task.countDocuments({
-          assignedTo: user._id,
-          status: "In Progress",
-        });
-
-        const inReview = await Task.countDocuments({
-          assignedTo: user._id,
-          status: "In Review",
-        });
-
-        const completedTasks = await Task.find({
-          assignedTo: user._id,
-          status: "Completed",
-        }).select("completedAt dueDate");
-
-        const completed = completedTasks.length;
-
-        const onTimeCompleted = completedTasks.filter(
-          (t) =>
-            t.completedAt &&
-            t.dueDate &&
-            t.completedAt <= t.dueDate
-        ).length;
+        /* ===============================
+           3️⃣ CALCULATIONS
+           =============================== */
 
         const onTimeCompletionRate =
-          completed === 0
+          completedSubtasks === 0
             ? 0
-            : Math.round((onTimeCompleted / completed) * 100);
+            : Math.round(
+                (onTimeCompleted / completedSubtasks) * 100
+              );
+
+        const avgDelayMinutes =
+          completedSubtasks === 0
+            ? 0
+            : Math.round(totalDelayMinutes / completedSubtasks);
+
+        /* ===============================
+           RETURN USER WITH STATS
+           =============================== */
 
         return {
           ...user._doc,
@@ -113,15 +237,16 @@ const getUsers = async (req, res) => {
             pending,
             inProgress,
             inReview,
-            completed,
+            completed: completedSubtasks, // subtask-level completion
           },
 
           onTimeCompletionRate,
 
-          analytics: user.analytics || {
-            tasksCompleted: completed,
+          analytics: {
+            totalAssignedSubtasks,
+            completedSubtasks,
             onTimePercentage: onTimeCompletionRate,
-            avgDelayMinutes: 0,
+            avgDelayMinutes,
             avgWorkingHours: {
               weekly: 0,
               monthly: 0,
@@ -129,10 +254,10 @@ const getUsers = async (req, res) => {
             },
           },
         };
-      }),
+      })
     );
 
-    res.json(usersWithStats);
+    res.status(200).json(usersWithStats);
   } catch (error) {
     res.status(500).json({
       message: "Server error",
@@ -141,11 +266,97 @@ const getUsers = async (req, res) => {
   }
 };
 
+
+// const getAllUsersForSuperadmin = async (req, res) => {
+//   console.log("Request received")
+//   try {
+//     /* ================= ROLE CHECK ================= */
+
+//     if (req.user.role !== "superadmin") {
+//       return res.status(403).json({
+//         message: "Access denied. Superadmin only.",
+//       });
+//     }
+
+//     /* ================= FETCH USERS ================= */
+
+//     const users = await User.find({
+//       role: { $in: ["admin", "member"] },
+//       emailVerified: true,
+//     })
+//       .select("-password")
+//       .lean();
+
+//     /* ================= ADD TASK STATS ================= */
+
+//     const usersWithStats = await Promise.all(
+//       users.map(async (user) => {
+
+//         const [
+//           pending,
+//           inProgress,
+//           inReview,
+//           completed,
+//         ] = await Promise.all([
+//           Task.countDocuments({ assignedTo: user._id, status: "Pending" }),
+//           Task.countDocuments({ assignedTo: user._id, status: "In Progress" }),
+//           Task.countDocuments({ assignedTo: user._id, status: "In Review" }),
+//           Task.countDocuments({ assignedTo: user._id, status: "Completed" }),
+//         ]);
+
+//         const completedTasks = await Task.find({
+//           assignedTo: user._id,
+//           status: "Completed",
+//         }).select("completedAt dueDate");
+
+//         const onTimeCompleted = completedTasks.filter(
+//           (t) =>
+//             t.completedAt &&
+//             t.dueDate &&
+//             t.completedAt <= t.dueDate
+//         ).length;
+
+//         const onTimeCompletionRate =
+//           completed === 0
+//             ? 0
+//             : Math.round((onTimeCompleted / completed) * 100);
+
+//         return {
+//           ...user,
+
+//           taskCounts: {
+//             pending,
+//             inProgress,
+//             inReview,
+//             completed,
+//           },
+
+//           onTimeCompletionRate,
+//         };
+//       })
+//     );
+
+//     res.status(200).json({
+//       users: usersWithStats,
+//     });
+
+//   } catch (error) {
+//     console.error("Superadmin users fetch error:", error);
+//     res.status(500).json({
+//       message: "Server error",
+//     });
+//   }
+// };
+
+
+
+// @desc Get user by ID
+// @route GET / api / users /: id
+// @access Private
+
 const getAllUsersForSuperadmin = async (req, res) => {
-  console.log("Request received")
   try {
     /* ================= ROLE CHECK ================= */
-
     if (req.user.role !== "superadmin") {
       return res.status(403).json({
         message: "Access denied. Superadmin only.",
@@ -153,7 +364,6 @@ const getAllUsersForSuperadmin = async (req, res) => {
     }
 
     /* ================= FETCH USERS ================= */
-
     const users = await User.find({
       role: { $in: ["admin", "member"] },
       emailVerified: true,
@@ -162,38 +372,62 @@ const getAllUsersForSuperadmin = async (req, res) => {
       .lean();
 
     /* ================= ADD TASK STATS ================= */
-
     const usersWithStats = await Promise.all(
       users.map(async (user) => {
 
+        /* ===============================
+           1️⃣ TASK-LEVEL COUNTS
+           =============================== */
         const [
           pending,
           inProgress,
           inReview,
-          completed,
+          completedTasks
         ] = await Promise.all([
           Task.countDocuments({ assignedTo: user._id, status: "Pending" }),
           Task.countDocuments({ assignedTo: user._id, status: "In Progress" }),
           Task.countDocuments({ assignedTo: user._id, status: "In Review" }),
-          Task.countDocuments({ assignedTo: user._id, status: "Completed" }),
+          Task.find({ assignedTo: user._id, status: "Completed" }).select("_id"),
         ]);
 
-        const completedTasks = await Task.find({
-          assignedTo: user._id,
-          status: "Completed",
-        }).select("completedAt dueDate");
+        const completed = completedTasks.length; // ✅ task-level
 
-        const onTimeCompleted = completedTasks.filter(
-          (t) =>
-            t.completedAt &&
-            t.dueDate &&
-            t.completedAt <= t.dueDate
-        ).length;
+        /* ===============================
+           2️⃣ SUBTASK PERFORMANCE (FOR %)
+           =============================== */
+        const tasksWithSubtasks = await Task.find({
+          "todoCheckList.assignedTo": user._id,
+        }).select("todoCheckList dueDate");
+
+        let completedSubtasks = 0;
+        let onTimeCompleted = 0;
+
+        tasksWithSubtasks.forEach((task) => {
+          task.todoCheckList.forEach((subtask) => {
+            if (
+              subtask.assignedTo &&
+              subtask.assignedTo.toString() === user._id.toString() &&
+              subtask.completed
+            ) {
+              completedSubtasks++;
+
+              if (subtask.completedAt && task.dueDate) {
+                if (
+                  new Date(subtask.completedAt) <= new Date(task.dueDate)
+                ) {
+                  onTimeCompleted++;
+                }
+              }
+            }
+          });
+        });
 
         const onTimeCompletionRate =
-          completed === 0
+          completedSubtasks === 0
             ? 0
-            : Math.round((onTimeCompleted / completed) * 100);
+            : Math.round(
+                (onTimeCompleted / completedSubtasks) * 100
+              );
 
         return {
           ...user,
@@ -202,10 +436,10 @@ const getAllUsersForSuperadmin = async (req, res) => {
             pending,
             inProgress,
             inReview,
-            completed,
+            completed, // ✅ correct task-level number
           },
 
-          onTimeCompletionRate,
+          onTimeCompletionRate, // ✅ subtask-based fairness
         };
       })
     );
@@ -223,10 +457,6 @@ const getAllUsersForSuperadmin = async (req, res) => {
 };
 
 
-
-// @desc Get user by ID
-// @route GET / api / users /: id
-// @access Private
 const getUserById = async (req, res) => {
   try {
     const user = await User.findById(req.params.id).select("-password");
@@ -402,16 +632,88 @@ const updateMyProfile = async (req, res) => {
 //   }
 // };
 
+// const getAdminTeamMembers = async (req, res) => {
+//   try {
+//     if (req.user.role !== "admin" && req.user.role !== "superadmin") {
+//       return res.status(403).json({ message: "Access denied" });
+//     }
+
+//     // get admin's team members
+//     const admin = await User.findById(req.user._id).select("teamMembers");
+
+//     // fetch members + assigned locations
+//     const members = await User.find({
+//       _id: { $in: admin.teamMembers },
+//     })
+//       .select("name email profileImageUrl assignedLocations")
+//       .populate("assignedLocations", "name address radiusInMeters");
+
+//     const membersWithStats = await Promise.all(
+//       members.map(async (member) => {
+//         const pending = await Task.countDocuments({
+//           assignedTo: member._id,
+//           status: "Pending",
+//         });
+
+//         const inProgress = await Task.countDocuments({
+//           assignedTo: member._id,
+//           status: "In Progress",
+//         });
+
+//         const inReview = await Task.countDocuments({
+//           assignedTo: member._id,
+//           status: "In Review",
+//         });
+
+//         const completedTasks = await Task.find({
+//           assignedTo: member._id,
+//           status: "Completed",
+//         }).select("completedAt dueDate");
+
+//         const completed = completedTasks.length;
+
+//         const onTimeCompleted = completedTasks.filter(
+//           (t) => t.completedAt && t.dueDate && t.completedAt <= t.dueDate,
+//         ).length;
+
+//         const onTimeCompletionRate =
+//           completed === 0 ? 0 : Math.round((onTimeCompleted / completed) * 100);
+
+//         return {
+//           _id: member._id,
+//           name: member.name,
+//           email: member.email,
+//           profileImageUrl: member.profileImageUrl,
+
+//           // ✅ NEW: assigned locations
+//           assignedLocations: member.assignedLocations || [],
+
+//           taskCounts: {
+//             pending,
+//             inProgress,
+//             inReview,
+//             completed,
+//           },
+
+//           onTimeCompletionRate,
+//         };
+//       }),
+//     );
+
+//     res.json(membersWithStats);
+//   } catch (error) {
+//     res.status(500).json({ message: error.message });
+//   }
+// };
+
 const getAdminTeamMembers = async (req, res) => {
   try {
     if (req.user.role !== "admin" && req.user.role !== "superadmin") {
       return res.status(403).json({ message: "Access denied" });
     }
 
-    // get admin's team members
     const admin = await User.findById(req.user._id).select("teamMembers");
 
-    // fetch members + assigned locations
     const members = await User.find({
       _id: { $in: admin.teamMembers },
     })
@@ -420,61 +722,100 @@ const getAdminTeamMembers = async (req, res) => {
 
     const membersWithStats = await Promise.all(
       members.map(async (member) => {
-        const pending = await Task.countDocuments({
-          assignedTo: member._id,
-          status: "Pending",
+
+        /* ===============================
+           1️⃣ TASK LEVEL COUNTS
+           =============================== */
+
+        const [
+          pending,
+          inProgress,
+          inReview,
+          completedTasks
+        ] = await Promise.all([
+          Task.countDocuments({
+            assignedTo: member._id,
+            status: "Pending",
+          }),
+          Task.countDocuments({
+            assignedTo: member._id,
+            status: "In Progress",
+          }),
+          Task.countDocuments({
+            assignedTo: member._id,
+            status: "In Review",
+          }),
+          Task.find({
+            assignedTo: member._id,
+            status: "Completed",
+          }).select("_id"),
+        ]);
+
+        const completed = completedTasks.length; // ✅ TASK LEVEL
+
+        /* ===============================
+           2️⃣ SUBTASK PERFORMANCE (ONLY FOR %)
+           =============================== */
+
+        const tasksWithSubtasks = await Task.find({
+          "todoCheckList.assignedTo": member._id,
+        }).select("todoCheckList dueDate");
+
+        let completedSubtasks = 0;
+        let onTimeCompleted = 0;
+
+        tasksWithSubtasks.forEach((task) => {
+          task.todoCheckList.forEach((subtask) => {
+            if (
+              subtask.assignedTo &&
+              subtask.assignedTo.toString() === member._id.toString() &&
+              subtask.completed
+            ) {
+              completedSubtasks++;
+
+              if (subtask.completedAt && task.dueDate) {
+                if (new Date(subtask.completedAt) <= new Date(task.dueDate)) {
+                  onTimeCompleted++;
+                }
+              }
+            }
+          });
         });
-
-        const inProgress = await Task.countDocuments({
-          assignedTo: member._id,
-          status: "In Progress",
-        });
-
-        const inReview = await Task.countDocuments({
-          assignedTo: member._id,
-          status: "In Review",
-        });
-
-        const completedTasks = await Task.find({
-          assignedTo: member._id,
-          status: "Completed",
-        }).select("completedAt dueDate");
-
-        const completed = completedTasks.length;
-
-        const onTimeCompleted = completedTasks.filter(
-          (t) => t.completedAt && t.dueDate && t.completedAt <= t.dueDate,
-        ).length;
 
         const onTimeCompletionRate =
-          completed === 0 ? 0 : Math.round((onTimeCompleted / completed) * 100);
+          completedSubtasks === 0
+            ? 0
+            : Math.round(
+                (onTimeCompleted / completedSubtasks) * 100
+              );
 
         return {
           _id: member._id,
           name: member.name,
           email: member.email,
           profileImageUrl: member.profileImageUrl,
-
-          // ✅ NEW: assigned locations
           assignedLocations: member.assignedLocations || [],
 
           taskCounts: {
             pending,
             inProgress,
             inReview,
-            completed,
+            completed, // ✅ NOW shows correct number (e.g. 3)
           },
 
-          onTimeCompletionRate,
+          onTimeCompletionRate, // ✅ Still fair (subtask-based)
         };
-      }),
+      })
     );
 
     res.json(membersWithStats);
+
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
 };
+
+
 
 // @route GET /api/users/search
 // @access Private (Admin)
@@ -752,9 +1093,128 @@ const removeTeamMember = async (req, res) => {
 //   }
 // };
 
+// const getUserAnalytics = async (req, res) => {
+//   try {
+//     const userId = req.params.id;
+//     const {
+//       startDate,
+//       endDate,
+//       status,
+//       priority,
+//       assignedByMe,
+//       page = 1,
+//       limit = 10,
+//     } = req.query;
+
+//     const pageNum = Number(page);
+//     const limitNum = Number(limit);
+//     const skip = (pageNum - 1) * limitNum;
+
+//     /* ===============================
+//        1️⃣ BASE FILTER (GLOBAL)
+//        =============================== */
+//     const baseFilter = {
+//       assignedTo: userId,
+//     };
+
+//     // 📅 Due date filter (GLOBAL)
+//     if (startDate && endDate) {
+//       baseFilter.dueDate = {
+//         $gte: new Date(startDate),
+//         $lte: new Date(endDate),
+//       };
+//     }
+
+//     /* ===============================
+//        2️⃣ RECENT TASKS FILTER
+//        =============================== */
+//     const recentTasksFilter = {
+//       ...baseFilter,
+//     };
+
+//     // 🏷 Status → ONLY recent tasks
+//     if (status) {
+//       recentTasksFilter.status = status;
+//     }
+
+//     // ⚡ Priority → ONLY recent tasks
+//     if (priority) {
+//       recentTasksFilter.priority = priority;
+//     }
+
+//     // 👤 Assigned by me → ONLY recent tasks
+//     if (assignedByMe === "true") {
+//       recentTasksFilter.createdBy = req.user._id;
+//     }
+
+//     /* ===============================
+//        📊 ALL TASKS (FOR STATS + CHARTS)
+//        =============================== */
+//     const allTasks = await Task.find(baseFilter);
+
+//     /* ---------------- STATS ---------------- */
+//     const stats = {
+//       totalTasks: allTasks.length,
+//       pendingTasks: allTasks.filter((t) => t.status === "Pending").length,
+//       inProgressTasks: allTasks.filter((t) => t.status === "In Progress")
+//         .length,
+//       inReviewTasks: allTasks.filter((t) => t.status === "In Review").length,
+//       completedTasks: allTasks.filter((t) => t.status === "Completed").length,
+//       onHoldTasks: allTasks.filter((t) => t.status === "On Hold").length,
+//     };
+
+//     /* ---------------- CHARTS ---------------- */
+//     const charts = {
+//       taskDistribution: {
+//         Pending: stats.pendingTasks,
+//         "In Progress": stats.inProgressTasks,
+//         "In Review": stats.inReviewTasks,
+//         Completed: stats.completedTasks,
+//         "On Hold": stats.onHoldTasks,
+//       },
+//       taskPriorityLevels: {
+//         Low: allTasks.filter((t) => t.priority === "Low").length,
+//         Medium: allTasks.filter((t) => t.priority === "Medium").length,
+//         High: allTasks.filter((t) => t.priority === "High").length,
+//       },
+//     };
+
+//     /* ===============================
+//        📋 RECENT TASKS (FILTERED)
+//        =============================== */
+//     const [tasks, totalRecentTasks] = await Promise.all([
+//       Task.find(recentTasksFilter)
+//         .sort({ createdAt: -1 })
+//         .skip(skip)
+//         .limit(limitNum)
+//         .populate("assignedTo", "name email")
+//         .populate("createdBy", "name")
+//         .populate("project", "name"),
+
+//       Task.countDocuments(recentTasksFilter),
+//     ]);
+
+//     res.json({
+//       statistics: stats,
+//       charts,
+//       tasks,
+//       pagination: {
+//         totalItems: totalRecentTasks,
+//         currentPage: pageNum,
+//         totalPages: Math.ceil(totalRecentTasks / limitNum),
+//         pageSize: limitNum,
+//       },
+//     });
+//   } catch (error) {
+//     res.status(500).json({ message: error.message });
+//   }
+// };
+
+
 const getUserAnalytics = async (req, res) => {
   try {
     const userId = req.params.id;
+
     const {
       startDate,
       endDate,
@@ -769,14 +1229,13 @@ const getUserAnalytics = async (req, res) => {
     const limitNum = Number(limit);
     const skip = (pageNum - 1) * limitNum;
 
-    /* ===============================
-       1️⃣ BASE FILTER (GLOBAL)
-       =============================== */
+    /* =====================================================
+       1️⃣ GLOBAL TASK FILTER (FOR KPI + CHARTS)
+    ===================================================== */
     const baseFilter = {
       assignedTo: userId,
     };
 
-    // 📅 Due date filter (GLOBAL)
     if (startDate && endDate) {
       baseFilter.dueDate = {
         $gte: new Date(startDate),
@@ -784,45 +1243,154 @@ const getUserAnalytics = async (req, res) => {
       };
     }
 
-    /* ===============================
-       2️⃣ RECENT TASKS FILTER
-       =============================== */
-    const recentTasksFilter = {
-      ...baseFilter,
-    };
+    /* =====================================================
+       2️⃣ RECENT TASK FILTER (TABLE ONLY)
+    ===================================================== */
+    const recentTasksFilter = { ...baseFilter };
 
-    // 🏷 Status → ONLY recent tasks
-    if (status) {
-      recentTasksFilter.status = status;
-    }
+    if (status) recentTasksFilter.status = status;
+    if (priority) recentTasksFilter.priority = priority;
 
-    // ⚡ Priority → ONLY recent tasks
-    if (priority) {
-      recentTasksFilter.priority = priority;
-    }
-
-    // 👤 Assigned by me → ONLY recent tasks
     if (assignedByMe === "true") {
       recentTasksFilter.createdBy = req.user._id;
     }
 
-    /* ===============================
-       📊 ALL TASKS (FOR STATS + CHARTS)
-       =============================== */
-    const allTasks = await Task.find(baseFilter);
+    /* =====================================================
+       3️⃣ FETCH ALL TASKS FOR KPI + CHARTS
+    ===================================================== */
+    const allTasks = await Task.find(baseFilter).lean();
+    const now = new Date();
 
-    /* ---------------- STATS ---------------- */
+    const completedTasks = allTasks.filter(
+      (t) => t.status === "Completed"
+    );
+
+    const overdueTasks = allTasks.filter(
+      (t) =>
+        t.status !== "Completed" &&
+        t.dueDate &&
+        new Date(t.dueDate) < now
+    );
+
+    const delayedTasks = completedTasks.filter(
+      (t) =>
+        t.completedAt &&
+        t.dueDate &&
+        new Date(t.completedAt) > new Date(t.dueDate)
+    );
+
+    const onTimeTasks = completedTasks.filter(
+      (t) =>
+        t.completedAt &&
+        t.dueDate &&
+        new Date(t.completedAt) <= new Date(t.dueDate)
+    );
+
+    const onTimeCompletionRate =
+      completedTasks.length === 0
+        ? 0
+        : Math.round(
+            (onTimeTasks.length / completedTasks.length) * 100
+          );
+
+    /* =====================================================
+       4️⃣ SUBTASK PERFORMANCE (CORRECT + SYNCHRONIZED)
+    ===================================================== */
+
+    const tasksWithSubtasks = await Task.find({
+      "todoCheckList.assignedTo": userId,
+    }).select("title todoCheckList dueDate");
+
+    let totalSubtasksAssigned = 0;
+    let completedSubtasks = 0;
+    let pendingSubtasks = 0;
+    let onTimeSubtasks = 0;
+    let delayedSubtasks = 0;
+
+    const delayedSubtaskDetails = [];
+
+    tasksWithSubtasks.forEach((task) => {
+      if (!task.todoCheckList) return;
+
+      task.todoCheckList.forEach((subtask) => {
+        if (
+          subtask.assignedTo &&
+          subtask.assignedTo.toString() === userId.toString()
+        ) {
+          totalSubtasksAssigned++;
+
+          if (subtask.completed) {
+            completedSubtasks++;
+
+            const dueDate = subtask.dueDate || task.dueDate;
+
+            if (dueDate && subtask.completedAt) {
+              const completedDate = new Date(subtask.completedAt);
+              const due = new Date(dueDate);
+
+              const isDelayed = completedDate > due;
+
+              if (isDelayed) {
+                delayedSubtasks++;
+
+                delayedSubtaskDetails.push({
+                  taskId: task._id,
+                  taskTitle: task.title,
+                  subtaskText: subtask.text,
+                  dueDate: due,
+                  completedAt: completedDate,
+                  delayMinutes:
+                    (completedDate - due) / 60000,
+                });
+              } else {
+                onTimeSubtasks++;
+              }
+            }
+          } else {
+            pendingSubtasks++;
+          }
+        }
+      });
+    });
+
+    const subtaskOnTimeRate =
+      completedSubtasks === 0
+        ? 0
+        : Math.round(
+            (onTimeSubtasks / completedSubtasks) * 100
+          );
+
+    /* =====================================================
+       5️⃣ TASK STATUS KPI (UNCHANGED)
+    ===================================================== */
+
     const stats = {
       totalTasks: allTasks.length,
       pendingTasks: allTasks.filter((t) => t.status === "Pending").length,
-      inProgressTasks: allTasks.filter((t) => t.status === "In Progress")
-        .length,
+      inProgressTasks: allTasks.filter((t) => t.status === "In Progress").length,
       inReviewTasks: allTasks.filter((t) => t.status === "In Review").length,
-      completedTasks: allTasks.filter((t) => t.status === "Completed").length,
+      completedTasks: completedTasks.length,
       onHoldTasks: allTasks.filter((t) => t.status === "On Hold").length,
+      overdueTasks: overdueTasks.length,
+      delayedTasks: delayedTasks.length,
+      onTimeCompletionRate,
+
+      /* 🔥 Separate Subtask Module */
+      subtaskStatistics: {
+        totalSubtasksAssigned,
+        completedSubtasks,
+        pendingSubtasks,
+        onTimeSubtasks,
+        delayedSubtasks,
+        subtaskOnTimeRate,
+        delayedSubtaskDetails, // 🔥 IMPORTANT FOR MODAL
+      },
     };
 
-    /* ---------------- CHARTS ---------------- */
+    /* =====================================================
+       6️⃣ CHART DATA
+    ===================================================== */
+
     const charts = {
       taskDistribution: {
         Pending: stats.pendingTasks,
@@ -830,6 +1398,7 @@ const getUserAnalytics = async (req, res) => {
         "In Review": stats.inReviewTasks,
         Completed: stats.completedTasks,
         "On Hold": stats.onHoldTasks,
+        Overdue: stats.overdueTasks,
       },
       taskPriorityLevels: {
         Low: allTasks.filter((t) => t.priority === "Low").length,
@@ -838,9 +1407,10 @@ const getUserAnalytics = async (req, res) => {
       },
     };
 
-    /* ===============================
-       📋 RECENT TASKS (FILTERED)
-       =============================== */
+    /* =====================================================
+       7️⃣ RECENT TASKS (PAGINATED)
+    ===================================================== */
+
     const [tasks, totalRecentTasks] = await Promise.all([
       Task.find(recentTasksFilter)
         .sort({ createdAt: -1 })
@@ -853,6 +1423,10 @@ const getUserAnalytics = async (req, res) => {
       Task.countDocuments(recentTasksFilter),
     ]);
 
+    /* =====================================================
+       8️⃣ RESPONSE
+    ===================================================== */
+
     res.json({
       statistics: stats,
       charts,
@@ -864,10 +1438,16 @@ const getUserAnalytics = async (req, res) => {
         pageSize: limitNum,
       },
     });
+
   } catch (error) {
+    console.error("User analytics error:", error);
     res.status(500).json({ message: error.message });
   }
 };
+
+
+
+
 
 const getAssignableUsers = async (req, res) => {
   try {

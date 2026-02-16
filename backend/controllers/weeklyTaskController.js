@@ -45,6 +45,70 @@ const createWeeklyTask = async (req, res) => {
   }
 };
 
+const updateWeeklyTaskStatus = async (req, res) => {
+  try {
+    /* ===============================
+       ROLE CHECK
+    =============================== */
+    if (
+      req.user.role !== "admin" &&
+      req.user.role !== "superadmin"
+    ) {
+      return res
+        .status(403)
+        .json({ message: "You are not authorized" });
+    }
+
+    const { status } = req.body;
+
+    /* ===============================
+       VALIDATE STATUS
+    =============================== */
+    if (!["Approved", "Rejected"].includes(status)) {
+      return res.status(400).json({
+        message: "Invalid status value",
+      });
+    }
+
+    const task = await WeeklyTask.findById(req.params.id);
+
+    if (!task) {
+      return res.status(404).json({
+        message: "Weekly task not found",
+      });
+    }
+
+    /* ===============================
+       PREVENT DOUBLE ACTION
+    =============================== */
+    if (task.status !== "Submitted") {
+      return res.status(400).json({
+        message: "Task already reviewed",
+      });
+    }
+
+    /* ===============================
+       UPDATE STATUS
+    =============================== */
+    task.status = status;
+    task.reviewedBy = req.user._id;     // optional field
+    task.reviewedAt = new Date();       // optional field
+
+    await task.save();
+
+    res.status(200).json({
+      message: `Weekly task ${status}`,
+      task,
+    });
+
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({
+      message: "Status update failed",
+    });
+  }
+};
+
 
 
 const updateWeeklyTask = async (req, res) => {
@@ -140,6 +204,26 @@ const getMyWeeklyHistory = async (req, res) => {
 };
 
 
+const getWeeklyTasksByUser = async (req, res) => {
+  try {
+    const { userId } = req.params;
+
+    const weeklyTasks = await WeeklyTask.find({ createdBy: userId })
+      .sort({ createdAt: -1 })
+      .populate("createdBy", "name email");
+
+    res.status(200).json({
+      weeklyTasks,
+    });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({
+      message: error.message,
+    });
+  }
+};
 
 
-module.exports = {createWeeklyTask, updateWeeklyTask, getMyCurrentWeeklyTask, getWeeklyTaskById, getMyWeeklyHistory}
+
+
+module.exports = {updateWeeklyTaskStatus, getWeeklyTasksByUser, createWeeklyTask, updateWeeklyTask, getMyCurrentWeeklyTask, getWeeklyTaskById, getMyWeeklyHistory}

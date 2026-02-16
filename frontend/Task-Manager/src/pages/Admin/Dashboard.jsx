@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import { useUserAuth } from "../../hooks/useUserAuth";
 import { useContext } from "react";
 import { UserContext } from "../../context/userContext";
@@ -20,7 +20,6 @@ const COLORS = [
   "#EF4444", // On Hold
   "#7BCE00", // Completed
 ];
-
 
 const Dashboard = () => {
   useUserAuth();
@@ -59,27 +58,26 @@ const Dashboard = () => {
 
   //Prepare chart data
   const prepareChartData = (data) => {
-  const taskDistribution = data?.taskDistribution || {};
-  const taskPriorityLevels = data?.taskPriorityLevels || {};
+    const taskDistribution = data?.taskDistribution || {};
+    const taskPriorityLevels = data?.taskPriorityLevels || {};
 
-  const taskDistributionData = [
-    { status: "Pending", count: taskDistribution.Pending || 0 },
-    { status: "In Progress", count: taskDistribution.InProgress || 0 },
-    { status: "In Review", count: taskDistribution.InReview || 0 },
-    { status: "On Hold", count: taskDistribution.OnHold || 0 },
-    { status: "Completed", count: taskDistribution.Completed || 0 },
-  ];
+    const taskDistributionData = [
+      { status: "Pending", count: taskDistribution.Pending || 0 },
+      { status: "In Progress", count: taskDistribution.InProgress || 0 },
+      { status: "In Review", count: taskDistribution.InReview || 0 },
+      { status: "On Hold", count: taskDistribution.OnHold || 0 },
+      { status: "Completed", count: taskDistribution.Completed || 0 },
+    ];
 
-  const PriorityLevelData = [
-    { priority: "Low", count: taskPriorityLevels.Low || 0 },
-    { priority: "Medium", count: taskPriorityLevels.Medium || 0 },
-    { priority: "High", count: taskPriorityLevels.High || 0 },
-  ];
+    const PriorityLevelData = [
+      { priority: "Low", count: taskPriorityLevels.Low || 0 },
+      { priority: "Medium", count: taskPriorityLevels.Medium || 0 },
+      { priority: "High", count: taskPriorityLevels.High || 0 },
+    ];
 
-  setPieChartData(taskDistributionData);
-  setBarChartData(PriorityLevelData);
-};
-
+    setPieChartData(taskDistributionData);
+    setBarChartData(PriorityLevelData);
+  };
 
   const getDashboardData = async () => {
     try {
@@ -99,7 +97,7 @@ const Dashboard = () => {
       );
 
       if (response.data) {
-        console.log(response.data)
+        console.log(response.data);
         setDashboardData(response.data);
         prepareChartData(response.data?.charts || null);
       }
@@ -121,10 +119,6 @@ const Dashboard = () => {
   useEffect(() => {
     getDashboardData();
   }, [recentPage, dateRange, selectedProject, recentFilters]);
-
-  const onSeeMore = () => {
-    navigate("admin/tasks");
-  };
 
   useEffect(() => {
     getDashboardData();
@@ -151,12 +145,14 @@ const Dashboard = () => {
               type="date"
               className="border border-gray-300 rounded px-3 py-2 text-xs"
               value={dateRange.startDate}
-              onChange={(e) =>
+              onChange={(e) => {
+                const newStartDate = e.target.value;
+
                 setDateRange((prev) => ({
-                  ...prev,
-                  startDate: e.target.value,
-                }))
-              }
+                  startDate: newStartDate,
+                  endDate: newStartDate, // reset end date automatically
+                }));
+              }}
             />
           </div>
 

@@ -36,17 +36,21 @@ const MyAttendance = () => {
       params.endDate = endDate;
     }
 
-    const res = await axiosInstance.get(
-      API_PATHS.ATTENDANCE.MY_ATTENDANCE,
-      { params }
-    );
+    const res = await axiosInstance.get(API_PATHS.ATTENDANCE.MY_ATTENDANCE, {
+      params,
+    });
 
     setToday(res.data.today);
-    setHistory(res.data.attendance || []);
+    const filteredAttendance = (res.data.attendance || []).filter(
+      (a) => a.punchIn || a.punchOut,
+    );
+
+    setHistory(filteredAttendance);
+
     setRequiresCheckins(
       res.data.today?.workType === "OFFSITE" &&
-      (res.data.today?.offsiteCheckins?.length || 0) < 3 &&
-      !res.data.today?.punchOut
+        (res.data.today?.offsiteCheckins?.length || 0) < 3 &&
+        !res.data.today?.punchOut,
     );
 
     setLoading(false);
@@ -54,7 +58,7 @@ const MyAttendance = () => {
 
   useEffect(() => {
     fetchMyAttendance();
-  }, []);
+  }, [startDate, endDate]);
 
   /* ================= CAMERA CAPTURE ================= */
   const handleCapture = async (photoBase64) => {
@@ -70,7 +74,7 @@ const MyAttendance = () => {
         if (action === "IN") {
           const res = await axiosInstance.post(
             API_PATHS.ATTENDANCE.PUNCH_IN,
-            payload
+            payload,
           );
 
           setRequiresCheckins(res.data.requiresCheckins);
@@ -79,10 +83,7 @@ const MyAttendance = () => {
 
         /* 🔹 PUNCH OUT */
         if (action === "OUT") {
-          await axiosInstance.post(
-            API_PATHS.ATTENDANCE.PUNCH_OUT,
-            payload
-          );
+          await axiosInstance.post(API_PATHS.ATTENDANCE.PUNCH_OUT, payload);
           toast.success("Punch out successful");
         }
 
@@ -90,12 +91,10 @@ const MyAttendance = () => {
         if (action === "CHECKIN") {
           const res = await axiosInstance.post(
             API_PATHS.ATTENDANCE.OFFSITE_CHECKIN,
-            payload
+            payload,
           );
 
-          toast.success(
-            `Check-in recorded (${res.data.checkinsCompleted}/3)`
-          );
+          toast.success(`Check-in recorded (${res.data.checkinsCompleted}/3)`);
         }
 
         setCameraOpen(false);
@@ -137,126 +136,163 @@ const MyAttendance = () => {
 
   return (
     <DashboardLayout activeMenu="Attendance">
-        <div className = "m-2 ">
-            <h2 className = "font-semibold py-2 px-1">Attendance</h2>
-              {/* ================= TODAY CARD ================= */}
-      <div className="bg-white border border-gray-300 rounded-lg p-5 mb-6 max-w-md">
-        <p className="text-sm text-gray-500">Employee</p>
-        <p className="font-medium">{user?.name}</p>
+      <div className="m-2 ">
+        <h2 className="font-semibold py-2 px-1">Attendance</h2>
+        {/* ================= TODAY CARD ================= */}
+        <div className="bg-white border border-gray-300 rounded-lg p-5 mb-6 max-w-md">
+          <p className="text-sm text-gray-500">Employee</p>
+          <p className="font-medium">{user?.name}</p>
 
-        <CameraCaptureModal
-          isOpen={cameraOpen}
-          onClose={() => setCameraOpen(false)}
-          onCapture={handleCapture}
-        />
+          <CameraCaptureModal
+            isOpen={cameraOpen}
+            onClose={() => setCameraOpen(false)}
+            onCapture={handleCapture}
+          />
 
-        {/* 🔹 Punch In */}
-        {!today?.punchIn && (
-          <button
-            onClick={() => {
-              setAction("IN");
-              setCameraOpen(true);
-            }}
-            className="btn-primary w-full mt-4 flex gap-2 justify-center"
-          >
-            <LuCamera /> Punch In
-          </button>
-        )}
-
-        {/* 🔹 Punch Out */}
-        {today?.punchIn && !today?.punchOut && (
-          <button
-            onClick={() => {
-              setAction("OUT");
-              setCameraOpen(true);
-            }}
-            className="btn-primary w-full mt-4 flex gap-2 justify-center"
-          >
-            <LuCamera /> Punch Out
-          </button>
-        )}
-
-        {/* 🔹 Duration */}
-        {today?.punchOut && (
-          <div className="mt-4 flex items-center gap-2 text-sm">
-            <LuClock />
-            {Math.floor(today.totalDurationMinutes / 60)}h{" "}
-            {today.totalDurationMinutes % 60}m
-          </div>
-        )}
-
-        {/* 🔴 OFFSITE CHECK-INS */}
-        {requiresCheckins && (
-          <div className="mt-4 border-t pt-3">
-            <p className="text-xs text-gray-500 mb-1">
-              Offsite Check-ins ({completedCheckins}/3)
-            </p>
-
+          {/* 🔹 Punch In */}
+          {!today?.punchIn && (
             <button
               onClick={() => {
-                setAction("CHECKIN");
+                setAction("IN");
                 setCameraOpen(true);
               }}
-              className="bg-orange-500 text-white w-full py-2 rounded flex gap-2 justify-center text-sm"
+              className="btn-primary w-full mt-4 flex gap-2 justify-center"
             >
-              <LuMapPin /> Submit Check-in
+              <LuCamera /> Punch In
             </button>
-          </div>
-        )}
-      </div>
+          )}
 
-      {/* ================= HISTORY ================= */}
-      <div className="bg-white border border-gray-300 rounded-lg">
-        <table className="w-full text-sm">
-          <thead className="bg-blue-50">
-            <tr>
-              <th className="px-4 py-3 text-left">Date</th>
-              <th className="px-4 py-3 text-left">In</th>
-              <th className="px-4 py-3 text-left">Out</th>
-              <th className="px-4 py-3 text-left">Duration</th>
-              <th className="px-4 py-3 text-left">Location</th>
-              <th className="px-4 py-3 text-left">Work</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y">
-            {history.map((a) => (
-              <tr key={a._id}>
-                <td className="px-4 py-3">
-                  {new Date(a.date).toDateString()}
-                </td>
-                <td className="px-4 py-3">
-                  {a.punchIn?.time &&
-                    new Date(a.punchIn.time).toLocaleTimeString()}
-                </td>
-                <td className="px-4 py-3">
-                  {a.punchOut?.time &&
-                    new Date(a.punchOut.time).toLocaleTimeString()}
-                </td>
-                <td className="px-4 py-3">
-                  {a.totalDurationMinutes
-                    ? `${Math.floor(a.totalDurationMinutes / 60)}h ${a.totalDurationMinutes % 60}m`
-                    : "—"}
-                </td>
-                <td className="px-4 py-3">
-                  <LocationPopover location={a?.punchIn?.location} />
-                </td>
-                <td className="px-4 py-3">{a.workType}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
+          {/* 🔹 Punch Out */}
+          {today?.punchIn && !today?.punchOut && (
+            <button
+              onClick={() => {
+                setAction("OUT");
+                setCameraOpen(true);
+              }}
+              className="btn-primary w-full mt-4 flex gap-2 justify-center"
+            >
+              <LuCamera /> Punch Out
+            </button>
+          )}
 
-      {/* ================= REMARKS MODAL ================= */}
-      <RemarksModal
-        open={remarksOpen}
-        onClose={() => setRemarksOpen(false)}
-        onSubmit={submitRemarks}
-      />
-      
+          {/* 🔹 Duration */}
+          {today?.punchOut && (
+            <div className="mt-4 flex items-center gap-2 text-sm">
+              <LuClock />
+              {Math.floor(today.totalDurationMinutes / 60)}h{" "}
+              {today.totalDurationMinutes % 60}m
+            </div>
+          )}
+
+          {/* 🔴 OFFSITE CHECK-INS */}
+          {requiresCheckins && (
+            <div className="mt-4 border-t pt-3">
+              <p className="text-xs text-gray-500 mb-1">
+                Offsite Check-ins ({completedCheckins}/3)
+              </p>
+
+              <button
+                onClick={() => {
+                  setAction("CHECKIN");
+                  setCameraOpen(true);
+                }}
+                className="bg-orange-500 text-white w-full py-2 rounded flex gap-2 justify-center text-sm"
+              >
+                <LuMapPin /> Submit Check-in
+              </button>
+            </div>
+          )}
         </div>
-    
+
+        {/* ================= FILTER ================= */}
+        <div className="bg-white border border-gray-300 rounded-lg p-4 mb-4 flex gap-4 items-end">
+          <div className="flex flex-col">
+            <label className="text-xs text-gray-500 mb-1">Start Date</label>
+            <input
+              type="date"
+              value={startDate}
+              onChange={(e) => {
+                setStartDate(e.target.value);
+                setEndDate(e.target.value); // reset end date
+              }}
+              className="border border-gray-300 rounded px-3 py-2 text-sm"
+            />
+          </div>
+
+          <div className="flex flex-col">
+            <label className="text-xs text-gray-500 mb-1">End Date</label>
+            <input
+              type="date"
+              value={endDate}
+              min={startDate}
+              onChange={(e) => setEndDate(e.target.value)}
+              className="border border-gray-300 rounded px-3 py-2 text-sm"
+            />
+          </div>
+
+          <button
+            onClick={() => {
+              setStartDate("");
+              setEndDate("");
+              fetchMyAttendance();
+            }}
+            className="bg-gray-200 px-4 py-2 text-sm rounded"
+          >
+            Reset
+          </button>
+        </div>
+
+        {/* ================= HISTORY ================= */}
+        <div className="bg-white border border-gray-300 rounded-lg">
+          <table className="w-full text-sm">
+            <thead className="bg-blue-50">
+              <tr>
+                <th className="px-4 py-3 text-left">Date</th>
+                <th className="px-4 py-3 text-left">In</th>
+                <th className="px-4 py-3 text-left">Out</th>
+                <th className="px-4 py-3 text-left">Duration</th>
+                <th className="px-4 py-3 text-left">Location</th>
+                <th className="px-4 py-3 text-left">Work</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y">
+              {history.map((a) => (
+                <tr key={a._id}>
+                  <td className="px-4 py-3">
+                    {new Date(a.date).toDateString()}
+                  </td>
+                  <td className="px-4 py-3">
+                    {a.punchIn?.time &&
+                      new Date(a.punchIn.time).toLocaleTimeString()}
+                  </td>
+                  <td className="px-4 py-3">
+                    {a.punchOut?.time &&
+                      new Date(a.punchOut.time).toLocaleTimeString()}
+                  </td>
+                  <td className="px-4 py-3">
+                    {a.totalDurationMinutes
+                      ? `${Math.floor(a.totalDurationMinutes / 60)}h ${a.totalDurationMinutes % 60}m`
+                      : "—"}
+                  </td>
+                  <td className="px-4 py-3">
+                    <LocationPopover location={a?.punchIn?.location} />
+                  </td>
+                  <td className="px-4 py-3">{a.workType}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+
+        {/* ================= REMARKS MODAL ================= */}
+        <RemarksModal
+          open={remarksOpen}
+          onClose={() => setRemarksOpen(false)}
+          onSubmit={submitRemarks}
+        />
+      </div>
     </DashboardLayout>
-  )};
+  );
+};
 
 export default MyAttendance;

@@ -118,20 +118,28 @@ const Dashboard = () => {
     }
   };
 
+  // useEffect(() => {
+  //   getDashboardData();
+  // }, [recentPage, dateRange, selectedProject, recentFilters]);
+
   useEffect(() => {
+  if (user) {
     getDashboardData();
-  }, [recentPage, dateRange, selectedProject, recentFilters]);
+  }
+}, [user, recentPage, dateRange, selectedProject, recentFilters]);
+
 
   const onSeeMore = () => {
     navigate("admin/tasks");
   };
 
   useEffect(() => {
+  if (user) {
     getDashboardData();
     getProjects();
+  }
+}, [user]);
 
-    return () => {};
-  }, []);
 
   return (
     <DashboardLayout activeMenu="Dashboard">
@@ -151,12 +159,14 @@ const Dashboard = () => {
               type="date"
               className="border border-gray-300 rounded px-3 py-2 text-xs"
               value={dateRange.startDate}
-              onChange={(e) =>
+              onChange={(e) => {
+                const newStartDate = e.target.value;
+
                 setDateRange((prev) => ({
-                  ...prev,
-                  startDate: e.target.value,
-                }))
-              }
+                  startDate: newStartDate,
+                  endDate: newStartDate, // reset end date automatically
+                }));
+              }}
             />
           </div>
 
