@@ -709,7 +709,7 @@ const UserAnalyticsPage = () => {
           {/* CLICKABLE DELAYED CARD */}
           <div
             onClick={() => setShowDelayedModal(true)}
-            className="cursor-pointer hover:scale-105 transition"
+            className="cursor-pointer hover:scale-105 transition flex items-center"
           >
             <InfoCard
               label="Delayed"
@@ -717,7 +717,7 @@ const UserAnalyticsPage = () => {
             />
           </div>
 
-          <div className="card bg-white border rounded-lg p-4 text-center">
+          <div className="card bg-white border border-gray-300 rounded-lg p-4 text-center">
             <p className="text-xs text-gray-500">On-Time Rate</p>
             <p className="text-xl font-semibold text-blue-600">
               {subtaskStats.subtaskOnTimeRate || 0}%
@@ -773,7 +773,7 @@ const UserAnalyticsPage = () => {
               </p>
             ) : (
               <div className="max-h-[60vh] overflow-y-auto">
-                <table className="w-full text-sm border">
+                <table className="w-full text-sm border border-gray-300">
                   <thead className="bg-gray-50 text-xs text-gray-600">
                     <tr>
                       <th className="px-3 py-2 text-left">Task</th>
@@ -784,8 +784,8 @@ const UserAnalyticsPage = () => {
                     </tr>
                   </thead>
                   <tbody>
-                    {subtaskStats?.delayedSubtaskList?.map((item, index) => (
-                      <tr key={index} className="border-t">
+                    {subtaskStats?.delayedSubtaskDetails?.map((item, index) => (
+                      <tr key={index} className="border-t border-gray-300">
                         <td className="px-3 py-2">{item.taskTitle}</td>
                         <td className="px-3 py-2">{item.subtaskText}</td>
                         <td className="px-3 py-2">
