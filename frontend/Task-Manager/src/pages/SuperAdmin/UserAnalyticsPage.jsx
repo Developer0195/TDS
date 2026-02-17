@@ -280,6 +280,8 @@ const UserAnalyticsPage = () => {
   const [pieChartData, setPieChartData] = useState([]);
   const [barChartData, setBarChartData] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [showDelayedModal, setShowDelayedModal] = useState(false)
+  
 
   /* 🔹 Filters
      - startDate, endDate → GLOBAL
@@ -386,6 +388,7 @@ const UserAnalyticsPage = () => {
   }
 
   const stats = analytics?.statistics || {};
+   const subtaskStats = stats.subtaskStatistics || {};
 
   return (
     <DashboardLayout activeMenu="Team Members">
@@ -412,6 +415,47 @@ const UserAnalyticsPage = () => {
           <InfoCard label="On Hold" value={stats.onHoldTasks || 0} />
         </div>
       </div>
+
+
+       {/* ================= ON-TIME COMPLETION MODULE ================= */}{" "}
+            <div className="card my-6 p-5">
+              {" "}
+              <h3 className="text-lg font-semibold mb-4">
+                {" "}
+                Subtask Completion Performance{" "}
+              </h3>{" "}
+              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
+                {" "}
+                <InfoCard
+                  label="Subtasks Assigned"
+                  value={subtaskStats.totalSubtasksAssigned || 0}
+                />{" "}
+                <InfoCard
+                  label="Completed Subtasks"
+                  value={subtaskStats.completedSubtasks || 0}
+                />{" "}
+                <InfoCard label="On-Time" value={subtaskStats.onTimeSubtasks || 0} />{" "}
+                {/* CLICKABLE DELAYED CARD */}{" "}
+                <div
+                  onClick={() => setShowDelayedModal(true)}
+                  className="cursor-pointer hover:scale-105 transition flex flex-col justify-center"
+                >
+                  {" "}
+                  <InfoCard
+                    label="Delayed"
+                    value={subtaskStats.delayedSubtasks || 0}
+                  />{" "}
+                </div>{" "}
+                <div className="card bg-white border rounded-lg p-4 text-center">
+                  {" "}
+                  <p className="text-xs text-gray-500">On-Time Rate</p>{" "}
+                  <p className="text-xl font-semibold text-blue-600">
+                    {" "}
+                    {subtaskStats.subtaskOnTimeRate || 0}%{" "}
+                  </p>{" "}
+                </div>{" "}
+              </div>{" "}
+            </div>
 
       {/* 🔹 GLOBAL DATE FILTER */}
       <p className="text-sm text-gray-600 mb-1">
@@ -526,6 +570,74 @@ const UserAnalyticsPage = () => {
           </div>
         )}
       </div>
+
+        {/* ================= DELAYED SUBTASK MODAL ================= */}{" "}
+      {showDelayedModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center">
+          {" "}
+          <div
+            className="absolute inset-0 bg-black/50"
+            onClick={() => setShowDelayedModal(false)}
+          />{" "}
+          <div className="relative bg-white w-full max-w-3xl mx-4 rounded-xl shadow-xl p-6">
+            {" "}
+            <div className="flex justify-between items-center mb-4">
+              {" "}
+              <h3 className="text-lg font-semibold"> Delayed Subtasks </h3>{" "}
+              <button
+                onClick={() => setShowDelayedModal(false)}
+                className="text-gray-500 hover:text-gray-700"
+              >
+                {" "}
+                ✕{" "}
+              </button>{" "}
+            </div>{" "}
+            {subtaskStats.delayedSubtaskDetails?.length === 0 ? (
+              <p className="text-sm text-gray-500"> No delayed subtasks 🎉 </p>
+            ) : (
+              <div className="max-h-[60vh] overflow-y-auto">
+                {" "}
+                <table className="w-full text-sm border border-gray-300">
+                  {" "}
+                  <thead className="bg-gray-50 text-xs text-gray-600">
+                    {" "}
+                    <tr>
+                      {" "}
+                      <th className="px-3 py-2 text-left">Task</th>{" "}
+                      <th className="px-3 py-2 text-left">Subtask</th>{" "}
+                      <th className="px-3 py-2 text-left">Due Date</th>{" "}
+                      <th className="px-3 py-2 text-left">Completed</th>{" "}
+                      <th className="px-3 py-2 text-left">Delay</th>{" "}
+                    </tr>{" "}
+                  </thead>{" "}
+                  <tbody>
+                    {" "}
+                    {subtaskStats?.delayedSubtaskDetails?.map((item, index) => (
+                      <tr key={index} className="border-t border-gray-300">
+                        {" "}
+                        <td className="px-3 py-2">{item.taskTitle}</td>{" "}
+                        <td className="px-3 py-2">{item.subtaskText}</td>{" "}
+                        <td className="px-3 py-2">
+                          {" "}
+                          {new Date(item.dueDate).toLocaleDateString()}{" "}
+                        </td>{" "}
+                        <td className="px-3 py-2">
+                          {" "}
+                          {new Date(item.completedAt).toLocaleDateString()}{" "}
+                        </td>{" "}
+                        <td className="px-3 py-2 text-red-600 font-medium">
+                          {" "}
+                          {Math.round(item.delayMinutes / 60)} hrs{" "}
+                        </td>{" "}
+                      </tr>
+                    ))}{" "}
+                  </tbody>{" "}
+                </table>{" "}
+              </div>
+            )}{" "}
+          </div>{" "}
+        </div>
+      )}
     </DashboardLayout>
   );
 };
