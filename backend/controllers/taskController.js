@@ -811,9 +811,9 @@ const deleteTask = async (req, res) => {
   try {
     const filter = { _id: req.params.id };
 
-    if (req.user.role === "admin" || req.user.role === "superadmin") {
+    if (req.user.role === "admin") {
       filter.createdBy = req.user._id;
-    } else {
+    } else if(req.user.role === "member") {
       return res.status(403).json({
         message: "You are not allowed to delete this task",
       });
