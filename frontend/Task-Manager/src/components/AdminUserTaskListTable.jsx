@@ -60,12 +60,12 @@ const TaskListTable = ({ tableData }) => {
             </th>
 
             {/* ASSIGNED By*/}
-            <th className="py-3 px-4 text-gray-800 font-medium text-[13px] hidden md:table-cell">
+            <th className="py-3 px-4 text-gray-800 font-medium text-[13px] ">
               Assigned By
             </th>
 
             {/* CREATED ON */}
-            <th className="py-3 px-4 text-gray-800 font-medium text-[13px] hidden md:table-cell">
+            <th className="py-3 px-4 text-gray-800 font-medium text-[13px]">
               Created On
             </th>
           </tr>
@@ -134,7 +134,7 @@ const TaskListTable = ({ tableData }) => {
               </td>
 
               {/* CREATED DATE */}
-              <td className="py-4 px-4 text-gray-700 text-[13px] hidden md:table-cell">
+              <td className="py-4 px-4 text-gray-700 text-[13px] ">
                 {task.createdAt
                   ? moment(task.createdAt).format("DD MMM YYYY")
                   : "N/A"}

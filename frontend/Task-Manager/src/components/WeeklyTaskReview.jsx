@@ -74,44 +74,54 @@ const WeeklyTasksReviewPage = ({ userId }) => {
       </div>
 
       {/* TABLE */}
-      <div className="border border-gray-300 rounded-lg overflow-hidden bg-white">
-        <div className="grid grid-cols-12 gap-6 px-4 py-3 bg-gray-50 text-xs font-medium text-gray-500 border-b border-gray-300">
-          <div className="col-span-2">Week</div>
-          <div className="col-span-2">Title</div>
-          <div className="col-span-3">Description</div>
-          <div className="col-span-2">Subtasks</div>
-          <div className="col-span-1">Status</div>
-          <div className="col-span-2 text-center">Action</div>
-        </div>
+  {/* TABLE */}
+<div className="border border-gray-300 rounded-lg bg-white">
+  <div className="overflow-x-auto">
+    <table className="min-w-[1100px] w-full text-sm">
+      <thead className="bg-gray-50 text-xs text-gray-500 border-b border-gray-300">
+        <tr>
+          <th className="px-4 py-3 text-left">Week</th>
+          <th className="px-4 py-3 text-left">Title</th>
+          <th className="px-4 py-3 text-left">Description</th>
+          <th className="px-4 py-3 text-left">Subtasks</th>
+          <th className="px-4 py-3 text-left">Status</th>
+          <th className="px-4 py-3 text-center">Action</th>
+        </tr>
+      </thead>
 
+      <tbody>
         {loading ? (
-          <p className="p-4 text-sm text-gray-400">
-            Loading...
-          </p>
+          <tr>
+            <td colSpan="6" className="px-4 py-6 text-gray-400">
+              Loading...
+            </td>
+          </tr>
         ) : weeklyTasks.length === 0 ? (
-          <p className="p-4 text-sm text-gray-400">
-            No weekly tasks found.
-          </p>
+          <tr>
+            <td colSpan="6" className="px-4 py-6 text-gray-400">
+              No weekly tasks found.
+            </td>
+          </tr>
         ) : (
           weeklyTasks.map((task) => (
-            <div
+            <tr
               key={task._id}
-              className="grid grid-cols-12 gap-4 px-5 py-4 border-b border-gray-300 text-sm items-start"
+              className="border-b border-gray-200 align-top"
             >
-              <div className="col-span-2 font-medium">
+              <td className="px-4 py-4 font-medium whitespace-nowrap">
                 {moment(task.weekStart).format("DD MMM")} -{" "}
                 {moment(task.weekEnd).format("DD MMM YYYY")}
-              </div>
+              </td>
 
-              <div className="col-span-2 font-medium">
+              <td className="px-4 py-4 font-medium whitespace-nowrap">
                 {task.name}
-              </div>
+              </td>
 
-              <div className="col-span-3 text-gray-600">
+              <td className="px-4 py-4 text-gray-600 min-w-[250px]">
                 {task.description}
-              </div>
+              </td>
 
-              <div className="col-span-2 space-y-1">
+              <td className="px-4 py-4 min-w-[200px] space-y-1">
                 {task.subtasks.map((sub) => (
                   <div
                     key={sub._id}
@@ -120,9 +130,9 @@ const WeeklyTasksReviewPage = ({ userId }) => {
                     {sub.text}
                   </div>
                 ))}
-              </div>
+              </td>
 
-              <div className="col-span-1">
+              <td className="px-4 py-4 whitespace-nowrap">
                 <span
                   className={`text-xs px-2 py-1 rounded ${
                     task.status === "Approved"
@@ -134,11 +144,11 @@ const WeeklyTasksReviewPage = ({ userId }) => {
                 >
                   {task.status}
                 </span>
-              </div>
+              </td>
 
-              <div className="col-span-2 px-4 flex flex-col justify-center gap-1">
+              <td className="px-4 py-4 whitespace-nowrap text-center">
                 {task.status === "Submitted" && (
-                  <>
+                  <div className="flex flex-col gap-2">
                     <button
                       onClick={() =>
                         updateStatus(task._id, "Approved")
@@ -156,13 +166,17 @@ const WeeklyTasksReviewPage = ({ userId }) => {
                     >
                       Reject
                     </button>
-                  </>
+                  </div>
                 )}
-              </div>
-            </div>
+              </td>
+            </tr>
           ))
         )}
-      </div>
+      </tbody>
+    </table>
+  </div>
+</div>
+
     </div>
   );
 };

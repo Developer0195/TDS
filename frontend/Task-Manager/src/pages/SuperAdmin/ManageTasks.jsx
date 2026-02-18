@@ -211,32 +211,40 @@ const ManageTasks = () => {
         </h2>
 
         {/* TASK LIST */}
-        <div className="border border-gray-300 rounded-lg overflow-hidden bg-white">
-          {/* Header */}
-          <div className="grid grid-cols-13 gap-3 px-4 py-2 bg-gray-50 text-xs font-medium text-gray-500 border-b border-gray-300">
-            <div className="col-span-3">Task</div>
-            <div className="col-span-2">Status</div>
-            <div className="col-span-1">Priority</div>
-            <div className="col-span-2">Subtasks</div>
-            <div className="col-span-1">Created</div>
-            <div className="col-span-1">Due</div>
-            <div className="col-span-2">Assigned To</div>
-             <div className="col-span-1">Assigned By</div>
-          </div>
+   {/* TASK LIST */}
+<div className="border border-gray-300 rounded-lg bg-white">
+  <div className="w-full overflow-x-auto">
+    {/* Force width wider than mobile */}
+    <div className="min-w-[1200px]">
 
-          {/* Rows */}
-          {allTasks.length === 0 ? (
-            <p className="p-4 text-sm text-gray-400">No tasks found.</p>
-          ) : (
-            allTasks.map((item) => (
-              <TaskRow
-                key={item._id}
-                task={item}
-                onClick={() => handleClick(item)}
-              />
-            ))
-          )}
-        </div>
+      {/* Header */}
+      <div className="grid grid-cols-13 gap-3 px-4 py-2 bg-gray-50 text-xs font-medium text-gray-500 border-b border-gray-300">
+        <div className="col-span-3 whitespace-nowrap">Task</div>
+        <div className="col-span-2 whitespace-nowrap">Status</div>
+        <div className="col-span-1 whitespace-nowrap">Priority</div>
+        <div className="col-span-2 whitespace-nowrap">Subtasks</div>
+        <div className="col-span-1 whitespace-nowrap">Created</div>
+        <div className="col-span-1 whitespace-nowrap">Due</div>
+        <div className="col-span-2 whitespace-nowrap">Assigned To</div>
+        <div className="col-span-1 whitespace-nowrap">Assigned By</div>
+      </div>
+
+      {/* Rows */}
+      {allTasks.length === 0 ? (
+        <p className="p-4 text-sm text-gray-400">No tasks found.</p>
+      ) : (
+        allTasks.map((item) => (
+          <TaskRow
+            key={item._id}
+            task={item}
+            onClick={() => handleClick(item)}
+          />
+        ))
+      )}
+
+    </div>
+  </div>
+</div>
 
         {pagination && pagination.totalPages > 1 && (
           <div className="flex items-center justify-between mt-6 mb-3 mx-3">

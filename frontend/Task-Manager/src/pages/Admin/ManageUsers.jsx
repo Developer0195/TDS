@@ -17,9 +17,6 @@ const ManageUsers = () => {
   const [searchQuery, setSearchQuery] = useState("");
   const [showDropdown, setShowDropdown] = useState(false);
 
-  
-
-
   const navigate = useNavigate();
 
   /* =======================
@@ -47,9 +44,6 @@ const ManageUsers = () => {
     }
   };
 
-
-
-
   /* =======================
      ADD TEAM MEMBER
   ======================= */
@@ -73,9 +67,7 @@ const ManageUsers = () => {
   ======================= */
   const removeTeamMember = async (memberId) => {
     try {
-      await axiosInstance.delete(
-        API_PATHS.USERS.REMOVE_TEAM_MEMBER(memberId)
-      );
+      await axiosInstance.delete(API_PATHS.USERS.REMOVE_TEAM_MEMBER(memberId));
       toast.success("Member removed from team");
       fetchTeamMembers();
     } catch {
@@ -102,9 +94,8 @@ const ManageUsers = () => {
     setFilteredUsers(
       allUsers.filter(
         (u) =>
-          u.name.toLowerCase().includes(q) ||
-          u.email.toLowerCase().includes(q)
-      )
+          u.name.toLowerCase().includes(q) || u.email.toLowerCase().includes(q),
+      ),
     );
   }, [searchQuery, allUsers]);
 
@@ -114,7 +105,7 @@ const ManageUsers = () => {
   const teamMemberIds = teamMembers.map((m) => m._id);
 
   const availableUsers = filteredUsers.filter(
-    (u) => !teamMemberIds.includes(u._id)
+    (u) => !teamMemberIds.includes(u._id),
   );
 
   /* =======================
@@ -123,7 +114,6 @@ const ManageUsers = () => {
   return (
     <DashboardLayout activeMenu="Team Members">
       <div className="my-6">
-
         {/* HEADER */}
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-xl font-medium">Team Members</h2>
@@ -165,70 +155,81 @@ const ManageUsers = () => {
         </div>
 
         {/* TEAM TABLE */}
-        <div className="border border-gray-300 rounded-lg overflow-hidden bg-white">
-          <div className="grid grid-cols-13 gap-3 px-4 py-2 bg-gray-50 text-xs font-medium text-gray-500 border-b">
-            <div className="col-span-3">Member</div>
-            <div className="col-span-5">Task Status</div>
-            <div className="col-span-3">On-Time Completion %</div>
-            <div className="col-span-1 text-right">Action</div>
-            <div className="col-span-1 text-right">Weekly Task</div>
-          </div>
+    {/* TEAM TABLE */}
+<div className="border border-gray-300 rounded-lg bg-white">
+  <div className="w-full overflow-x-auto">
+    {/* Force table width wider than mobile */}
+    <div className="min-w-[1200px]">
 
-          {teamMembers.length === 0 ? (
-            <p className="p-4 text-sm text-gray-400">
-              No team members added yet.
-            </p>
-          ) : (
-            teamMembers.map((member) => (
-              <div
-                key={member._id}
-                onClick={() => navigate(`/admin/users/${member._id}`)}
-                className="cursor-pointer grid grid-cols-13 gap-3 px-4 py-3 border-b text-sm items-center"
+      {/* Header */}
+      <div className="grid grid-cols-13 gap-3 px-4 py-2 bg-gray-50 text-xs font-medium text-gray-500 border-b">
+        <div className="col-span-3 whitespace-nowrap">Member</div>
+        <div className="col-span-5 whitespace-nowrap">Task Status</div>
+        <div className="col-span-3 whitespace-nowrap">On-Time Completion %</div>
+        <div className="col-span-1 text-right whitespace-nowrap">Action</div>
+        <div className="col-span-1 text-right whitespace-nowrap">Weekly Task</div>
+      </div>
+
+      {/* Rows */}
+      {teamMembers.length === 0 ? (
+        <p className="p-4 text-sm text-gray-400">
+          No team members added yet.
+        </p>
+      ) : (
+        teamMembers.map((member) => (
+          <div
+            key={member._id}
+            onClick={() => navigate(`/admin/users/${member._id}`)}
+            className="cursor-pointer grid grid-cols-13 gap-3 px-4 py-3 border-b text-sm items-center"
+          >
+            <div className="col-span-3 whitespace-nowrap">
+              <p className="font-medium">{member.name}</p>
+              <p className="text-xs text-gray-500 truncate">
+                {member.email}
+              </p>
+            </div>
+
+            <div className="col-span-5 whitespace-nowrap">
+              <TaskStatusChips taskCounts={member.taskCounts} />
+            </div>
+
+            <div className="col-span-3 whitespace-nowrap">
+              <span className="text-xs font-medium px-2 py-1 rounded bg-green-100 text-green-700">
+                {member.onTimeCompletionRate}%
+              </span>
+            </div>
+
+            <div className="col-span-1 text-right whitespace-nowrap">
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  removeTeamMember(member._id);
+                }}
+                className="text-red-500 hover:text-red-700"
               >
-                <div className="col-span-3">
-                  <p className="font-medium">{member.name}</p>
-                  <p className="text-xs text-gray-500">{member.email}</p>
-                </div>
+                <LuTrash2 />
+              </button>
+            </div>
 
-                <div className="col-span-5">
-                  <TaskStatusChips taskCounts={member.taskCounts} />
-                </div>
+            <div
+              className="col-span-1 flex justify-center whitespace-nowrap"
+              onClick={(e) => {
+                e.stopPropagation();
+                navigate(`/admin/users/${member._id}/weekly-tasks`);
+              }}
+            >
+              <button className="text-xs bg-indigo-100 text-indigo-700 px-2 py-1 rounded hover:bg-indigo-200">
+                View
+              </button>
+            </div>
+          </div>
+        ))
+      )}
 
-                <div className="col-span-3">
-                  <span className="text-xs font-medium px-2 py-1 rounded bg-green-100 text-green-700">
-                    {member.onTimeCompletionRate}%
-                  </span>
-                </div>
-
-                <div className="col-span-1 text-right">
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      removeTeamMember(member._id);
-                    }}
-                    className="text-red-500 hover:text-red-700"
-                  >
-                    <LuTrash2 />
-                  </button>
-                </div>
-
-                
-                {/* WEEKLY TASK BUTTON */}
-<div
-  className="col-span-1 flex justify-center"
-  onClick={(e) => {
-    e.stopPropagation(); // 🔥 Prevent row navigation
-     navigate(`/admin/users/${member._id}/weekly-tasks`);
-  }}
->
-  <button className="text-xs bg-indigo-100 text-indigo-700 px-2 py-1 rounded hover:bg-indigo-200">
-    View
-  </button>
+    </div>
+  </div>
 </div>
-              </div>
-            ))
-          )}
-        </div>
+
       </div>
     </DashboardLayout>
   );

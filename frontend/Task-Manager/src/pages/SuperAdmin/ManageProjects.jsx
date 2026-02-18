@@ -160,71 +160,73 @@ const ManageProjects = () => {
         {/* ---------------- PROJECTS TABLE ---------------- */}
         <h2 className="text-xl font-medium mb-4">All Projects</h2>
 
-        <div className="border border-gray-300 rounded-lg overflow-hidden bg-white">
-          {/* Header */}
-          <div className="grid grid-cols-12 gap-3 px-4 py-2 bg-gray-50 text-xs font-medium text-gray-500 border-b border-gray-300">
-            <div className="col-span-3">Project</div>
-            <div className="col-span-3">Client</div>
-            <div className="col-span-2">Status</div>
-            <div className="col-span-2">Members</div>
-            <div className="col-span-2">Created</div>
-          </div>
+    <div className="border border-gray-300 rounded-lg bg-white">
+  <div className="overflow-x-auto">
+    <div className="min-w-[900px]">
 
-          {/* Rows */}
-          {projects.length === 0 ? (
-            <p className="p-4 text-sm text-gray-400">
-              No projects found.
-            </p>
-          ) : (
-            projects.map((project) => (
-              <div
-                key={project._id}
-                onClick={() => handleProjectClick(project)}
-                className="grid grid-cols-12 gap-3 px-4 py-3 border-b border-gray-300 text-sm cursor-pointer hover:bg-gray-50"
+      {/* Header */}
+      <div className="grid grid-cols-12 gap-3 px-4 py-2 bg-gray-50 text-xs font-medium text-gray-500 border-b border-gray-300">
+        <div className="col-span-3">Project</div>
+        <div className="col-span-3">Client</div>
+        <div className="col-span-2">Status</div>
+        <div className="col-span-2">Members</div>
+        <div className="col-span-2">Created</div>
+      </div>
+
+      {/* Empty State */}
+      {projects.length === 0 ? (
+        <p className="p-4 text-sm text-gray-400">
+          No projects found.
+        </p>
+      ) : (
+        projects.map((project) => (
+          <div
+            key={project._id}
+            onClick={() => handleProjectClick(project)}
+            className="grid grid-cols-12 gap-3 px-4 py-3 border-b border-gray-300 text-sm cursor-pointer hover:bg-gray-50"
+          >
+            <div className="col-span-3">
+              <p className="font-medium text-gray-800">
+                {project.name}
+              </p>
+              <p className="text-xs text-gray-400 truncate">
+                {project.description}
+              </p>
+            </div>
+
+            <div className="col-span-3 text-gray-700">
+              {project.clientName || "-"}
+            </div>
+
+            <div className="col-span-2">
+              <span
+                className={`text-xs px-2 py-1 rounded-full font-medium ${
+                  project.status === "Active"
+                    ? "bg-green-100 text-green-700"
+                    : project.status === "Completed"
+                    ? "bg-blue-100 text-blue-700"
+                    : "bg-yellow-100 text-yellow-700"
+                }`}
               >
-                {/* Project */}
-                <div className="col-span-3">
-                  <p className="font-medium text-gray-800">
-                    {project.name}
-                  </p>
-                  <p className="text-xs text-gray-400 truncate">
-                    {project.description}
-                  </p>
-                </div>
+                {project.status}
+              </span>
+            </div>
 
-                {/* Client */}
-                <div className="col-span-3 text-gray-700">
-                  {project.clientName || "-"}
-                </div>
+            <div className="col-span-2 text-gray-600">
+              <MembersChip members={project.members || []} />
+            </div>
 
-                {/* Status */}
-                <div className="col-span-2">
-                  <span
-                    className={`text-xs px-2 py-1 rounded-full font-medium ${
-                      project.status === "Active"
-                        ? "bg-green-100 text-green-700"
-                        : project.status === "Completed"
-                        ? "bg-blue-100 text-blue-700"
-                        : "bg-yellow-100 text-yellow-700"
-                    }`}
-                  >
-                    {project.status}
-                  </span>
-                </div>
+            <div className="col-span-2 text-xs text-gray-500">
+              {formatDateDDMMYY(project.createdAt)}
+            </div>
+          </div>
+        ))
+      )}
 
-                {/* Members */}
-                <div className="col-span-2 text-gray-600">
-                   <MembersChip members={project.members || []} />
-                </div>
+    </div>
+  </div>
+</div>
 
-                {/* Created */}
-                <div className="col-span-2 text-xs text-gray-500">
-                  {formatDateDDMMYY(project.createdAt)}
-                </div>
-              </div>
-            ))
-          )}
-        </div>
       </div>
     </DashboardLayout>
   );

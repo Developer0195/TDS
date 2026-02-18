@@ -196,7 +196,7 @@ const MyTasks = () => {
                 className="w-full border border-gray-300 rounded px-3 py-2 text-xs"
                 value={filters.startDate}
                 onChange={(e) =>
-                  setFilters((p) => ({ ...p, startDate: e.target.value }))
+                  setFilters((p) => ({ ...p, startDate: e.target.value, endDate: e.target.value }))
                 }
               />
             </div>
@@ -257,31 +257,40 @@ const MyTasks = () => {
         </div>
 
         {/* ---------------- TASK TABLE ---------------- */}
-        <div className="border border-gray-300 rounded-lg overflow-hidden bg-white">
-          {/* Header */}
-          <div className="grid grid-cols-12 gap-3 px-4 py-2 bg-gray-50 text-xs font-medium text-gray-500 border-b">
-            <div className="col-span-3">Task</div>
-            <div className="col-span-2">Status</div>
-            <div className="col-span-1">Priority</div>
-            <div className="col-span-2">Subtasks</div>
-            <div className="col-span-1">Created</div>
-            <div className="col-span-1">Due</div>
-            <div className="col-span-2">Assigned By</div>
-          </div>
+      {/* ---------------- TASK TABLE ---------------- */}
+<div className="border border-gray-300 rounded-lg bg-white">
+  <div className="w-full overflow-x-auto">
+    {/* Force width wider than mobile */}
+    <div className="min-w-[1100px]">
 
-          {/* Rows */}
-          {allTasks.length === 0 ? (
-            <p className="p-4 text-sm text-gray-400">No tasks found.</p>
-          ) : (
-            allTasks.map((task) => (
-              <TaskRow
-                key={task._id}
-                task={task}
-                onClick={() => handleClick(task)}
-              />
-            ))
-          )}
-        </div>
+      {/* Header */}
+      <div className="grid grid-cols-12 gap-3 px-4 py-2 bg-gray-50 text-xs font-medium text-gray-500 border-b">
+        <div className="col-span-3 whitespace-nowrap">Task</div>
+        <div className="col-span-2 whitespace-nowrap">Status</div>
+        <div className="col-span-1 whitespace-nowrap">Priority</div>
+        <div className="col-span-2 whitespace-nowrap">Subtasks</div>
+        <div className="col-span-1 whitespace-nowrap">Created</div>
+        <div className="col-span-1 whitespace-nowrap">Due</div>
+        <div className="col-span-2 whitespace-nowrap">Assigned By</div>
+      </div>
+
+      {/* Rows */}
+      {allTasks.length === 0 ? (
+        <p className="p-4 text-sm text-gray-400">No tasks found.</p>
+      ) : (
+        allTasks.map((task) => (
+          <TaskRow
+            key={task._id}
+            task={task}
+            onClick={() => handleClick(task)}
+          />
+        ))
+      )}
+
+    </div>
+  </div>
+</div>
+
 
         {/* ---------------- PAGINATION ---------------- */}
         {pagination && pagination.totalPages > 1 && (

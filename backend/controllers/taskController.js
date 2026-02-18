@@ -359,9 +359,69 @@ const createTask = async (req, res) => {
 /* ===============================
    UPDATE TASK
 ================================ */
+// const updateTask = async (req, res) => {
+//   try {
+//     const filter = { _id: req.params.id };
+
+//     if (req.body.estimatedHours && req.body.estimatedHours < 1) {
+//       return res.status(400).json({
+//         message: "Estimated hours must be at least 1",
+//       });
+//     }
+
+//     if (req.body.dueDate) {
+//       const parsedDueDate = new Date(req.body.dueDate);
+//       parsedDueDate.setHours(23, 59, 59, 999);
+//       req.body.dueDate = parsedDueDate;
+//     }
+
+//     if (req.user.role === "admin") filter.createdBy = req.user._id;
+//     else if (req.user.role === "member") filter.assignedTo = req.user._id;
+
+//     const task = await Task.findOne(filter);
+//     if (!task) return res.status(404).json({ message: "Task not found" });
+
+//     if (req.body.project === "") {
+//       req.body.project = null;
+//     }
+
+//     Object.assign(task, req.body);
+
+//     addLog(task, "TASK_UPDATED", "Task updated", req.user._id);
+
+//     await task.save();
+//     res.json({ message: "Task updated", task });
+//   } catch (error) {
+//     res.status(500).json({ message: error.message });
+//   }
+// };
+
+
 const updateTask = async (req, res) => {
   try {
+    console.log("UPDATE Task body: ", req.body);
+
+    /* ===============================
+       FIND TASK BASED ON ROLE
+    =============================== */
+
     const filter = { _id: req.params.id };
+
+    if (req.user.role === "admin") {
+      filter.createdBy = req.user._id;
+    } else if (req.user.role === "member") {
+      filter.assignedTo = req.user._id;
+    }
+
+    const task = await Task.findOne(filter);
+
+    if (!task) {
+      return res.status(404).json({ message: "Task not found" });
+    }
+
+    /* ===============================
+       VALIDATION
+    =============================== */
 
     if (req.body.estimatedHours && req.body.estimatedHours < 1) {
       return res.status(400).json({
@@ -375,26 +435,105 @@ const updateTask = async (req, res) => {
       req.body.dueDate = parsedDueDate;
     }
 
-    if (req.user.role === "admin") filter.createdBy = req.user._id;
-    else if (req.user.role === "member") filter.assignedTo = req.user._id;
-
-    const task = await Task.findOne(filter);
-    if (!task) return res.status(404).json({ message: "Task not found" });
-
     if (req.body.project === "") {
       req.body.project = null;
     }
 
-    Object.assign(task, req.body);
+    /* ===============================
+       🔥 MEMBER REMOVAL LOGIC
+    =============================== */
+
+    let removedMembers = [];
+
+    if (req.body.assignedTo) {
+      const oldMembers = task.assignedTo.map((id) => id.toString());
+      const newMembers = req.body.assignedTo.map((id) => id.toString());
+
+      console.log("old members:", oldMembers);
+      console.log("new members:", newMembers);
+
+      removedMembers = oldMembers.filter(
+        (memberId) => !newMembers.includes(memberId)
+      );
+    }
+
+    /* ===============================
+       UPDATE BASIC FIELDS (SAFE)
+    =============================== */
+
+    const {
+      title,
+      description,
+      priority,
+      estimatedHours,
+      dueDate,
+      assignedTo,
+      project,
+      attachments,
+      todoCheckList,
+    } = req.body;
+
+    if (title !== undefined) task.title = title;
+    if (description !== undefined) task.description = description;
+    if (priority !== undefined) task.priority = priority;
+    if (estimatedHours !== undefined) task.estimatedHours = estimatedHours;
+    if (dueDate !== undefined) task.dueDate = dueDate;
+    if (assignedTo !== undefined) task.assignedTo = assignedTo;
+    if (project !== undefined) task.project = project;
+    if (attachments !== undefined) task.attachments = attachments;
+
+    /* ===============================
+       HANDLE CHECKLIST SAFELY
+    =============================== */
+
+    if (todoCheckList !== undefined) {
+      let updatedChecklist = todoCheckList;
+
+      // Remove subtasks assigned to removed members
+      if (removedMembers.length > 0) {
+        updatedChecklist = updatedChecklist.filter((subtask) => {
+          if (!subtask.assignedTo) return true;
+
+          return !removedMembers.includes(
+            subtask.assignedTo.toString()
+          );
+        });
+      }
+
+      task.todoCheckList = updatedChecklist;
+    } else {
+      // If checklist not sent, still clean existing subtasks if members removed
+      if (removedMembers.length > 0) {
+        task.todoCheckList = task.todoCheckList.filter((subtask) => {
+          if (!subtask.assignedTo) return true;
+
+          return !removedMembers.includes(
+            subtask.assignedTo.toString()
+          );
+        });
+      }
+    }
+
+    /* ===============================
+       ADD LOG
+    =============================== */
 
     addLog(task, "TASK_UPDATED", "Task updated", req.user._id);
 
     await task.save();
-    res.json({ message: "Task updated", task });
+
+    res.json({
+      message: "Task updated",
+      task,
+    });
   } catch (error) {
+    console.error("Update task error:", error);
     res.status(500).json({ message: error.message });
   }
 };
+
+
+
 
 /* ===============================
    UPDATE TASK STATUS (ADMIN ONLY COMPLETE)

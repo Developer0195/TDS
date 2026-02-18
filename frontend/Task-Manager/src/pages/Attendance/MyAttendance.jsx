@@ -249,46 +249,73 @@ setHistory(filteredAttendance);
 
 
       {/* ================= HISTORY ================= */}
-      <div className="bg-white border border-gray-300 rounded-lg">
-        <table className="w-full text-sm">
-          <thead className="bg-blue-50">
-            <tr>
-              <th className="px-4 py-3 text-left">Date</th>
-              <th className="px-4 py-3 text-left">In</th>
-              <th className="px-4 py-3 text-left">Out</th>
-              <th className="px-4 py-3 text-left">Duration</th>
-              <th className="px-4 py-3 text-left">Location</th>
-              <th className="px-4 py-3 text-left">Work</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y">
-            {history.map((a) => (
-              <tr key={a._id}>
-                <td className="px-4 py-3">
-                  {new Date(a.date).toDateString()}
-                </td>
-                <td className="px-4 py-3">
-                  {a.punchIn?.time &&
-                    new Date(a.punchIn.time).toLocaleTimeString()}
-                </td>
-                <td className="px-4 py-3">
-                  {a.punchOut?.time &&
-                    new Date(a.punchOut.time).toLocaleTimeString()}
-                </td>
-                <td className="px-4 py-3">
-                  {a.totalDurationMinutes
-                    ? `${Math.floor(a.totalDurationMinutes / 60)}h ${a.totalDurationMinutes % 60}m`
-                    : "—"}
-                </td>
-                <td className="px-4 py-3">
-                  <LocationPopover location={a?.punchIn?.location} />
-                </td>
-                <td className="px-4 py-3">{a.workType}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
+  {/* ================= HISTORY ================= */}
+<div className="bg-white border border-gray-300 rounded-lg">
+  <div className="w-full overflow-x-auto mobile-scroll touch-pan-x">
+    <table className="min-w-[700px] w-full text-sm">
+      <thead className="bg-blue-50">
+        <tr>
+          <th className="px-4 py-3 text-left whitespace-nowrap">
+            Date
+          </th>
+          <th className="px-4 py-3 text-left whitespace-nowrap">
+            In
+          </th>
+          <th className="px-4 py-3 text-left whitespace-nowrap">
+            Out
+          </th>
+          <th className="px-4 py-3 text-left whitespace-nowrap">
+            Duration
+          </th>
+          <th className="px-4 py-3 text-left whitespace-nowrap">
+            Location
+          </th>
+          <th className="px-4 py-3 text-left whitespace-nowrap">
+            Work
+          </th>
+        </tr>
+      </thead>
+
+      <tbody className="divide-y">
+        {history.map((a) => (
+          <tr key={a._id} className="hover:bg-gray-50">
+            <td className="px-4 py-3 whitespace-nowrap">
+              {new Date(a.date).toDateString()}
+            </td>
+
+            <td className="px-4 py-3 whitespace-nowrap">
+              {a.punchIn?.time
+                ? new Date(a.punchIn.time).toLocaleTimeString()
+                : "—"}
+            </td>
+
+            <td className="px-4 py-3 whitespace-nowrap">
+              {a.punchOut?.time
+                ? new Date(a.punchOut.time).toLocaleTimeString()
+                : "—"}
+            </td>
+
+            <td className="px-4 py-3 whitespace-nowrap">
+              {a.totalDurationMinutes
+                ? `${Math.floor(a.totalDurationMinutes / 60)}h ${
+                    a.totalDurationMinutes % 60
+                  }m`
+                : "—"}
+            </td>
+
+            <td className="px-4 py-3 whitespace-nowrap">
+              <LocationPopover location={a?.punchIn?.location} />
+            </td>
+
+            <td className="px-4 py-3 whitespace-nowrap">
+              {a.workType || "—"}
+            </td>
+          </tr>
+        ))}
+      </tbody>
+    </table>
+  </div>
+</div>
 
       {/* ================= REMARKS MODAL ================= */}
       <RemarksModal

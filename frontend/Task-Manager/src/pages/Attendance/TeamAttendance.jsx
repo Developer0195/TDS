@@ -64,7 +64,6 @@
 //   const today = new Date();
 // today.setHours(0, 0, 0, 0);
 
-
 //   const allDates = useMemo(
 //     () => buildDateRange(range.start, range.end),
 //     [range]
@@ -332,10 +331,6 @@
 
 // export default TeamAttendance;
 
-
-
-
-
 import React, { useEffect, useMemo, useState } from "react";
 import axiosInstance from "../../utils/axiosInstance";
 import { API_PATHS } from "../../utils/apiPaths";
@@ -396,23 +391,22 @@ const EditAttendanceModal = ({
   range,
   calendar,
   onSubmit,
- holidays
+  holidays,
 }) => {
   const [selectedDate, setSelectedDate] = useState(null);
   const [status, setStatus] = useState("Present");
 
   const holidayMap = {};
-holidays.forEach((h) => {
-  holidayMap[new Date(h.date).toDateString()] = h.name;
-});
-
+  holidays.forEach((h) => {
+    holidayMap[new Date(h.date).toDateString()] = h.name;
+  });
 
   const today = new Date();
   today.setHours(0, 0, 0, 0);
 
   const allDates = useMemo(
     () => buildDateRange(range.start, range.end),
-    [range]
+    [range],
   );
 
   const statusByDate = {};
@@ -434,7 +428,7 @@ holidays.forEach((h) => {
     }
 
     const dateString = `${selectedDate.getFullYear()}-${String(
-      selectedDate.getMonth() + 1
+      selectedDate.getMonth() + 1,
     ).padStart(2, "0")}-${String(selectedDate.getDate()).padStart(2, "0")}`;
 
     onSubmit(dateString, status);
@@ -454,34 +448,32 @@ holidays.forEach((h) => {
           Edit Attendance – {member.name}
         </h3>
 
-      <div className="flex flex-wrap gap-3 text-xs mb-4">
-  <div className="flex items-center gap-1">
-    <span className="w-3 h-3 rounded bg-green-500"></span>
-    <span>Present</span>
-  </div>
+        <div className="flex flex-wrap gap-3 text-xs mb-4">
+          <div className="flex items-center gap-1">
+            <span className="w-3 h-3 rounded bg-green-500"></span>
+            <span>Present</span>
+          </div>
 
-  <div className="flex items-center gap-1">
-    <span className="w-3 h-3 rounded bg-red-500"></span>
-    <span>Absent</span>
-  </div>
+          <div className="flex items-center gap-1">
+            <span className="w-3 h-3 rounded bg-red-500"></span>
+            <span>Absent</span>
+          </div>
 
-  <div className="flex items-center gap-1">
-    <span className="w-3 h-3 rounded bg-orange-400"></span>
-    <span>Delayed</span>
-  </div>
+          <div className="flex items-center gap-1">
+            <span className="w-3 h-3 rounded bg-orange-400"></span>
+            <span>Delayed</span>
+          </div>
 
-  <div className="flex items-center gap-1">
-    <span className="w-3 h-3 rounded bg-yellow-300"></span>
-    <span>Holiday / Sunday</span>
-  </div>
+          <div className="flex items-center gap-1">
+            <span className="w-3 h-3 rounded bg-yellow-300"></span>
+            <span>Holiday / Sunday</span>
+          </div>
 
-  <div className="flex items-center gap-1">
-    <span className="w-3 h-3 rounded bg-gray-200"></span>
-    <span>Future</span>
-  </div>
-</div>
-
-
+          <div className="flex items-center gap-1">
+            <span className="w-3 h-3 rounded bg-gray-200"></span>
+            <span>Future</span>
+          </div>
+        </div>
 
         <div className="grid grid-cols-7 gap-1 text-xs mb-4">
           {["Su", "Mo", "Tu", "We", "Th", "Fr", "Sa"].map((d) => (
@@ -490,12 +482,10 @@ holidays.forEach((h) => {
             </div>
           ))}
 
-
           {allDates.map((d) => {
             const key = d.toDateString();
             const isSelected =
-              selectedDate &&
-              d.toDateString() === selectedDate.toDateString();
+              selectedDate && d.toDateString() === selectedDate.toDateString();
 
             // let cellStyle = "bg-gray-200";
 
@@ -505,21 +495,17 @@ holidays.forEach((h) => {
             //   cellStyle = statusStyles["Absent"];
             // }
 
+            let cellStyle = "bg-gray-200";
+            const isHoliday = holidayMap[key];
+            const isSunday = d.getDay() === 0;
 
-         let cellStyle = "bg-gray-200";
-const isHoliday = holidayMap[key];
-const isSunday = d.getDay() === 0;
-
-if (isHoliday || isSunday) {
-  cellStyle = "bg-yellow-300 text-black";
-} 
-else if (statusByDate[key]) {
-  cellStyle = statusStyles[statusByDate[key]];
-} 
-else if (d < today) {
-  cellStyle = statusStyles["Absent"];
-}
-
+            if (isHoliday || isSunday) {
+              cellStyle = "bg-yellow-300 text-black";
+            } else if (statusByDate[key]) {
+              cellStyle = statusStyles[statusByDate[key]];
+            } else if (d < today) {
+              cellStyle = statusStyles["Absent"];
+            }
 
             return (
               // <button
@@ -534,30 +520,26 @@ else if (d < today) {
               //   {d.getDate()}
               // </button>
 
-             <button
-  key={key}
-  disabled={d > today || isHoliday || isSunday}
-  onClick={() =>
-    d <= today && !isHoliday && !isSunday && setSelectedDate(d)
-  }
-  className={`h-8 rounded flex items-center justify-center
+              <button
+                key={key}
+                disabled={d > today || isHoliday || isSunday}
+                onClick={() =>
+                  d <= today && !isHoliday && !isSunday && setSelectedDate(d)
+                }
+                className={`h-8 rounded flex items-center justify-center
     ${isSelected ? "ring-2 ring-blue-600" : cellStyle}
-    ${d > today || isHoliday || isSunday
-      ? "opacity-50 cursor-not-allowed"
-      : ""}
+    ${d > today || isHoliday || isSunday ? "opacity-50 cursor-not-allowed" : ""}
   `}
-  title={
-    isHoliday
-      ? holidayMap[key]
-      : isSunday
-      ? "Sunday (Weekly Off)"
-      : ""
-  }
->
-  {d.getDate()}
-</button>
-
-
+                title={
+                  isHoliday
+                    ? holidayMap[key]
+                    : isSunday
+                      ? "Sunday (Weekly Off)"
+                      : ""
+                }
+              >
+                {d.getDate()}
+              </button>
             );
           })}
         </div>
@@ -606,22 +588,17 @@ const TeamAttendance = () => {
 
   const [holidays, setHolidays] = useState([]);
 
-
   const fetchAnalytics = async () => {
     try {
       setLoading(true);
-      const res = await axiosInstance.get(
-        API_PATHS.ATTENDANCE.TEAM_ANALYTICS,
-        {
-          params: {
-            startDate: range.start.toISOString(),
-            endDate: range.end.toISOString(),
-          },
-        }
-      );
+      const res = await axiosInstance.get(API_PATHS.ATTENDANCE.TEAM_ANALYTICS, {
+        params: {
+          startDate: range.start.toISOString(),
+          endDate: range.end.toISOString(),
+        },
+      });
       setMembers(res.data.members || []);
       setHolidays(res.data.holidays || []);
-
     } finally {
       setLoading(false);
     }
@@ -697,83 +674,110 @@ const TeamAttendance = () => {
       </div>
 
       {/* LEGEND */}
-<div className="flex flex-wrap gap-3 text-xs mb-4">
-  <div className="flex items-center gap-1">
-    <span className="w-3 h-3 rounded bg-green-500"></span>
-    <span>Present</span>
-  </div>
+      <div className="flex flex-wrap gap-3 text-xs mb-4">
+        <div className="flex items-center gap-1">
+          <span className="w-3 h-3 rounded bg-green-500"></span>
+          <span>Present</span>
+        </div>
 
-  <div className="flex items-center gap-1">
-    <span className="w-3 h-3 rounded bg-red-500"></span>
-    <span>Absent</span>
-  </div>
+        <div className="flex items-center gap-1">
+          <span className="w-3 h-3 rounded bg-red-500"></span>
+          <span>Absent</span>
+        </div>
 
-  <div className="flex items-center gap-1">
-    <span className="w-3 h-3 rounded bg-orange-400"></span>
-    <span>Delayed</span>
-  </div>
+        <div className="flex items-center gap-1">
+          <span className="w-3 h-3 rounded bg-orange-400"></span>
+          <span>Delayed</span>
+        </div>
 
-  <div className="flex items-center gap-1">
-    <span className="w-3 h-3 rounded bg-yellow-300"></span>
-    <span>Holiday</span>
-  </div>
+        <div className="flex items-center gap-1">
+          <span className="w-3 h-3 rounded bg-yellow-300"></span>
+          <span>Holiday</span>
+        </div>
 
-  <div className="flex items-center gap-1">
-    <span className="w-3 h-3 rounded bg-gray-200"></span>
-    <span>Future / No Data</span>
+        <div className="flex items-center gap-1">
+          <span className="w-3 h-3 rounded bg-gray-200"></span>
+          <span>Future / No Data</span>
+        </div>
+      </div>
+
+     {/* ================= TABLE ================= */}
+<div className="bg-white border border-gray-300 rounded-lg">
+  <div className="w-full overflow-x-auto mobile-scroll touch-pan-x">
+    <table className="min-w-[720px] w-full text-sm">
+      <thead className="bg-gray-50">
+        <tr>
+          <th className="px-4 py-3 text-left whitespace-nowrap">
+            Member
+          </th>
+          <th className="px-4 py-3 text-center whitespace-nowrap">
+            Present
+          </th>
+          <th className="px-4 py-3 text-center whitespace-nowrap">
+            Absent
+          </th>
+          <th className="px-4 py-3 text-center whitespace-nowrap">
+            Delayed
+          </th>
+          <th className="px-4 py-3 text-center whitespace-nowrap">
+            Edit
+          </th>
+        </tr>
+      </thead>
+
+
+      <tbody>
+        {loading ? (
+          <tr>
+            <td colSpan="5" className="p-4 whitespace-nowrap text-center">
+              Loading…
+            </td>
+          </tr>
+        ) : members.length === 0 ? (
+          <tr>
+            <td colSpan="5" className="p-4 whitespace-nowrap text-center text-gray-400">
+              No data available
+            </td>
+          </tr>
+        ) : (
+          members.map((m) => (
+            <tr key={m.userId} className="border-t border-gray-300">
+              <td className="px-4 py-3 whitespace-nowrap font-medium">
+                {m.name}
+              </td>
+
+              <td className="px-4 py-3 text-center whitespace-nowrap">
+                {m.stats.presentDays}
+              </td>
+
+              <td className="px-4 py-3 text-center whitespace-nowrap">
+                {m.stats.absentDays}
+              </td>
+
+              <td className="px-4 py-3 text-center whitespace-nowrap">
+                {m.stats.delayedDays}
+              </td>
+
+              <td className="px-4 py-3 text-center whitespace-nowrap">
+                <button
+                  onClick={() => {
+                    setEditMember(m);
+                    setEditOpen(true);
+                  }}
+                  className="text-blue-600 text-xs hover:underline"
+                >
+                  Edit
+                </button>
+              </td>
+            </tr>
+          ))
+        )}
+      </tbody>
+
+    </table>
   </div>
 </div>
 
-
-      <div className="bg-white border border-gray-300 rounded-lg overflow-hidden">
-        <table className="w-full text-sm">
-          <thead className="bg-gray-50">
-            <tr>
-              <th className="px-4 py-3 text-left">Member</th>
-              <th className="px-4 py-3">Present</th>
-              <th className="px-4 py-3">Absent</th>
-              <th className="px-4 py-3">Delayed</th>
-              <th className="px-4 py-3">Edit</th>
-            </tr>
-          </thead>
-
-          <tbody>
-            {loading ? (
-              <tr>
-                <td colSpan="5" className="p-4">
-                  Loading…
-                </td>
-              </tr>
-            ) : (
-              members.map((m) => (
-                <tr key={m.userId} className="border-t border-gray-300">
-                  <td className="px-4 py-3">{m.name}</td>
-                  <td className="px-4 py-3 text-center">
-                    {m.stats.presentDays}
-                  </td>
-                  <td className="px-4 py-3 text-center">
-                    {m.stats.absentDays}
-                  </td>
-                  <td className="px-4 py-3 text-center">
-                    {m.stats.delayedDays}
-                  </td>
-                  <td className="px-4 py-3 text-center">
-                    <button
-                      onClick={() => {
-                        setEditMember(m);
-                        setEditOpen(true);
-                      }}
-                      className="text-blue-600 text-xs"
-                    >
-                      Edit
-                    </button>
-                  </td>
-                </tr>
-              ))
-            )}
-          </tbody>
-        </table>
-      </div>
 
       {editOpen && (
         <EditAttendanceModal
@@ -783,7 +787,7 @@ const TeamAttendance = () => {
           range={range}
           calendar={editMember?.calendar || []}
           onSubmit={submitOverride}
-           holidays={holidays}
+          holidays={holidays}
         />
       )}
     </>
@@ -791,4 +795,3 @@ const TeamAttendance = () => {
 };
 
 export default TeamAttendance;
-

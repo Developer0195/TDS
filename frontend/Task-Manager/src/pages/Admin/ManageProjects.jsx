@@ -13,24 +13,23 @@ const ManageProjects = () => {
   const PAGE_SIZE = 10;
   const [pagination, setPagination] = useState(null);
 
-
   /* ---------------- FILTERS ---------------- */
   const [filters, setFilters] = useState({
     search: "",
     clientName: "",
     status: "",
     startDate: "",
-  endDate: "",
+    endDate: "",
   });
 
   /* ---------------- FETCH PROJECTS ---------------- */
   const fetchProjects = async () => {
     try {
-      const res = await axiosInstance.get(
-        API_PATHS.PROJECTS.GET_PROJECTS,
-        { params: filters, page,
-          limit: PAGE_SIZE,}
-      );
+      const res = await axiosInstance.get(API_PATHS.PROJECTS.GET_PROJECTS, {
+        params: filters,
+        page,
+        limit: PAGE_SIZE,
+      });
 
       setProjects(res.data.projects || []);
       setPagination(res.data.pagination);
@@ -44,9 +43,8 @@ const ManageProjects = () => {
   }, [filters, page]);
 
   useEffect(() => {
-  setPage(1);
-}, [filters]);
-
+    setPage(1);
+  }, [filters]);
 
   /* ---------------- CLICK HANDLER ---------------- */
   const handleProjectClick = (project) => {
@@ -55,16 +53,14 @@ const ManageProjects = () => {
     });
   };
 
-
   const formatDateDDMMYY = (date) => {
-  const d = new Date(date);
-  const day = String(d.getDate()).padStart(2, "0");
-  const month = String(d.getMonth() + 1).padStart(2, "0");
-  const year = String(d.getFullYear()).slice(-2);
+    const d = new Date(date);
+    const day = String(d.getDate()).padStart(2, "0");
+    const month = String(d.getMonth() + 1).padStart(2, "0");
+    const year = String(d.getFullYear()).slice(-2);
 
-  return `${day}-${month}-${year}`;
-};
-
+    return `${day}-${month}-${year}`;
+  };
 
   return (
     <DashboardLayout activeMenu="Manage Projects">
@@ -92,31 +88,34 @@ const ManageProjects = () => {
             </div>
 
             {/* Start Date */}
-<div>
-  <label className="text-xs text-gray-500">Created From</label>
-  <input
-    type="date"
-    className="w-full border border-gray-300 rounded px-3 py-2 text-xs"
-    value={filters.startDate}
-    onChange={(e) =>
-      setFilters((prev) => ({ ...prev, startDate: e.target.value, endDate: e.target.value }))
-    }
-  />
-</div>
+            <div>
+              <label className="text-xs text-gray-500">Created From</label>
+              <input
+                type="date"
+                className="w-full border border-gray-300 rounded px-3 py-2 text-xs"
+                value={filters.startDate}
+                onChange={(e) =>
+                  setFilters((prev) => ({
+                    ...prev,
+                    startDate: e.target.value,
+                    endDate: e.target.value,
+                  }))
+                }
+              />
+            </div>
 
-{/* End Date */}
-<div>
-  <label className="text-xs text-gray-500">Created To</label>
-  <input
-    type="date"
-    className="w-full border border-gray-300 rounded px-3 py-2 text-xs"
-    value={filters.endDate}
-    onChange={(e) =>
-      setFilters((prev) => ({ ...prev, endDate: e.target.value }))
-    }
-  />
-</div>
-
+            {/* End Date */}
+            <div>
+              <label className="text-xs text-gray-500">Created To</label>
+              <input
+                type="date"
+                className="w-full border border-gray-300 rounded px-3 py-2 text-xs"
+                value={filters.endDate}
+                onChange={(e) =>
+                  setFilters((prev) => ({ ...prev, endDate: e.target.value }))
+                }
+              />
+            </div>
 
             {/* Client */}
             <div>
@@ -160,71 +159,80 @@ const ManageProjects = () => {
         {/* ---------------- PROJECTS TABLE ---------------- */}
         <h2 className="text-xl font-medium mb-4">All Projects</h2>
 
-        <div className="border border-gray-300 rounded-lg overflow-hidden bg-white">
-          {/* Header */}
-          <div className="grid grid-cols-12 gap-3 px-4 py-2 bg-gray-50 text-xs font-medium text-gray-500 border-b border-gray-300">
-            <div className="col-span-3">Project</div>
-            <div className="col-span-3">Client</div>
-            <div className="col-span-2">Status</div>
-            <div className="col-span-2">Members</div>
-            <div className="col-span-2">Created</div>
-          </div>
+       {/* ---------------- PROJECTS TABLE ---------------- */}
+<div className="border border-gray-300 rounded-lg bg-white">
+  <div className="w-full overflow-x-auto">
+    {/* Force width wider than mobile */}
+    <div className="min-w-[1000px]">
 
-          {/* Rows */}
-          {projects.length === 0 ? (
-            <p className="p-4 text-sm text-gray-400">
-              No projects found.
-            </p>
-          ) : (
-            projects.map((project) => (
-              <div
-                key={project._id}
-                onClick={() => handleProjectClick(project)}
-                className="grid grid-cols-12 gap-3 px-4 py-3 border-b border-gray-300 text-sm cursor-pointer hover:bg-gray-50"
+      {/* Header */}
+      <div className="grid grid-cols-12 gap-3 px-4 py-2 bg-gray-50 text-xs font-medium text-gray-500 border-b border-gray-300">
+        <div className="col-span-3 whitespace-nowrap">Project</div>
+        <div className="col-span-3 whitespace-nowrap">Client</div>
+        <div className="col-span-2 whitespace-nowrap">Status</div>
+        <div className="col-span-2 whitespace-nowrap">Members</div>
+        <div className="col-span-2 whitespace-nowrap">Created</div>
+      </div>
+
+      {/* Rows */}
+      {projects.length === 0 ? (
+        <p className="p-4 text-sm text-gray-400">
+          No projects found.
+        </p>
+      ) : (
+        projects.map((project) => (
+          <div
+            key={project._id}
+            onClick={() => handleProjectClick(project)}
+            className="grid grid-cols-12 gap-3 px-4 py-3 border-b border-gray-300 text-sm cursor-pointer hover:bg-gray-50"
+          >
+            {/* Project */}
+            <div className="col-span-3 min-w-0">
+              <p className="font-medium text-gray-800 whitespace-nowrap">
+                {project.name}
+              </p>
+              <p className="text-xs text-gray-400 truncate">
+                {project.description}
+              </p>
+            </div>
+
+            {/* Client */}
+            <div className="col-span-3 whitespace-nowrap text-gray-700">
+              {project.clientName || "-"}
+            </div>
+
+            {/* Status */}
+            <div className="col-span-2 whitespace-nowrap">
+              <span
+                className={`text-xs px-2 py-1 rounded-full font-medium ${
+                  project.status === "Active"
+                    ? "bg-green-100 text-green-700"
+                    : project.status === "Completed"
+                    ? "bg-blue-100 text-blue-700"
+                    : "bg-yellow-100 text-yellow-700"
+                }`}
               >
-                {/* Project */}
-                <div className="col-span-3">
-                  <p className="font-medium text-gray-800">
-                    {project.name}
-                  </p>
-                  <p className="text-xs text-gray-400 truncate">
-                    {project.description}
-                  </p>
-                </div>
+                {project.status}
+              </span>
+            </div>
 
-                {/* Client */}
-                <div className="col-span-3 text-gray-700">
-                  {project.clientName || "-"}
-                </div>
+            {/* Members */}
+            <div className="col-span-2 whitespace-nowrap text-gray-600">
+              <MembersChip members={project.members || []} />
+            </div>
 
-                {/* Status */}
-                <div className="col-span-2">
-                  <span
-                    className={`text-xs px-2 py-1 rounded-full font-medium ${
-                      project.status === "Active"
-                        ? "bg-green-100 text-green-700"
-                        : project.status === "Completed"
-                        ? "bg-blue-100 text-blue-700"
-                        : "bg-yellow-100 text-yellow-700"
-                    }`}
-                  >
-                    {project.status}
-                  </span>
-                </div>
+            {/* Created */}
+            <div className="col-span-2 whitespace-nowrap text-xs text-gray-500">
+              {formatDateDDMMYY(project.createdAt)}
+            </div>
+          </div>
+        ))
+      )}
 
-                {/* Members */}
-                <div className="col-span-2 text-gray-600">
-                   <MembersChip members={project.members || []} />
-                </div>
+    </div>
+  </div>
+</div>
 
-                {/* Created */}
-                <div className="col-span-2 text-xs text-gray-500">
-                  {formatDateDDMMYY(project.createdAt)}
-                </div>
-              </div>
-            ))
-          )}
-        </div>
       </div>
     </DashboardLayout>
   );

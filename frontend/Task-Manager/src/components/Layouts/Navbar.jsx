@@ -1,6 +1,7 @@
 import React, { useState } from 'react'
 import {HiOutlineMenu, HiOutlineX} from "react-icons/hi";
 import SideMenu from './SideMenu';
+import appLogo from "../../assets/app_logo.png"
 
 
 const Navbar = ({activeMenu}) => {
@@ -22,7 +23,8 @@ const Navbar = ({activeMenu}) => {
         )}
       </button>
 
-      <h2 className="text-lg font-medium text-black">Expense Tracker</h2>
+      {/* <h2 className="text-lg font-medium text-black">Expense Tracker</h2> */}
+      <img src = {appLogo} className = "w-50 h-10 object-cover" />
 
       {openSideMenu && (
         <div className="fixed top-[61px] -ml-4 bg-white ">
