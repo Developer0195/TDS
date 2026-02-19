@@ -10,8 +10,6 @@ const ManageTasks = () => {
   const [allTasks, setAllTasks] = useState([]);
   const [assignableUsers, setAssignableUsers] = useState([]);
 
-  console.log("Assignable users:", assignableUsers);
-
 
 
 
@@ -90,7 +88,6 @@ const ManageTasks = () => {
     }
   };
 
-  console.log(allTasks);
 
   useEffect(() => {
     setPage(1);

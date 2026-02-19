@@ -11,7 +11,6 @@ const SelectUsers = ({ disabled, selectedUsers, setSelectedUsers, users: externa
   const [isModalOpen, setIsModalOpen] = useState(false); // ✅ FIX
   const [tempSelectedUsers, setTempSelectedUsers] = useState([]);
   const {user}= useContext(UserContext);
-  console.log(user)
 
   const getAllUsers = async () => {
     try {

@@ -4,7 +4,6 @@ import WeeklyTasksReviewPage from "../../components/WeeklyTaskReview";
 
 const SuperAdminWeeklyTasks = () => {
   const { userId } = useParams();
-  console.log(userId)
 
   return (
     <DashboardLayout activeMenu="User Management">

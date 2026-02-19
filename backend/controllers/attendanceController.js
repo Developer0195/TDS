@@ -137,7 +137,6 @@ const punchOut = async (req, res) => {
   },
 });
 
-console.log("attendance: ", attendance)
 
 
     if (!attendance?.punchIn?.time) {
@@ -160,7 +159,6 @@ console.log("attendance: ", attendance)
       },
     ]);
 
-    console.log("pending subtasks: ", pendingSubTasks)
 
     if (pendingSubTasks.length > 0) {
       attendance.attendanceStatus = "Delayed";

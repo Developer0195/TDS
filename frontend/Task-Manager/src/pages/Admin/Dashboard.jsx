@@ -97,7 +97,6 @@ const Dashboard = () => {
       );
 
       if (response.data) {
-        console.log(response.data);
         setDashboardData(response.data);
         prepareChartData(response.data?.charts || null);
       }

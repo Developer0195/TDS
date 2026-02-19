@@ -109,7 +109,35 @@ const updateWeeklyTaskStatus = async (req, res) => {
   }
 };
 
+// const updateWeeklyTask = async (req, res) => {
+//   try {
+//     const task = await WeeklyTask.findById(req.params.id);
 
+//     if (!task)
+//       return res.status(404).json({ message: "Weekly task not found" });
+
+//     if (task.createdBy.toString() !== req.user._id.toString()) {
+//       return res.status(403).json({ message: "Not authorized" });
+//     }
+
+//     if (task.status === "Approved") {
+//       return res.status(400).json({
+//         message: "Approved weekly task cannot be edited",
+//       });
+//     }
+
+//     Object.assign(task, req.body);
+
+//     await task.save();
+
+//     res.json({
+//       message: "Weekly task updated successfully",
+//       weeklyTask: task,
+//     });
+//   } catch (error) {
+//     res.status(500).json({ message: error.message });
+//   }
+// };
 
 const updateWeeklyTask = async (req, res) => {
   try {
@@ -128,7 +156,13 @@ const updateWeeklyTask = async (req, res) => {
       });
     }
 
+    // Apply updates
     Object.assign(task, req.body);
+
+    // 🔥 If previously rejected → resubmit automatically
+    if (task.status === "Rejected") {
+      task.status = "Submitted";
+    }
 
     await task.save();
 
@@ -140,6 +174,7 @@ const updateWeeklyTask = async (req, res) => {
     res.status(500).json({ message: error.message });
   }
 };
+
 
 const getMyCurrentWeeklyTask = async (req, res) => {
   try {

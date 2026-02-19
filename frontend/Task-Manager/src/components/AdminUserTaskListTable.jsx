@@ -32,7 +32,6 @@ const TaskListTable = ({ tableData }) => {
     }
   };
 
-  console.log(tableData)
 
   return (
     <div className="overflow-x-auto p-0 rounded-lg mt-3">

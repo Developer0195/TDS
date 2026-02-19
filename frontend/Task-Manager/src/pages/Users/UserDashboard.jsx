@@ -277,7 +277,6 @@ const UserDashboard = () => {
       );
 
       if (res.data) {
-        console.log(res.data)
         setDashboardData(res.data);
         prepareChartData(res.data.charts);
       }

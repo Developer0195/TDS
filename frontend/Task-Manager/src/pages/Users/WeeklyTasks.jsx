@@ -6,7 +6,6 @@ import toast from "react-hot-toast";
 import { FiX } from "react-icons/fi";
 
 
-
 const WeeklyTasks = () => {
   const [activeTab, setActiveTab] = useState("current");
   const [selectedTask, setSelectedTask] = useState(null);

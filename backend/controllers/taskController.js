@@ -399,7 +399,6 @@ const createTask = async (req, res) => {
 
 const updateTask = async (req, res) => {
   try {
-    console.log("UPDATE Task body: ", req.body);
 
     /* ===============================
        FIND TASK BASED ON ROLE
@@ -449,8 +448,6 @@ const updateTask = async (req, res) => {
       const oldMembers = task.assignedTo.map((id) => id.toString());
       const newMembers = req.body.assignedTo.map((id) => id.toString());
 
-      console.log("old members:", oldMembers);
-      console.log("new members:", newMembers);
 
       removedMembers = oldMembers.filter(
         (memberId) => !newMembers.includes(memberId)
@@ -540,9 +537,7 @@ const updateTask = async (req, res) => {
 ================================ */
 const updateTaskStatus = async (req, res) => {
   try {
-    console.log("hi");
     const task = await Task.findById(req.params.id);
-    console.log(req.body);
     if (!task) return res.status(404).json({ message: "Task not found" });
 
     if (req.user.role === "member" && req.body.status === "Completed") {
@@ -550,6 +545,11 @@ const updateTaskStatus = async (req, res) => {
     }
 
     task.status = req.body.status;
+
+    if(task.status == "OnHold"){
+        // mark all subtasks are incomplete
+        task?.todoCheckList?.map((subtask) => subtask.completed = false)
+    }
 
     addLog(
       task,
@@ -692,7 +692,6 @@ const updateSubtask = async (req, res) => {
     /* ===============================
        UPLOAD NEW FILE (BUFFER ONLY)
     =============================== */
-    console.log(req.file);
     if (req.file) {
       // Delete old file
       if (subtask.document?.public_id) {
@@ -803,6 +802,41 @@ const addComment = async (req, res) => {
     res.status(500).json({ message: error.message });
   }
 };
+
+const deleteComment = async (req, res) => {
+  try {
+    const { taskId, commentId } = req.params;
+
+    const task = await Task.findById(taskId);
+    if (!task)
+      return res.status(404).json({ message: "Task not found" });
+
+    const comment = task.comments.id(commentId);
+    if (!comment)
+      return res.status(404).json({ message: "Comment not found" });
+
+    // Permission check
+    if (
+      req.user.role === "member" &&
+      comment.commentedBy.toString() !== req.user._id.toString()
+    ) {
+      return res.status(403).json({
+        message: "Not authorized to delete this comment",
+      });
+    }
+
+    task.comments.pull(commentId);
+
+
+    await task.save();
+
+    res.json({ message: "Comment deleted", task });
+  } catch (error) {
+    console.log(error);
+    res.status(500).json({ message: error.message });
+  }
+};
+
 
 /* ===============================
    DELETE TASK (ADMIN ONLY)
@@ -1571,4 +1605,5 @@ module.exports = {
   getUserAnalyticsByAdmin,
   uploadSubtaskFile,
   updateSubtask,
+  deleteComment
 };

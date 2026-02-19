@@ -40,6 +40,20 @@ const CreateTask = () => {
     attachments: [],
   });
 
+  const handleDeleteComment = async (commentId) => {
+    try {
+      await axiosInstance.delete(
+        API_PATHS.TASKS.DELETE_COMMENT(taskId, commentId),
+      );
+
+      toast.success("Comment deleted");
+
+      // Remove instantly from UI
+      setComments((prev) => prev.filter((c) => c._id !== commentId));
+    } catch (error) {
+      toast.error(error.response?.data?.message || "Failed to delete comment");
+    }
+  };
 
   const [currentTask, setCurrentTask] = useState(null);
   const [error, setError] = useState("");
@@ -48,20 +62,18 @@ const CreateTask = () => {
 
   const [allUsers, setAllUsers] = useState([]);
 
-
   useEffect(() => {
-  const fetchUsers = async () => {
-    try {
-      const res = await axiosInstance.get(API_PATHS.USERS.GET_ALL_USERS);
-      setAllUsers(res.data || []);
-    } catch (err) {
-      console.error("Failed to fetch users", err);
-    }
-  };
+    const fetchUsers = async () => {
+      try {
+        const res = await axiosInstance.get(API_PATHS.USERS.GET_ALL_USERS);
+        setAllUsers(res.data || []);
+      } catch (err) {
+        console.error("Failed to fetch users", err);
+      }
+    };
 
-  fetchUsers();
-}, []);
-
+    fetchUsers();
+  }, []);
 
   /* -------------------- HELPERS -------------------- */
 
@@ -229,20 +241,13 @@ const CreateTask = () => {
     }
   };
 
+  const subtaskUsers = React.useMemo(() => {
+    if (!taskData.assignedTo?.length) return [];
 
-const subtaskUsers = React.useMemo(() => {
-  if (!taskData.assignedTo?.length) return [];
+    const sourceUsers = taskData.project ? projectMembers : allUsers;
 
-  const sourceUsers = taskData.project
-    ? projectMembers
-    : allUsers;
-
-  return sourceUsers.filter((u) =>
-    taskData.assignedTo.includes(u._id)
-  );
-}, [taskData.assignedTo, projectMembers, allUsers, taskData.project]);
-
-
+    return sourceUsers.filter((u) => taskData.assignedTo.includes(u._id));
+  }, [taskData.assignedTo, projectMembers, allUsers, taskData.project]);
 
   /* -------------------- SUBMIT -------------------- */
 
@@ -294,7 +299,6 @@ const subtaskUsers = React.useMemo(() => {
 
       const taskInfo = response.data;
 
-      console.log(taskInfo);
 
       setCurrentTask(taskInfo);
       setComments(taskInfo.comments || []);
@@ -368,7 +372,6 @@ const subtaskUsers = React.useMemo(() => {
       toast.error("Failed to reopen task");
     }
   };
-
 
   return (
     <DashboardLayout activeMenu="Create Task">
@@ -617,12 +620,22 @@ const subtaskUsers = React.useMemo(() => {
                   {comments.map((c) => (
                     <div
                       key={c._id}
-                      className="border border-gray-100 bg-gray-50 rounded-md p-3"
+                      className="border border-gray-100 bg-gray-50 rounded-md p-3 flex justify-between items-start"
                     >
-                      <p className="text-sm text-gray-800">{c.message}</p>
-                      <p className="text-xs text-gray-400 mt-1">
-                        {c.commentedBy?.name} • {moment(c.createdAt).fromNow()}
-                      </p>
+                      <div className="flex-1">
+                        <p className="text-sm text-gray-800">{c.message}</p>
+                        <p className="text-xs text-gray-400 mt-1">
+                          {c.commentedBy?.name} •{" "}
+                          {moment(c.createdAt).fromNow()}
+                        </p>
+                      </div>
+
+                      <button
+                        onClick={() => handleDeleteComment(c._id)}
+                        className="text-gray-400 hover:text-red-500 transition ml-2"
+                      >
+                        <LuTrash2 size={16} />
+                      </button>
                     </div>
                   ))}
                 </div>
@@ -698,7 +711,7 @@ const subtaskUsers = React.useMemo(() => {
                         try {
                           await axiosInstance.put(
                             API_PATHS.TASKS.UPDATE_TASK_STATUS(taskId),
-                            { status: "Blocked" },
+                            { status: "OnHold" },
                           );
 
                           toast.success("Task blocked");

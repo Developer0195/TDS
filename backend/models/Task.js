@@ -143,7 +143,7 @@ const taskSchema = new mongoose.Schema(
     },
 
 
-    // ✅ Subtasks (each can have its own assignee)
+    // Subtasks (each can have its own assignee)
     todoCheckList: [subTaskSchema],
 
     progress: { type: Number, default: 0 },

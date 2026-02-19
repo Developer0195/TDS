@@ -266,94 +266,6 @@ const getUsers = async (req, res) => {
   }
 };
 
-
-// const getAllUsersForSuperadmin = async (req, res) => {
-//   console.log("Request received")
-//   try {
-//     /* ================= ROLE CHECK ================= */
-
-//     if (req.user.role !== "superadmin") {
-//       return res.status(403).json({
-//         message: "Access denied. Superadmin only.",
-//       });
-//     }
-
-//     /* ================= FETCH USERS ================= */
-
-//     const users = await User.find({
-//       role: { $in: ["admin", "member"] },
-//       emailVerified: true,
-//     })
-//       .select("-password")
-//       .lean();
-
-//     /* ================= ADD TASK STATS ================= */
-
-//     const usersWithStats = await Promise.all(
-//       users.map(async (user) => {
-
-//         const [
-//           pending,
-//           inProgress,
-//           inReview,
-//           completed,
-//         ] = await Promise.all([
-//           Task.countDocuments({ assignedTo: user._id, status: "Pending" }),
-//           Task.countDocuments({ assignedTo: user._id, status: "In Progress" }),
-//           Task.countDocuments({ assignedTo: user._id, status: "In Review" }),
-//           Task.countDocuments({ assignedTo: user._id, status: "Completed" }),
-//         ]);
-
-//         const completedTasks = await Task.find({
-//           assignedTo: user._id,
-//           status: "Completed",
-//         }).select("completedAt dueDate");
-
-//         const onTimeCompleted = completedTasks.filter(
-//           (t) =>
-//             t.completedAt &&
-//             t.dueDate &&
-//             t.completedAt <= t.dueDate
-//         ).length;
-
-//         const onTimeCompletionRate =
-//           completed === 0
-//             ? 0
-//             : Math.round((onTimeCompleted / completed) * 100);
-
-//         return {
-//           ...user,
-
-//           taskCounts: {
-//             pending,
-//             inProgress,
-//             inReview,
-//             completed,
-//           },
-
-//           onTimeCompletionRate,
-//         };
-//       })
-//     );
-
-//     res.status(200).json({
-//       users: usersWithStats,
-//     });
-
-//   } catch (error) {
-//     console.error("Superadmin users fetch error:", error);
-//     res.status(500).json({
-//       message: "Server error",
-//     });
-//   }
-// };
-
-
-
-// @desc Get user by ID
-// @route GET / api / users /: id
-// @access Private
-
 const getAllUsersForSuperadmin = async (req, res) => {
   try {
     /* ================= ROLE CHECK ================= */
@@ -1451,7 +1363,6 @@ const getUserAnalytics = async (req, res) => {
 
 const getAssignableUsers = async (req, res) => {
   try {
-    console.log("call received")
     // 🔐 Only admin & superadmin can fetch
     if (!["admin", "superadmin"].includes(req.user.role)) {
       return res.status(403).json({ message: "Access denied" });
@@ -1461,7 +1372,6 @@ const getAssignableUsers = async (req, res) => {
       role: { $in: ["admin", "superadmin"] },
     }).select("_id name email role");
 
-    console.log("users ", users)
     res.json({
       users,
     });
