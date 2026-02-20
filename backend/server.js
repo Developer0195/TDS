@@ -17,6 +17,7 @@ const locationRoutes = require("./routes/locationRoutes.js");
 const weeklyTaskRoutes = require("./routes/weeklyTaskRoutes.js");
 
 require("./utils/attendance.js")
+process.env.TZ = "Asia/Kolkata";
 
 
 // Middleware to handle CORS

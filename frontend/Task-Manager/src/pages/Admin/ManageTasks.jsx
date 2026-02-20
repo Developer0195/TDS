@@ -4,12 +4,14 @@ import { useNavigate } from "react-router-dom";
 import { API_PATHS } from "../../utils/apiPaths";
 import axiosInstance from "../../utils/axiosInstance";
 import TaskRow from "../../components/TaskRow";
+import moment from "moment-timezone";
+
+const today = moment().tz("Asia/Kolkata").format("YYYY-MM-DD");
 
 const ManageTasks = () => {
   const [projects, setProjects] = useState([]);
   const [allTasks, setAllTasks] = useState([]);
 
-  const today = new Date().toISOString().split("T")[0];
 
   // task filters
   const [filters, setFilters] = useState({
@@ -20,8 +22,11 @@ const ManageTasks = () => {
   });
 
   useEffect(() => {
-    filters.endDate = filters.startDate
-  }, [filters.startDate])
+  setFilters(prev => ({
+    ...prev,
+    endDate: prev.startDate
+  }));
+}, [filters.startDate]);
 
   // pagination
   // pagination

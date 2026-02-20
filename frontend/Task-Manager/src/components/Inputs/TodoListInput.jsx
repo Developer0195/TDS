@@ -98,7 +98,7 @@ const TodoListInput = ({ disabled, todoList, setTodoList, users }) => {
   onChange={(e) => setAssignedTo(e.target.value)}
   className="w-full text-[13px] outline-none bg-white border border-gray-200 px-3 py-2 rounded-md"
 >
-  <option value="">Assign Member (Optional)</option>
+  <option value="">Assign Member</option>
 
   {users.map((u) => (
     <option key={u._id} value={u._id}>

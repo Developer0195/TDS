@@ -5,7 +5,7 @@ import axiosInstance from "../../utils/axiosInstance";
 import { API_PATHS } from "../../utils/apiPaths";
 import toast from "react-hot-toast";
 import { useLocation, useNavigate } from "react-router-dom";
-import moment from "moment";
+import moment from "moment-timezone";
 import { LuTrash2 } from "react-icons/lu";
 import SelectDropdown from "../../components/Inputs/SelectDropdown";
 import TodoListInput from "../../components/Inputs/TodoListInput";
@@ -143,7 +143,7 @@ const CreateTask = () => {
       const payload = {
         ...taskData,
         project: taskData.project || null,
-        dueDate: new Date(taskData.dueDate).toISOString(),
+        dueDate: taskData.dueDate,
         todoCheckList: todoList,
         attachments: aiAttachment ? [aiAttachment] : [],
       };
@@ -206,7 +206,7 @@ const CreateTask = () => {
       await axiosInstance.put(API_PATHS.TASKS.UPDATE_TASK(taskId), {
         ...taskData,
         project: taskData.project || null,
-        dueDate: new Date(taskData.dueDate).toISOString(),
+        dueDate: taskData.dueDate,
         todoCheckList: todoList,
         attachments: aiAttachment
           ? [...taskData.attachments, aiAttachment]
@@ -325,7 +325,7 @@ const CreateTask = () => {
     loadTask();
   }, [taskId]);
 
-  useEffect(() => {
+    useEffect(() => {
     const fetchProjects = async () => {
       try {
         const res = await axiosInstance.get(API_PATHS.PROJECTS.GET_PROJECTS);
@@ -334,9 +334,20 @@ const CreateTask = () => {
           label: p.name,
           value: p._id,
           members: p.members || [],
+          status: p.status,
         }));
 
-        setProjects(formatted);
+        const filtered = formatted.filter(
+          (p) => p.status !== "Completed" && p.status !== "On Hold",
+        );
+
+        // 👇 ADD THIS
+        const withNoneOption = [
+          { label: "None", value: null, members: [] },
+          ...filtered,
+        ];
+
+        setProjects(withNoneOption);
 
         if (taskId && currentTask?.project?._id) {
           const selectedProject = formatted.find(
@@ -345,13 +356,13 @@ const CreateTask = () => {
           setProjectMembers(selectedProject?.members || []);
         }
       } catch (error) {
-        console.log(error);
         toast.error("Failed to load projects");
       }
     };
 
     fetchProjects();
   }, [taskId, currentTask]);
+
 
   const handleReopenTask = async () => {
     try {
@@ -497,26 +508,41 @@ const CreateTask = () => {
                 </label>
 
                 <SelectDropdown
-                  options={projects}
-                  value={taskData.project}
-                  onChange={(value) => {
-                    handleValueChange("project", value);
+  options={projects}
+  value={taskData.project}
+  onChange={(value) => {
+    handleValueChange("project", value);
 
-                    const selected = projects.find((p) => p.value === value);
+    // 🔥 If user selects "No Project"
+    if (!value) {
+      setProjectMembers([]);
 
-                    setProjectMembers(selected?.members || []);
+      setTaskData((prev) => ({
+        ...prev,
+        assignedTo: [],
+        todoCheckList: prev.todoCheckList.map((t) => ({
+          ...t,
+          assignedTo: null,
+        })),
+      }));
 
-                    // Reset invalid assignees
-                    setTaskData((prev) => ({
-                      ...prev,
-                      assignedTo: [],
-                      todoCheckList: prev.todoCheckList.map((t) => ({
-                        ...t,
-                        assignedTo: null,
-                      })),
-                    }));
-                  }}
-                />
+      return;
+    }
+
+    const selected = projects.find((p) => p.value === value);
+    setProjectMembers(selected?.members || []);
+
+    // Reset assignees when switching project
+    setTaskData((prev) => ({
+      ...prev,
+      assignedTo: [],
+      todoCheckList: prev.todoCheckList.map((t) => ({
+        ...t,
+        assignedTo: null,
+      })),
+    }));
+  }}
+/>
               </div>
 
               <div className="col-span-6 md:col-span-4">
@@ -626,7 +652,7 @@ const CreateTask = () => {
                         <p className="text-sm text-gray-800">{c.message}</p>
                         <p className="text-xs text-gray-400 mt-1">
                           {c.commentedBy?.name} •{" "}
-                          {moment(c.createdAt).fromNow()}
+                          {moment(c.createdAt).tz("Asia/Kolkata").fromNow()}
                         </p>
                       </div>
 

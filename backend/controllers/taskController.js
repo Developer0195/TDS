@@ -2,15 +2,13 @@ const Task = require("../models/Task");
 const addLog = require("../utils/addLogs");
 const mongoose = require("mongoose");
 const cloudinary = require("../config/cloudinary");
+const moment = require("moment-timezone");
 
 const getDateRange = (startDate, endDate) => {
-  const start = new Date(startDate);
-  start.setHours(0, 0, 0, 0);
-
-  const end = new Date(endDate);
-  end.setHours(23, 59, 59, 999);
-
-  return { start, end };
+  return {
+    start: moment.tz(startDate, "Asia/Kolkata").startOf("day").toDate(),
+    end: moment.tz(endDate, "Asia/Kolkata").endOf("day").toDate(),
+  };
 };
 
 /* ===============================
@@ -114,11 +112,12 @@ const getTasks = async (req, res) => {
 
     // ✅ Date range filter (due date)
     if (startDate && endDate) {
-      const [sy, sm, sd] = startDate.split("-");
-      const [ey, em, ed] = endDate.split("-");
+      const start = moment
+        .tz(startDate, "Asia/Kolkata")
+        .startOf("day")
+        .toDate();
 
-      const start = new Date(sy, sm - 1, sd, 0, 0, 0, 0);
-      const end = new Date(ey, em - 1, ed, 23, 59, 59, 999);
+      const end = moment.tz(endDate, "Asia/Kolkata").endOf("day").toDate();
 
       filter.dueDate = {
         $gte: start,
@@ -127,7 +126,20 @@ const getTasks = async (req, res) => {
     }
 
     if (!startDate && endDate) {
-      filter.dueDate = { $gte: new Date(endDate), $lte: new Date(endDate) };
+      const singleDayStart = moment
+        .tz(endDate, "Asia/Kolkata")
+        .startOf("day")
+        .toDate();
+
+      const singleDayEnd = moment
+        .tz(endDate, "Asia/Kolkata")
+        .endOf("day")
+        .toDate();
+
+      filter.dueDate = {
+        $gte: singleDayStart,
+        $lte: singleDayEnd,
+      };
     }
 
     // ✅ Role-based access
@@ -326,8 +338,10 @@ const createTask = async (req, res) => {
       assignedTo: t.assignedTo, // ✅ guaranteed to exist
     }));
 
-    const parsedDueDate = new Date(dueDate);
-    parsedDueDate.setHours(23, 59, 59, 999);
+    const parsedDueDate = moment
+      .tz(dueDate, "Asia/Kolkata")
+      .endOf("day")
+      .toDate();
 
     /* ---------------- CREATE TASK ---------------- */
     const task = await Task.create({
@@ -396,10 +410,8 @@ const createTask = async (req, res) => {
 //   }
 // };
 
-
 const updateTask = async (req, res) => {
   try {
-
     /* ===============================
        FIND TASK BASED ON ROLE
     =============================== */
@@ -428,10 +440,17 @@ const updateTask = async (req, res) => {
       });
     }
 
+    // if (req.body.dueDate) {
+    //   const parsedDueDate = new Date(req.body.dueDate);
+    //   parsedDueDate.setHours(23, 59, 59, 999);
+    //   req.body.dueDate = parsedDueDate;
+    // }
+
     if (req.body.dueDate) {
-      const parsedDueDate = new Date(req.body.dueDate);
-      parsedDueDate.setHours(23, 59, 59, 999);
-      req.body.dueDate = parsedDueDate;
+      req.body.dueDate = moment
+        .tz(req.body.dueDate, "Asia/Kolkata")
+        .endOf("day")
+        .toDate();
     }
 
     if (req.body.project === "") {
@@ -448,9 +467,8 @@ const updateTask = async (req, res) => {
       const oldMembers = task.assignedTo.map((id) => id.toString());
       const newMembers = req.body.assignedTo.map((id) => id.toString());
 
-
       removedMembers = oldMembers.filter(
-        (memberId) => !newMembers.includes(memberId)
+        (memberId) => !newMembers.includes(memberId),
       );
     }
 
@@ -491,9 +509,7 @@ const updateTask = async (req, res) => {
         updatedChecklist = updatedChecklist.filter((subtask) => {
           if (!subtask.assignedTo) return true;
 
-          return !removedMembers.includes(
-            subtask.assignedTo.toString()
-          );
+          return !removedMembers.includes(subtask.assignedTo.toString());
         });
       }
 
@@ -504,9 +520,7 @@ const updateTask = async (req, res) => {
         task.todoCheckList = task.todoCheckList.filter((subtask) => {
           if (!subtask.assignedTo) return true;
 
-          return !removedMembers.includes(
-            subtask.assignedTo.toString()
-          );
+          return !removedMembers.includes(subtask.assignedTo.toString());
         });
       }
     }
@@ -529,9 +543,6 @@ const updateTask = async (req, res) => {
   }
 };
 
-
-
-
 /* ===============================
    UPDATE TASK STATUS (ADMIN ONLY COMPLETE)
 ================================ */
@@ -546,9 +557,9 @@ const updateTaskStatus = async (req, res) => {
 
     task.status = req.body.status;
 
-    if(task.status == "OnHold"){
-        // mark all subtasks are incomplete
-        task?.todoCheckList?.map((subtask) => subtask.completed = false)
+    if (task.status == "OnHold") {
+      // mark all subtasks are incomplete
+      task?.todoCheckList?.map((subtask) => (subtask.completed = false));
     }
 
     addLog(
@@ -808,12 +819,10 @@ const deleteComment = async (req, res) => {
     const { taskId, commentId } = req.params;
 
     const task = await Task.findById(taskId);
-    if (!task)
-      return res.status(404).json({ message: "Task not found" });
+    if (!task) return res.status(404).json({ message: "Task not found" });
 
     const comment = task.comments.id(commentId);
-    if (!comment)
-      return res.status(404).json({ message: "Comment not found" });
+    if (!comment) return res.status(404).json({ message: "Comment not found" });
 
     // Permission check
     if (
@@ -827,7 +836,6 @@ const deleteComment = async (req, res) => {
 
     task.comments.pull(commentId);
 
-
     await task.save();
 
     res.json({ message: "Comment deleted", task });
@@ -836,7 +844,6 @@ const deleteComment = async (req, res) => {
     res.status(500).json({ message: error.message });
   }
 };
-
 
 /* ===============================
    DELETE TASK (ADMIN ONLY)
@@ -847,7 +854,7 @@ const deleteTask = async (req, res) => {
 
     if (req.user.role === "admin") {
       filter.createdBy = req.user._id;
-    } else if(req.user.role === "member") {
+    } else if (req.user.role === "member") {
       return res.status(403).json({
         message: "You are not allowed to delete this task",
       });
@@ -1192,12 +1199,26 @@ const getDashboardData = async (req, res) => {
     //   };
     // }
 
-    if (startDate && endDate) {
-      const start = new Date(startDate);
-      start.setHours(0, 0, 0, 0);
+    // if (startDate && endDate) {
+    //   const start = new Date(startDate);
+    //   start.setHours(0, 0, 0, 0);
 
-      const end = new Date(endDate);
-      end.setHours(23, 59, 59, 999);
+    //   const end = new Date(endDate);
+    //   end.setHours(23, 59, 59, 999);
+
+    //   baseFilter.dueDate = {
+    //     $gte: start,
+    //     $lte: end,
+    //   };
+    // }
+
+    if (startDate && endDate) {
+      const start = moment
+        .tz(startDate, "Asia/Kolkata")
+        .startOf("day")
+        .toDate();
+
+      const end = moment.tz(endDate, "Asia/Kolkata").endOf("day").toDate();
 
       baseFilter.dueDate = {
         $gte: start,
@@ -1396,24 +1417,41 @@ const getUserDashboardData = async (req, res) => {
     //   };
     // }
 
+    // if (dueStartDate && dueEndDate) {
+    //   const start = new Date(dueStartDate);
+    //   start.setHours(0, 0, 0, 0);
+
+    //   const end = new Date(dueEndDate);
+    //   end.setHours(23, 59, 59, 999);
+
+    //   baseFilter.dueDate = {
+    //     $gte: start,
+    //     $lte: end,
+    //   };
+    // }
+
     if (dueStartDate && dueEndDate) {
-      const start = new Date(dueStartDate);
-      start.setHours(0, 0, 0, 0);
-
-      const end = new Date(dueEndDate);
-      end.setHours(23, 59, 59, 999);
-
       baseFilter.dueDate = {
-        $gte: start,
-        $lte: end,
+        $gte: moment.tz(dueStartDate, "Asia/Kolkata").startOf("day").toDate(),
+        $lte: moment.tz(dueEndDate, "Asia/Kolkata").endOf("day").toDate(),
       };
     }
 
     /* ================= CREATED DATE FILTER ================= */
+    // if (createdStartDate && createdEndDate) {
+    //   baseFilter.createdAt = {
+    //     $gte: new Date(createdStartDate),
+    //     $lte: new Date(createdEndDate),
+    //   };
+    // }
+
     if (createdStartDate && createdEndDate) {
       baseFilter.createdAt = {
-        $gte: new Date(createdStartDate),
-        $lte: new Date(createdEndDate),
+        $gte: moment
+          .tz(createdStartDate, "Asia/Kolkata")
+          .startOf("day")
+          .toDate(),
+        $lte: moment.tz(createdEndDate, "Asia/Kolkata").endOf("day").toDate(),
       };
     }
 
@@ -1434,7 +1472,9 @@ const getUserDashboardData = async (req, res) => {
       Task.countDocuments({
         ...baseFilter,
         status: { $ne: "Completed" },
-        dueDate: { $lt: new Date() },
+        dueDate: {
+          $lt: moment.tz("Asia/Kolkata").toDate(),
+        },
       }),
     ]);
 
@@ -1542,7 +1582,9 @@ const getUserAnalyticsByAdmin = async (req, res) => {
       Task.countDocuments({
         ...baseFilter,
         status: { $ne: "Completed" },
-        dueDate: { $lt: new Date() },
+        dueDate: {
+          $lt: moment.tz("Asia/Kolkata").toDate(),
+        },
       }),
     ]);
 
@@ -1605,5 +1647,5 @@ module.exports = {
   getUserAnalyticsByAdmin,
   uploadSubtaskFile,
   updateSubtask,
-  deleteComment
+  deleteComment,
 };

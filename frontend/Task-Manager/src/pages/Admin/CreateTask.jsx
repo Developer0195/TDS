@@ -5,7 +5,7 @@ import axiosInstance from "../../utils/axiosInstance";
 import { API_PATHS } from "../../utils/apiPaths";
 import toast from "react-hot-toast";
 import { useLocation, useNavigate } from "react-router-dom";
-import moment from "moment";
+import moment from "moment-timezone";
 import { LuTrash2 } from "react-icons/lu";
 import SelectDropdown from "../../components/Inputs/SelectDropdown";
 import TodoListInput from "../../components/Inputs/TodoListInput";
@@ -135,7 +135,7 @@ const CreateTask = () => {
       const payload = {
         ...taskData,
         project: taskData.project || null,
-        dueDate: new Date(taskData.dueDate).toISOString(),
+        dueDate:taskData.dueDate,
         todoCheckList: todoList,
         attachments: aiAttachment ? [aiAttachment] : [],
       };
@@ -198,7 +198,7 @@ const CreateTask = () => {
       await axiosInstance.put(API_PATHS.TASKS.UPDATE_TASK(taskId), {
         ...taskData,
         project: taskData.project || null,
-        dueDate: new Date(taskData.dueDate).toISOString(),
+        dueDate: taskData.dueDate,
         todoCheckList: todoList,
         attachments: aiAttachment
           ? [...taskData.attachments, aiAttachment]
@@ -298,7 +298,9 @@ const CreateTask = () => {
         priority: taskInfo.priority,
         estimatedHours: taskInfo.estimatedHours,
         dueDate: taskInfo.dueDate
-          ? moment(taskInfo.dueDate).format("YYYY-MM-DD")
+          ? moment(taskInfo.dueDate)
+  .tz("Asia/Kolkata")
+  .format("YYYY-MM-DD")
           : null,
         assignedTo: taskInfo.assignedTo.map((u) => u._id),
         project: taskInfo.project?._id || null,
@@ -323,9 +325,20 @@ const CreateTask = () => {
           label: p.name,
           value: p._id,
           members: p.members || [],
+          status: p.status,
         }));
 
-        setProjects(formatted);
+        const filtered = formatted.filter(
+          (p) => p.status !== "Completed" && p.status !== "On Hold",
+        );
+
+        // 👇 ADD THIS
+        const withNoneOption = [
+          { label: "None", value: null, members: [] },
+          ...filtered,
+        ];
+
+        setProjects(withNoneOption);
 
         if (taskId && currentTask?.project?._id) {
           const selectedProject = formatted.find(
@@ -334,7 +347,6 @@ const CreateTask = () => {
           setProjectMembers(selectedProject?.members || []);
         }
       } catch (error) {
-        console.log(error);
         toast.error("Failed to load projects");
       }
     };
@@ -491,11 +503,26 @@ const CreateTask = () => {
                   onChange={(value) => {
                     handleValueChange("project", value);
 
-                    const selected = projects.find((p) => p.value === value);
+                    // 🔥 If user selects "No Project"
+                    if (!value) {
+                      setProjectMembers([]);
 
+                      setTaskData((prev) => ({
+                        ...prev,
+                        assignedTo: [],
+                        todoCheckList: prev.todoCheckList.map((t) => ({
+                          ...t,
+                          assignedTo: null,
+                        })),
+                      }));
+
+                      return;
+                    }
+
+                    const selected = projects.find((p) => p.value === value);
                     setProjectMembers(selected?.members || []);
 
-                    // Reset invalid assignees
+                    // Reset assignees when switching project
                     setTaskData((prev) => ({
                       ...prev,
                       assignedTo: [],
