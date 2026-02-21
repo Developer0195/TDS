@@ -63,6 +63,7 @@ const ViewTaskDetails = () => {
 
 
   if (!task) return null;
+  console.log("task: ", task);
 
   return (
     <DashboardLayout activeMenu="My Tasks">
@@ -84,7 +85,37 @@ const ViewTaskDetails = () => {
             >
               {task.status}
             </div>
+
+         
           </div>
+
+            {task?.attachments?.length > 0 && (
+  <div className="mt-4 border-t border-blue-50 pt-4">
+    <p className="text-xs font-semibold text-gray-500 mb-2">
+      Attachments
+    </p>
+
+    <div className="space-y-2">
+      {task.attachments.map((attachment, index) => (
+        <div
+          key={index}
+          className="flex items-center gap-2 text-xs text-blue-600"
+        >
+          <LuFileText size={14} />
+
+          <a
+            href={attachment.url}
+            target="_blank"
+            rel="noreferrer"
+            className="underline hover:text-blue-800"
+          >
+            {attachment.name}
+          </a>
+        </div>
+      ))}
+    </div>
+  </div>
+)}
 
           {/* META */}
           <div className="grid grid-cols-4 gap-6 mt-4 text-xs text-gray-600">

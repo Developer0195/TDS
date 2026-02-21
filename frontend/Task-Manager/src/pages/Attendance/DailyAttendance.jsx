@@ -2,11 +2,16 @@ import React, { useEffect, useState } from "react";
 import axiosInstance from "../../utils/axiosInstance";
 import { API_PATHS } from "../../utils/apiPaths";
 import LocationPopover from "../../components/LocationPopOver";
+import moment from "moment-timezone";
 
 const DailyAttendance = () => {
+  // const [selectedDate, setSelectedDate] = useState(
+  //   new Date().toISOString().split("T")[0],
+  // );
+
   const [selectedDate, setSelectedDate] = useState(
-    new Date().toISOString().split("T")[0],
-  );
+  moment().tz("Asia/Kolkata").format("YYYY-MM-DD")
+);
   const [rows, setRows] = useState([]);
   const [loading, setLoading] = useState(false);
 
@@ -39,12 +44,12 @@ const DailyAttendance = () => {
         />
       </div>
 
-      {rows.length === 0 && new Date(selectedDate).getDay() === 0 && (
-  <div className="bg-blue-50 border border-blue-200 text-blue-700 text-sm p-3 rounded mb-4">
-    Sunday – Weekly Off
-  </div>
+      {rows.length === 0 &&
+  moment.tz(selectedDate, "Asia/Kolkata").day() === 0 && (
+    <div className="bg-blue-50 border border-blue-200 text-blue-700 text-sm p-3 rounded mb-4">
+      Sunday – Weekly Off
+    </div>
 )}
-
 
     {/* TABLE */}
 <div className="bg-white border border-gray-300 rounded-lg">
@@ -81,14 +86,24 @@ const DailyAttendance = () => {
             <tr key={r.userId} className="border-b border-gray-300">
               <td className="px-4 py-3 font-medium">{r.name}</td>
               <td className="px-4 py-3">
-                {r.punchInTime
+                {/* {r.punchInTime
                   ? new Date(r.punchInTime).toLocaleTimeString()
-                  : "—"}
+                  : "—"} */}
+                  {r.punchInTime
+  ? moment(r.punchInTime)
+      .tz("Asia/Kolkata")
+      .format("hh:mm A")
+  : "—"}
               </td>
               <td className="px-4 py-3">
-                {r.punchOutTime
+                {/* {r.punchOutTime
                   ? new Date(r.punchOutTime).toLocaleTimeString()
-                  : "—"}
+                  : "—"} */}
+                  {r.punchOutTime
+  ? moment(r.punchOutTime)
+      .tz("Asia/Kolkata")
+      .format("hh:mm A")
+  : "—"}
               </td>
               <td className="px-4 py-3">
                 {r.durationMinutes

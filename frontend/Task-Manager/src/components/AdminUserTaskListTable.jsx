@@ -1,5 +1,5 @@
 import React from "react";
-import moment from "moment";
+import moment from "moment-timezone";
 
 const TaskListTable = ({ tableData }) => {
   const getStatusBadgeColor = (status) => {
@@ -135,7 +135,7 @@ const TaskListTable = ({ tableData }) => {
               {/* CREATED DATE */}
               <td className="py-4 px-4 text-gray-700 text-[13px] ">
                 {task.createdAt
-                  ? moment(task.createdAt).format("DD MMM YYYY")
+                  ? moment(task.createdAt).tz("Asia/Kolkata").format("DD MMM YYYY")
                   : "N/A"}
               </td>
             </tr>

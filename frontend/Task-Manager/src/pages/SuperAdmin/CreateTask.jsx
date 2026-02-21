@@ -40,6 +40,7 @@ const CreateTask = () => {
     attachments: [],
   });
 
+  console.log("task: ", taskData)
   const handleDeleteComment = async (commentId) => {
     try {
       await axiosInstance.delete(
@@ -132,11 +133,13 @@ const CreateTask = () => {
               text: item,
               completed: false,
               assignedTo: null,
+              document: null
             }
           : {
               text: item.text,
               completed: item.completed ?? false,
               assignedTo: item.assignedTo || null,
+              document: item.document || null
             },
       );
 
@@ -200,6 +203,7 @@ const CreateTask = () => {
           text: item.text,
           completed: item.completed ?? false,
           assignedTo: item.assignedTo,
+            document: item.document || null, 
         };
       });
 
@@ -313,11 +317,17 @@ const CreateTask = () => {
           : null,
         assignedTo: taskInfo.assignedTo.map((u) => u._id),
         project: taskInfo.project?._id || null,
+        // todoCheckList: taskInfo.todoCheckList.map((t) => ({
+        //   text: t.text,
+        //   completed: t.completed,
+        //   assignedTo: t.assignedTo?._id,
+        // })),
         todoCheckList: taskInfo.todoCheckList.map((t) => ({
-          text: t.text,
-          completed: t.completed,
-          assignedTo: t.assignedTo?._id,
-        })),
+  text: t.text,
+  completed: t.completed,
+  assignedTo: t.assignedTo?._id,
+  document: t.document || null,   // 👈 ADD THIS
+})),
         attachments: taskInfo.attachments || [],
       });
     };

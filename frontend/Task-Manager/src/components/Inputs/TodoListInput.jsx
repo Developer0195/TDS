@@ -64,6 +64,18 @@ const TodoListInput = ({ disabled, todoList, setTodoList, users }) => {
                                     ? users.find((u) => u._id === item.assignedTo)?.name
                                     : "Unassigned"}
                             </p>
+                            {item?.document && (
+  <div className="mt-2 flex items-center gap-2 text-[11px]">
+    <a
+      href={item.document.fileUrl}
+      target="_blank"
+      rel="noopener noreferrer"
+      className="text-indigo-600 hover:underline flex items-center gap-1"
+    >
+      📎 {item.document.fileName}
+    </a>
+  </div>
+)}
                         </div>
 
                         {/* DELETE BUTTON */}

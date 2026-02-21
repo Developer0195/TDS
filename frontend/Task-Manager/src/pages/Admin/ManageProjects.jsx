@@ -4,6 +4,7 @@ import { useNavigate } from "react-router-dom";
 import axiosInstance from "../../utils/axiosInstance";
 import { API_PATHS } from "../../utils/apiPaths";
 import MembersChip from "../../components/MembersChip";
+import moment from "moment-timezone";
 
 const ManageProjects = () => {
   const navigate = useNavigate();
@@ -53,14 +54,20 @@ const ManageProjects = () => {
     });
   };
 
-  const formatDateDDMMYY = (date) => {
-    const d = new Date(date);
-    const day = String(d.getDate()).padStart(2, "0");
-    const month = String(d.getMonth() + 1).padStart(2, "0");
-    const year = String(d.getFullYear()).slice(-2);
+  // const formatDateDDMMYY = (date) => {
+  //   const d = new Date(date);
+  //   const day = String(d.getDate()).padStart(2, "0");
+  //   const month = String(d.getMonth() + 1).padStart(2, "0");
+  //   const year = String(d.getFullYear()).slice(-2);
 
-    return `${day}-${month}-${year}`;
-  };
+  //   return `${day}-${month}-${year}`;
+  // };
+
+  const formatDateDDMMYY = (date) => {
+  return moment(date)
+    .tz("Asia/Kolkata")
+    .format("DD-MM-YY");
+};
 
   return (
     <DashboardLayout activeMenu="Manage Projects">

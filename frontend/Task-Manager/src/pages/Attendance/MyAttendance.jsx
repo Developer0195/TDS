@@ -7,6 +7,7 @@ import CameraCaptureModal from "../../components/CameraCaptureModal";
 import LocationPopover from "../../components/LocationPopOver";
 import RemarksModal from "../../components/Modals/RemarksModal";
 import toast from "react-hot-toast";
+import moment from "moment-timezone";
 
 const MyAttendance = () => {
   const { user } = useContext(UserContext);
@@ -280,19 +281,30 @@ setHistory(filteredAttendance);
         {history.map((a) => (
           <tr key={a._id} className="hover:bg-gray-50">
             <td className="px-4 py-3 whitespace-nowrap">
-              {new Date(a.date).toDateString()}
+              {/* {new Date(a.date).toDateString()} */}
+              {moment(a.date).tz("Asia/Kolkata").format("DD MMM YYYY")}
             </td>
 
             <td className="px-4 py-3 whitespace-nowrap">
-              {a.punchIn?.time
+              {/* {a.punchIn?.time
                 ? new Date(a.punchIn.time).toLocaleTimeString()
-                : "—"}
+                : "—"} */}
+                {a.punchIn?.time
+  ? moment(a.punchIn.time)
+      .tz("Asia/Kolkata")
+      .format("hh:mm A")
+  : "—"}
             </td>
 
             <td className="px-4 py-3 whitespace-nowrap">
-              {a.punchOut?.time
+              {/* {a.punchOut?.time
                 ? new Date(a.punchOut.time).toLocaleTimeString()
-                : "—"}
+                : "—"} */}
+                {a.punchOut?.time
+  ? moment(a.punchOut.time)
+      .tz("Asia/Kolkata")
+      .format("hh:mm A")
+  : "—"}
             </td>
 
             <td className="px-4 py-3 whitespace-nowrap">

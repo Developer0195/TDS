@@ -2,19 +2,16 @@ const User = require("../models/User");
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
 const crypto = require("crypto");
-const {sendVerificationEmail} = require("../config/email")
+const { sendVerificationEmail } = require("../config/email");
 
 // Generate JWT Token
 const generateToken = (userId) => {
-    return jwt.sign({ id: userId }, process.env.JWT_SECRET, { expiresIn: "7d" });
+  return jwt.sign({ id: userId }, process.env.JWT_SECRET, { expiresIn: "7d" });
 };
 
 // @desc Register a new user
 // @route POST /api/auth/register
 // @access Public
-
-
-
 
 // const registerUser = async (req, res) => {
 //   try {
@@ -57,7 +54,6 @@ const generateToken = (userId) => {
 //   }
 // };
 
-
 const registerUser = async (req, res) => {
   try {
     const {
@@ -67,9 +63,8 @@ const registerUser = async (req, res) => {
       profileImageUrl,
       adminInviteToken,
       superAdminCode,
-      memberInviteToken
+      memberInviteToken,
     } = req.body;
-
 
     const userExists = await User.findOne({ email });
     if (userExists) {
@@ -79,7 +74,10 @@ const registerUser = async (req, res) => {
     let role = null;
 
     // SUPER ADMIN (highest priority check first)
-    if (superAdminCode && superAdminCode === process.env.SUPERADMIN_INVITE_TOKEN) {
+    if (
+      superAdminCode &&
+      superAdminCode === process.env.SUPERADMIN_INVITE_TOKEN
+    ) {
       role = "superadmin";
     }
     // ADMIN
@@ -88,9 +86,7 @@ const registerUser = async (req, res) => {
       adminInviteToken === process.env.ADMIN_INVITE_TOKEN
     ) {
       role = "admin";
-    }
-
-    else if (
+    } else if (
       memberInviteToken &&
       memberInviteToken === process.env.TEAM_MEMBER_INVITE_TOKEN
     ) {
@@ -101,6 +97,20 @@ const registerUser = async (req, res) => {
     else {
       return res.status(403).json({
         message: "Invalid or missing invite token",
+      });
+    }
+
+    if (!password) {
+      return res.status(400).json({ message: "Password is required" });
+    }
+
+    const strongPasswordRegex =
+      /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$/;
+
+    if (!strongPasswordRegex.test(password)) {
+      return res.status(400).json({
+        message:
+          "Password must be at least 8 characters and include uppercase, lowercase, number and special character",
       });
     }
 
@@ -129,8 +139,6 @@ const registerUser = async (req, res) => {
     res.status(500).json({ message: error.message });
   }
 };
-
-
 
 // const verifyEmail = async (req, res) => {
 //   try {
@@ -164,8 +172,6 @@ const registerUser = async (req, res) => {
 //     res.status(500).json({ message: error.message });
 //   }
 // };
-
-
 
 // @desc Login user
 // @route POST /api/auth/login
@@ -211,58 +217,53 @@ const verifyEmail = async (req, res) => {
   }
 };
 
-
-
 const loginUser = async (req, res) => {
-    try {
-        const { email, password } = req.body;
+  try {
+    const { email, password } = req.body;
 
-        const user = await User.findOne({ email });
+    const user = await User.findOne({ email });
 
-        if (!user) {
-            return res.status(401).json({ message: "Invalid email or password" });
-        }
-
-        if (!user.emailVerified) {
-  return res.status(403).json({
-    message: "Please verify your email before logging in",
-  });
-}
-
-
-        // Compare password
-        const isMatch = await bcrypt.compare(password, user.password);
-        if (!isMatch) {
-            return res.status(401).json({ message: "Invalid email or password" });
-        }
-
-        // Return user data with JWT
-        res.json({
-            _id: user._id,
-            name: user.name,
-            email: user.email,
-            role: user.role,
-            profileImageUrl: user.profileImageUrl,
-            token: generateToken(user._id)
-        });
+    if (!user) {
+      return res.status(401).json({ message: "Invalid email or password" });
     }
-    catch (error) {
-        res.status(500).json({ message: "Server error", error: error.message });
+
+    if (!user.emailVerified) {
+      return res.status(403).json({
+        message: "Please verify your email before logging in",
+      });
     }
+
+    // Compare password
+    const isMatch = await bcrypt.compare(password, user.password);
+    if (!isMatch) {
+      return res.status(401).json({ message: "Invalid email or password" });
+    }
+
+    // Return user data with JWT
+    res.json({
+      _id: user._id,
+      name: user.name,
+      email: user.email,
+      role: user.role,
+      profileImageUrl: user.profileImageUrl,
+      token: generateToken(user._id),
+    });
+  } catch (error) {
+    res.status(500).json({ message: "Server error", error: error.message });
+  }
 };
 
 // @desc Get user profile
 // @route GET /api/auth/profile
 // @access Private (Requires JWT)
 const getUserProfile = async (req, res) => {
-    try {
-        const user = await User.findById(req.user.id).select("-password");
-        if (!user)
-            return res.status(404).json({ message: "User not found" });
-        res.json(user);
-    } catch (error) {
-        res.status(500).json({ message: "Server error", error: error.message });
-    }
+  try {
+    const user = await User.findById(req.user.id).select("-password");
+    if (!user) return res.status(404).json({ message: "User not found" });
+    res.json(user);
+  } catch (error) {
+    res.status(500).json({ message: "Server error", error: error.message });
+  }
 };
 // @desc Update user profile
 // @route PUT /api/auth/profile
@@ -406,6 +407,10 @@ const updateUserProfile = async (req, res) => {
   }
 };
 
-
-
-module.exports = { registerUser, loginUser, getUserProfile, updateUserProfile, verifyEmail };
+module.exports = {
+  registerUser,
+  loginUser,
+  getUserProfile,
+  updateUserProfile,
+  verifyEmail,
+};

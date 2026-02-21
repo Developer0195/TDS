@@ -227,6 +227,7 @@ const getTaskById = async (req, res) => {
       return res.status(404).json({ message: "Task not found" });
     }
 
+    console.log("task: ", task)
     res.json(task);
   } catch (error) {
     res.status(500).json({ message: error.message });
@@ -410,6 +411,7 @@ const createTask = async (req, res) => {
 //   }
 // };
 
+
 const updateTask = async (req, res) => {
   try {
     /* ===============================
@@ -557,10 +559,20 @@ const updateTaskStatus = async (req, res) => {
 
     task.status = req.body.status;
 
-    if (task.status == "OnHold") {
-      // mark all subtasks are incomplete
-      task?.todoCheckList?.map((subtask) => (subtask.completed = false));
-    }
+    // if (task.status == "OnHold") {
+    //   // mark all subtasks are incomplete
+    //   task?.todoCheckList?.map((subtask) => (subtask.completed = false));
+    // }
+
+    if (task.status === "OnHold") {
+  task.todoCheckList.forEach((subtask) => {
+    subtask.completed = false;
+    subtask.completedAt = null;   // 🔥 reset timestamp
+    subtask.document = null;      // 🔥 remove uploaded document
+  });
+
+  task.progress = 0;              // 🔥 reset progress
+}
 
     addLog(
       task,

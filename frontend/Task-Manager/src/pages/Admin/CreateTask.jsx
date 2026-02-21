@@ -40,6 +40,8 @@ const CreateTask = () => {
     attachments: [],
   });
 
+  console.log(taskData);
+
   const {
     loading: aiEstimateLoading,
     estimation,
@@ -118,24 +120,26 @@ const CreateTask = () => {
         return;
       }
 
-      const todoList = taskData.todoCheckList.map((item) =>
+       const todoList = taskData.todoCheckList.map((item) =>
         typeof item === "string"
           ? {
               text: item,
               completed: false,
               assignedTo: null,
+              document: null
             }
           : {
               text: item.text,
               completed: item.completed ?? false,
               assignedTo: item.assignedTo || null,
+              document: item.document || null
             },
       );
 
       const payload = {
         ...taskData,
         project: taskData.project || null,
-        dueDate:taskData.dueDate,
+        dueDate: taskData.dueDate,
         todoCheckList: todoList,
         attachments: aiAttachment ? [aiAttachment] : [],
       };
@@ -183,6 +187,18 @@ const CreateTask = () => {
       //       }
       // );
 
+      // const todoList = taskData.todoCheckList.map((item) => {
+      //   if (!item.assignedTo) {
+      //     throw new Error("Each subtask must have an assignee");
+      //   }
+
+      //   return {
+      //     text: item.text,
+      //     completed: item.completed ?? false,
+      //     assignedTo: item.assignedTo,
+      //   };
+      // });
+
       const todoList = taskData.todoCheckList.map((item) => {
         if (!item.assignedTo) {
           throw new Error("Each subtask must have an assignee");
@@ -192,6 +208,7 @@ const CreateTask = () => {
           text: item.text,
           completed: item.completed ?? false,
           assignedTo: item.assignedTo,
+          document: item.document || null, // 👈 KEEP DOCUMENT
         };
       });
 
@@ -298,9 +315,7 @@ const CreateTask = () => {
         priority: taskInfo.priority,
         estimatedHours: taskInfo.estimatedHours,
         dueDate: taskInfo.dueDate
-          ? moment(taskInfo.dueDate)
-  .tz("Asia/Kolkata")
-  .format("YYYY-MM-DD")
+          ? moment(taskInfo.dueDate).tz("Asia/Kolkata").format("YYYY-MM-DD")
           : null,
         assignedTo: taskInfo.assignedTo.map((u) => u._id),
         project: taskInfo.project?._id || null,
@@ -308,6 +323,7 @@ const CreateTask = () => {
           text: t.text,
           completed: t.completed,
           assignedTo: t.assignedTo?._id,
+          document: t.document || null
         })),
         attachments: taskInfo.attachments || [],
       });

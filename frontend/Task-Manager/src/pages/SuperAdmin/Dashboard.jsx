@@ -4,7 +4,7 @@ import { useContext } from "react";
 import { UserContext } from "../../context/userContext";
 import DashboardLayout from "../../components/Layouts/DashboardLayout";
 import { useNavigate } from "react-router-dom";
-import moment from "moment";
+import moment from "moment-timezone";
 import { addThousandsSeparator } from "../../utils/helper";
 import { API_PATHS } from "../../utils/apiPaths";
 import axiosInstance from "../../utils/axiosInstance";
@@ -194,7 +194,8 @@ const Dashboard = () => {
           <div className="col-span-3">
             <h2 className="text-xl md:text-2xl">Good Morning! {user?.name}</h2>
             <p className="text-xs md:text-[13px] text-gray-400 mt-1.5">
-              {moment().format("dddd Do MMM YYYY")}
+              {/* {moment().format("dddd Do MMM YYYY")} */}
+              {moment().tz("Asia/Kolkata").format("dddd Do MMM YYYY")}
             </p>
           </div>
         </div>

@@ -307,7 +307,6 @@
 
 // export default MyAttendance;
 
-
 import React, { useContext, useEffect, useState } from "react";
 import axiosInstance from "../../utils/axiosInstance";
 import { API_PATHS } from "../../utils/apiPaths";
@@ -318,6 +317,7 @@ import LocationPopover from "../../components/LocationPopOver";
 import RemarksModal from "../../components/Modals/RemarksModal";
 import toast from "react-hot-toast";
 import DashboardLayout from "../../components/Layouts/DashboardLayout";
+import moment from "moment-timezone";
 
 const MyAttendance = () => {
   const { user } = useContext(UserContext);
@@ -346,15 +346,14 @@ const MyAttendance = () => {
         params.endDate = endDate;
       }
 
-      const res = await axiosInstance.get(
-        API_PATHS.ATTENDANCE.MY_ATTENDANCE,
-        { params }
-      );
+      const res = await axiosInstance.get(API_PATHS.ATTENDANCE.MY_ATTENDANCE, {
+        params,
+      });
 
       setToday(res.data.today);
 
       const filtered = (res.data.attendance || []).filter(
-        (a) => a.punchIn || a.punchOut
+        (a) => a.punchIn || a.punchOut,
       );
 
       setHistory(filtered);
@@ -362,7 +361,7 @@ const MyAttendance = () => {
       setRequiresCheckins(
         res.data.today?.workType === "OFFSITE" &&
           (res.data.today?.offsiteCheckins?.length || 0) < 3 &&
-          !res.data.today?.punchOut
+          !res.data.today?.punchOut,
       );
     } catch {
       toast.error("Failed to fetch attendance");
@@ -388,28 +387,23 @@ const MyAttendance = () => {
         if (action === "IN") {
           const res = await axiosInstance.post(
             API_PATHS.ATTENDANCE.PUNCH_IN,
-            payload
+            payload,
           );
           setRequiresCheckins(res.data.requiresCheckins);
           toast.success("Punch in successful");
         }
 
         if (action === "OUT") {
-          await axiosInstance.post(
-            API_PATHS.ATTENDANCE.PUNCH_OUT,
-            payload
-          );
+          await axiosInstance.post(API_PATHS.ATTENDANCE.PUNCH_OUT, payload);
           toast.success("Punch out successful");
         }
 
         if (action === "CHECKIN") {
           const res = await axiosInstance.post(
             API_PATHS.ATTENDANCE.OFFSITE_CHECKIN,
-            payload
+            payload,
           );
-          toast.success(
-            `Check-in recorded (${res.data.checkinsCompleted}/3)`
-          );
+          toast.success(`Check-in recorded (${res.data.checkinsCompleted}/3)`);
         }
 
         setCameraOpen(false);
@@ -516,9 +510,7 @@ const MyAttendance = () => {
         {/* ================= FILTER ================= */}
         <div className="bg-white border border-gray-300 rounded-lg p-4 mb-6 flex flex-col sm:flex-row gap-4 sm:items-end">
           <div className="flex flex-col w-full">
-            <label className="text-xs text-gray-500 mb-1">
-              Start Date
-            </label>
+            <label className="text-xs text-gray-500 mb-1">Start Date</label>
             <input
               type="date"
               value={startDate}
@@ -531,9 +523,7 @@ const MyAttendance = () => {
           </div>
 
           <div className="flex flex-col w-full">
-            <label className="text-xs text-gray-500 mb-1">
-              End Date
-            </label>
+            <label className="text-xs text-gray-500 mb-1">End Date</label>
             <input
               type="date"
               value={endDate}
@@ -561,27 +551,45 @@ const MyAttendance = () => {
             <table className="min-w-[900px] w-max text-sm">
               <thead className="bg-blue-50">
                 <tr>
-                  <th className="px-4 py-3 text-left whitespace-nowrap">Date</th>
+                  <th className="px-4 py-3 text-left whitespace-nowrap">
+                    Date
+                  </th>
                   <th className="px-4 py-3 text-left whitespace-nowrap">In</th>
                   <th className="px-4 py-3 text-left whitespace-nowrap">Out</th>
-                  <th className="px-4 py-3 text-left whitespace-nowrap">Duration</th>
-                  <th className="px-4 py-3 text-left whitespace-nowrap">Location</th>
-                  <th className="px-4 py-3 text-left whitespace-nowrap">Work</th>
+                  <th className="px-4 py-3 text-left whitespace-nowrap">
+                    Duration
+                  </th>
+                  <th className="px-4 py-3 text-left whitespace-nowrap">
+                    Location
+                  </th>
+                  <th className="px-4 py-3 text-left whitespace-nowrap">
+                    Work
+                  </th>
                 </tr>
               </thead>
               <tbody className="divide-y">
                 {history.map((a) => (
                   <tr key={a._id}>
                     <td className="px-4 py-3 whitespace-nowrap">
-                      {new Date(a.date).toDateString()}
+                      {moment(a.date).tz("Asia/Kolkata").format("DD MMM YYYY")}
                     </td>
                     <td className="px-4 py-3 whitespace-nowrap">
-                      {a.punchIn?.time &&
-                        new Date(a.punchIn.time).toLocaleTimeString()}
+                      {/* {a.punchIn?.time &&
+                        new Date(a.punchIn.time).toLocaleTimeString()} */}
+                      {a.punchIn?.time
+                        ? moment(a.punchIn.time)
+                            .tz("Asia/Kolkata")
+                            .format("hh:mm A")
+                        : "—"}
                     </td>
                     <td className="px-4 py-3 whitespace-nowrap">
-                      {a.punchOut?.time &&
-                        new Date(a.punchOut.time).toLocaleTimeString()}
+                      {/* {a.punchOut?.time &&
+                        new Date(a.punchOut.time).toLocaleTimeString()} */}
+                      {a.punchOut?.time
+                        ? moment(a.punchOut.time)
+                            .tz("Asia/Kolkata")
+                            .format("hh:mm A")
+                        : "—"}
                     </td>
                     <td className="px-4 py-3 whitespace-nowrap">
                       {a.totalDurationMinutes

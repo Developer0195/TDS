@@ -108,12 +108,16 @@ import { useNavigate } from "react-router-dom";
 import { API_PATHS } from "../../utils/apiPaths";
 import axiosInstance from "../../utils/axiosInstance";
 import TaskRow from "../../components/UserTaskRow";
+import moment from "moment-timezone";
 
 const MyTasks = () => {
   const [projects, setProjects] = useState([]);
   const [allTasks, setAllTasks] = useState([]);
 
-  const today = new Date().toISOString().split("T")[0];
+  // const today = new Date().toISOString().split("T")[0];
+  const today = moment()
+  .tz("Asia/Kolkata")
+  .format("YYYY-MM-DD");
 
   /* ================= FILTERS ================= */
   const [filters, setFilters] = useState({

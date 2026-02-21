@@ -1,4 +1,4 @@
-import moment from "moment";
+import moment from "moment-timezone";
 import { useContext } from "react";
 import { UserContext } from "../context/userContext";
 
@@ -54,12 +54,16 @@ const TaskRow = ({ task, onClick }) => {
 
       {/* CREATED DATE */}
       <div className="col-span-1 text-xs text-gray-500">
-        {moment(task.createdAt).format("DD MMM YYYY")}
+        {moment(task.createdAt)
+  .tz("Asia/Kolkata")
+  .format("DD MMM YYYY")}
       </div>
 
       {/* DUE DATE */}
       <div className="col-span-1 text-xs text-gray-500">
-        {moment(task.dueDate).format("DD MMM YYYY")}
+        {moment(task.dueDate)
+  .tz("Asia/Kolkata")
+  .format("DD MMM YYYY")}
       </div>
 
       {/* ASSIGNED TO */}

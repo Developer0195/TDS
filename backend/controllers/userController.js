@@ -1,6 +1,7 @@
 const Task = require("../models/Task");
 const User = require("../models/User");
 const bcrypt = require("bcryptjs");
+const { getISTStartAndEnd } = require("../utils/istDate");
 // @desc Get all users(Admin only)
 // @route GET / api / users /
 // @access Private (Admin)
@@ -1148,12 +1149,15 @@ const getUserAnalytics = async (req, res) => {
       assignedTo: userId,
     };
 
-    if (startDate && endDate) {
-      baseFilter.dueDate = {
-        $gte: new Date(startDate),
-        $lte: new Date(endDate),
-      };
-    }
+  if (startDate && endDate) {
+  const { start: startIST } = getISTStartAndEnd(startDate);
+  const { end: endIST } = getISTStartAndEnd(endDate);
+
+  baseFilter.dueDate = {
+    $gte: startIST,
+    $lte: endIST,
+  };
+}
 
     /* =====================================================
        2️⃣ RECENT TASK FILTER (TABLE ONLY)
@@ -1171,7 +1175,8 @@ const getUserAnalytics = async (req, res) => {
        3️⃣ FETCH ALL TASKS FOR KPI + CHARTS
     ===================================================== */
     const allTasks = await Task.find(baseFilter).lean();
-    const now = new Date();
+    const { end: nowIST } = getISTStartAndEnd();
+const now = nowIST;
 
     const completedTasks = allTasks.filter(
       (t) => t.status === "Completed"

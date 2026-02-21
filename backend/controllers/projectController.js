@@ -1,5 +1,6 @@
 const Project = require("../models/Project");
 const Task = require("../models/Task");
+const moment = require("moment-timezone");
 
 
 /* ===============================
@@ -101,17 +102,35 @@ const getProjects = async (req, res) => {
     /* ===============================
        CREATION DATE FILTER
     =============================== */
+    // if (startDate || endDate) {
+    //   filter.createdAt = {};
+
+    //   if (startDate) {
+    //     filter.createdAt.$gte = new Date(startDate);
+    //   }
+
+    //   if (endDate) {
+    //     filter.createdAt.$lte = new Date(endDate);
+    //   }
+    // }
+
     if (startDate || endDate) {
-      filter.createdAt = {};
+  filter.createdAt = {};
 
-      if (startDate) {
-        filter.createdAt.$gte = new Date(startDate);
-      }
+  if (startDate) {
+    filter.createdAt.$gte = moment
+      .tz(startDate, "Asia/Kolkata")
+      .startOf("day")
+      .toDate();
+  }
 
-      if (endDate) {
-        filter.createdAt.$lte = new Date(endDate);
-      }
-    }
+  if (endDate) {
+    filter.createdAt.$lte = moment
+      .tz(endDate, "Asia/Kolkata")
+      .endOf("day")
+      .toDate();
+  }
+}
 
     /* ===============================
        PAGINATION

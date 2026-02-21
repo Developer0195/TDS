@@ -178,7 +178,6 @@ import { useUserAuth } from "../../hooks/useUserAuth";
 import { UserContext } from "../../context/userContext";
 import DashboardLayout from "../../components/Layouts/DashboardLayout";
 import { useNavigate } from "react-router-dom";
-import moment from "moment";
 import { addThousandsSeparator } from "../../utils/helper";
 import { API_PATHS } from "../../utils/apiPaths";
 import axiosInstance from "../../utils/axiosInstance";
@@ -187,6 +186,7 @@ import TaskListTable from "../../components/UserTaskListTable";
 import CustomPieChart from "../../components/Charts/CustomPieChart";
 import CustomBarChart from "../../components/Charts/CustomBarChart";
 import { LuArrowRight } from "react-icons/lu";
+import moment from "moment-timezone";
 
 const COLORS = [
   "#8D51FF", // Pending
@@ -198,6 +198,7 @@ const COLORS = [
 const RECENT_TASKS_LIMIT = 10;
 
 const UserDashboard = () => {
+  console.log("called")
   useUserAuth();
 
   const { user } = useContext(UserContext);
@@ -389,7 +390,8 @@ const UserDashboard = () => {
           Good Morning! {user?.name}
         </h2>
         <p className="text-xs text-gray-400">
-          {moment().format("dddd Do MMM YYYY")}
+          {/* {moment().format("dddd Do MMM YYYY")} */}
+          {moment().tz("Asia/Kolkata").format("dddd Do MMM YYYY")}
         </p>
 
         <div className="grid grid-cols-2 md:grid-cols-5 gap-4 mt-5">

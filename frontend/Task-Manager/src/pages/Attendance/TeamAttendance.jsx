@@ -336,43 +336,92 @@ import axiosInstance from "../../utils/axiosInstance";
 import { API_PATHS } from "../../utils/apiPaths";
 import { LuCalendar, LuX } from "react-icons/lu";
 import toast from "react-hot-toast";
+import moment from "moment-timezone";
 
 /* ================== DATE HELPERS ================== */
+// const getWeekRange = () => {
+//   const today = new Date();
+//   const day = today.getDay();
+
+//   const start = new Date(today);
+//   start.setDate(today.getDate() - day);
+//   start.setHours(0, 0, 0, 0);
+
+//   const end = new Date(start);
+//   end.setDate(start.getDate() + 6);
+//   end.setHours(23, 59, 59, 999);
+
+//   return { start, end };
+// };
+
 const getWeekRange = () => {
-  const today = new Date();
-  const day = today.getDay();
+  const today = moment().tz("Asia/Kolkata");
 
-  const start = new Date(today);
-  start.setDate(today.getDate() - day);
-  start.setHours(0, 0, 0, 0);
+  const start = today.clone().startOf("week"); // Sunday
+  const end = start.clone().add(6, "days").endOf("day");
 
-  const end = new Date(start);
-  end.setDate(start.getDate() + 6);
-  end.setHours(23, 59, 59, 999);
-
-  return { start, end };
+  return {
+    start: start.toDate(),
+    end: end.toDate(),
+  };
 };
+
+// const getMonthRange = () => {
+//   const now = new Date();
+//   const start = new Date(now.getFullYear(), now.getMonth(), 1);
+//   const end = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+
+//   start.setHours(0, 0, 0, 0);
+//   end.setHours(23, 59, 59, 999);
+
+//   return { start, end };
+// };
 
 const getMonthRange = () => {
-  const now = new Date();
-  const start = new Date(now.getFullYear(), now.getMonth(), 1);
-  const end = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+  const now = moment().tz("Asia/Kolkata");
 
-  start.setHours(0, 0, 0, 0);
-  end.setHours(23, 59, 59, 999);
-
-  return { start, end };
+  return {
+    start: now.clone().startOf("month").startOf("day").toDate(),
+    end: now.clone().endOf("month").endOf("day").toDate(),
+  };
 };
+
+// const buildDateRange = (start, end) => {
+//   const dates = [];
+//   const cursor = new Date(start);
+//   cursor.setHours(0, 0, 0, 0);
+
+//   while (cursor <= end) {
+//     dates.push(new Date(cursor));
+//     cursor.setDate(cursor.getDate() + 1);
+//   }
+//   return dates;
+// };
+
+// const buildDateRange = (start, end) => {
+//   const dates = [];
+//   let cursor = moment(start).tz("Asia/Kolkata").startOf("day");
+//   const last = moment(end).tz("Asia/Kolkata").endOf("day");
+
+//   while (cursor.isSameOrBefore(last)) {
+//     dates.push(cursor.toDate());
+//     cursor = cursor.clone().add(1, "day");
+//   }
+
+//   return dates;
+// };
+
 
 const buildDateRange = (start, end) => {
   const dates = [];
-  const cursor = new Date(start);
-  cursor.setHours(0, 0, 0, 0);
+  let cursor = moment(start).tz("Asia/Kolkata").startOf("day");
+  const last = moment(end).tz("Asia/Kolkata").endOf("day");
 
-  while (cursor <= end) {
-    dates.push(new Date(cursor));
-    cursor.setDate(cursor.getDate() + 1);
+  while (cursor.isSameOrBefore(last)) {
+    dates.push(cursor.clone()); // 👈 keep as moment
+    cursor = cursor.clone().add(1, "day");
   }
+
   return dates;
 };
 
@@ -396,13 +445,23 @@ const EditAttendanceModal = ({
   const [selectedDate, setSelectedDate] = useState(null);
   const [status, setStatus] = useState("Present");
 
-  const holidayMap = {};
-  holidays.forEach((h) => {
-    holidayMap[new Date(h.date).toDateString()] = h.name;
-  });
+  // const holidayMap = {};
+  // holidays.forEach((h) => {
+  //   holidayMap[new Date(h.date).toDateString()] = h.name;
+  // });
 
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
+  const holidayMap = {};
+holidays.forEach((h) => {
+  const key = moment(h.date)
+    .tz("Asia/Kolkata")
+    .format("YYYY-MM-DD");
+  holidayMap[key] = h.name;
+});
+
+  // const today = new Date();
+  // today.setHours(0, 0, 0, 0);
+
+  const today = moment().tz("Asia/Kolkata").startOf("day");
 
   const allDates = useMemo(
     () => buildDateRange(range.start, range.end),
@@ -411,7 +470,10 @@ const EditAttendanceModal = ({
 
   const statusByDate = {};
   calendar.forEach((c) => {
-    statusByDate[new Date(c.date).toDateString()] = c.status;
+    // statusByDate[new Date(c.date).toDateString()] = c.status;
+    statusByDate[
+  moment(c.date).tz("Asia/Kolkata").format("YYYY-MM-DD")
+] = c.status;
   });
 
   if (!open) return null;
@@ -422,14 +484,21 @@ const EditAttendanceModal = ({
       return;
     }
 
-    if (selectedDate > today) {
-      toast.error("Cannot edit future dates");
-      return;
-    }
+    // if (selectedDate > today) {
+    //   toast.error("Cannot edit future dates");
+    //   return;
+    // }
 
-    const dateString = `${selectedDate.getFullYear()}-${String(
-      selectedDate.getMonth() + 1,
-    ).padStart(2, "0")}-${String(selectedDate.getDate()).padStart(2, "0")}`;
+    if (selectedDate.isAfter(today)) {
+  toast.error("Cannot edit future dates");
+  return;
+}
+
+    // const dateString = `${selectedDate.getFullYear()}-${String(
+    //   selectedDate.getMonth() + 1,
+    // ).padStart(2, "0")}-${String(selectedDate.getDate()).padStart(2, "0")}`;
+
+    const dateString = selectedDate.format("YYYY-MM-DD");
 
     onSubmit(dateString, status);
   };
@@ -483,9 +552,13 @@ const EditAttendanceModal = ({
           ))}
 
           {allDates.map((d) => {
-            const key = d.toDateString();
+            // const key = d.toDateString();
+          const key = d.format("YYYY-MM-DD");
+const isSunday = d.day() === 0;
+            // const isSelected =
+            //   selectedDate && d.toDateString() === selectedDate.toDateString();
             const isSelected =
-              selectedDate && d.toDateString() === selectedDate.toDateString();
+  selectedDate && d.isSame(selectedDate, "day");
 
             // let cellStyle = "bg-gray-200";
 
@@ -497,7 +570,7 @@ const EditAttendanceModal = ({
 
             let cellStyle = "bg-gray-200";
             const isHoliday = holidayMap[key];
-            const isSunday = d.getDay() === 0;
+            // const isSunday = d.getDay() === 0;
 
             if (isHoliday || isSunday) {
               cellStyle = "bg-yellow-300 text-black";
@@ -538,7 +611,7 @@ const EditAttendanceModal = ({
                       : ""
                 }
               >
-                {d.getDate()}
+                {d.date()}
               </button>
             );
           })}
@@ -593,9 +666,13 @@ const TeamAttendance = () => {
       setLoading(true);
       const res = await axiosInstance.get(API_PATHS.ATTENDANCE.TEAM_ANALYTICS, {
         params: {
-          startDate: range.start.toISOString(),
-          endDate: range.end.toISOString(),
-        },
+  startDate: moment(range.start)
+    .tz("Asia/Kolkata")
+    .format("YYYY-MM-DD"),
+  endDate: moment(range.end)
+    .tz("Asia/Kolkata")
+    .format("YYYY-MM-DD"),
+}
       });
       setMembers(res.data.members || []);
       setHolidays(res.data.holidays || []);

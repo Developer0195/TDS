@@ -39,6 +39,13 @@ const Signup = () => {
     return response.data.url; // Cloudinary URL
   };
 
+  const validatePassword = (password) => {
+  const strongPasswordRegex =
+    /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&]).{8,}$/;
+
+  return strongPasswordRegex.test(password);
+};
+
   // Handle signup From Submit
   const handleLogin = async (e) => {
     e.preventDefault();
@@ -59,6 +66,14 @@ const Signup = () => {
       setError("Kindly enter your password");
       return;
     }
+
+
+  if (!validatePassword(password)) {
+    setError(
+      "Password must be at least 8 characters and include uppercase, lowercase, number and special character"
+    );
+    return;
+  }
 
     setError("");
 
@@ -96,7 +111,7 @@ const Signup = () => {
 
   return (
     <AuthLayout>
-      <div className="lg:w-[100%] h-auto md:h-full mt-10 md:mt-0 flex flex-col justify-center">
+      <div className="lg:w-[100%] h-auto md:h-full mt-20 md:mt-0 flex flex-col justify-center">
         <h3 className="text-xl font-semibold text-black">Create an account</h3>
         <p className="text-xs text-slate-700 mt-[5px] mb-6">
           Join us today by entering your details below
@@ -121,13 +136,20 @@ const Signup = () => {
               type="text"
             />
 
-            <Input
+
+           
+
+            <div>
+               <Input
               value={password}
               onChange={({ target }) => setPassword(target.value)}
               label="Password"
               placeholder="Minimum 8 charecters required :) "
               type="password"
             />
+            <p className = "text-xs text-gray-500">Password Must be at least 8 characters and contain at least one uppercase, lowercase letter, number and special character.</p>
+            </div>
+
 
             <Input
               value={adminInviteToken}
@@ -153,6 +175,8 @@ const Signup = () => {
               type="text"
             />
           </div>
+
+          
           {error && <p className="text-red-500 text-xs pb-2.5">{error}</p>}
 
           <button type="submit" className="btn-primary">
@@ -165,6 +189,7 @@ const Signup = () => {
             </Link>
           </p>
         </form>
+
       </div>
     </AuthLayout>
   );

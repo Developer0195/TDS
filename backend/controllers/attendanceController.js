@@ -8,6 +8,9 @@ const { OFFICE_LOCATION, RADIUS_METERS } = require("../config/geofence");
 const User = require("../models/User");
 const Location = require("../models/Location");
 const Holiday = require("../models/Holiday");
+const { getISTStartAndEnd } = require("../utils/istDate");
+
+
 
 const punchIn = async (req, res) => {
   try {
@@ -20,6 +23,8 @@ const punchIn = async (req, res) => {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
 
+    const { start, end } = getISTStartAndEnd();
+
     // const existing = await Attendance.findOne({
     //   user: req.user.id,
     //   date: today,
@@ -28,12 +33,17 @@ const punchIn = async (req, res) => {
     const endOfToday = new Date();
 endOfToday.setHours(23, 59, 59, 999);
 
+// const existing = await Attendance.findOne({
+//   user: req.user._id,
+//   date: {
+//     $gte: today,
+//     $lte: endOfToday,
+//   },
+// });
+
 const existing = await Attendance.findOne({
   user: req.user._id,
-  date: {
-    $gte: today,
-    $lte: endOfToday,
-  },
+  date: { $gte: start, $lte: end },
 });
 
 
@@ -87,7 +97,7 @@ const existing = await Attendance.findOne({
 
     const attendance = await Attendance.create({
       user: req.user.id,
-      date: today,
+      date: start,
       punchIn: {
         time: new Date(),
         location: { latitude, longitude },
@@ -118,25 +128,26 @@ const punchOut = async (req, res) => {
       return res.status(400).json({ message: "Photo is required" });
     }
 
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
+    // const today = new Date();
+    // today.setHours(0, 0, 0, 0);
 
-    const endOfToday = new Date();
-    endOfToday.setHours(23, 59, 59, 999);
+    // const endOfToday = new Date();
+    // endOfToday.setHours(23, 59, 59, 999);
+
+    const { start, end } = getISTStartAndEnd();
 
     // const attendance = await Attendance.findOne({
     //   user: req.user.id,
     //   date: today,
     // });
 
-    const attendance = await Attendance.findOne({
-  user: req.user._id,
-  date: {
-    $gte: today,
-    $lte: endOfToday,
-  },
-});
 
+    const attendance = await Attendance.findOne({
+      user: req.user._id,
+      date: { $gte: start, $lte: end },
+    });
+
+    console.log("attendance: ", attendance)
 
 
     if (!attendance?.punchIn?.time) {
@@ -154,10 +165,14 @@ const punchOut = async (req, res) => {
         $match: {
           "todoCheckList.assignedTo": attendance.user,
           "todoCheckList.completed": false,
-          dueDate: { $lte: endOfToday },
+          dueDate: { $lte: end },
         },
       },
     ]);
+
+    console.log("start: ", start)
+    console.log("end: ", end)
+    console.log("pending tasks: ", pendingSubTasks)
 
 
     if (pendingSubTasks.length > 0) {
@@ -321,35 +336,186 @@ const offsiteCheckIn = async (req, res) => {
   }
 };
 
+// const getMyAttendance = async (req, res) => {
+//   try {
+//     const { startDate, endDate } = req.query;
+
+//     const query = {
+//       user: req.user.id,
+//     };
+
+//     // 🔹 Date range filter (optional)
+//     if (startDate && endDate) {
+//       const start = new Date(startDate);
+//       const end = new Date(endDate);
+
+//       start.setHours(0, 0, 0, 0);
+//       end.setHours(23, 59, 59, 999);
+
+//       query.date = { $gte: start, $lte: end };
+//     }
+
+//     const attendance = await Attendance.find(query).sort({ date: -1 });
+
+//     // 🔹 Today record (independent of range)
+//     const today = new Date();
+//     today.setHours(0, 0, 0, 0);
+
+//     const todayRecord = await Attendance.findOne({
+//       user: req.user.id,
+//       date: today,
+//     });
+
+//     res.json({
+//       today: todayRecord,
+//       attendance,
+//     });
+//   } catch (error) {
+//     res.status(500).json({ message: error.message });
+//   }
+// };
+
+// const getDailyAttendance = async (req, res) => {
+//   try {
+//     const { date } = req.query;
+
+//     const { start, end } = getISTStartAndEnd(date);
+
+//     /* ================= DATE ================= */
+//     const selectedDate = date ? new Date(date) : new Date();
+//     selectedDate.setHours(0, 0, 0, 0);
+
+//     const day = selectedDate.getDay();
+
+// if (day === 0) {
+//   return res.json({
+//     date: selectedDate,
+//     isSunday: true,
+//     rows: [],
+//   });
+// }
+
+//     const holiday = await Holiday.findOne({ date: selectedDate });
+
+//     let usersToFetch = [];
+
+//     /* ================= ROLE LOGIC ================= */
+
+//     // 🔵 ADMIN → Only team members
+//     if (req.user.role === "admin") {
+//       const admin = await User.findById(req.user._id).populate(
+//         "teamMembers",
+//         "name role",
+//       );
+
+//       usersToFetch = admin.teamMembers || [];
+//     }
+
+//     // 🟣 SUPERADMIN → All admins + members
+//     else if (req.user.role === "superadmin") {
+//       usersToFetch = await User.find({
+//         role: { $in: ["admin", "member"] },
+//         emailVerified: true,
+//       }).select("name role");
+//     }
+
+//     // 👤 MEMBER (optional handling)
+//     else {
+//       return res.status(403).json({ message: "Access denied" });
+//     }
+
+//     /* ================= ATTENDANCE ================= */
+
+//     const attendanceRecords = await Attendance.find({
+//       user: { $in: usersToFetch.map((u) => u._id) },
+//       date: selectedDate,
+//     }).lean();
+
+//     /* ================= RESPONSE ROWS ================= */
+
+//     const rows = usersToFetch.map((user) => {
+//       const record = attendanceRecords.find(
+//         (a) => a.user.toString() === user._id.toString(),
+//       );
+
+//       if (holiday) {
+//         return {
+//           userId: user._id,
+//           name: user.name,
+//           attendanceStatus: "Holiday",
+//           holidayName: holiday.name,
+//         };
+//       }
+
+//       if (!record) {
+//         return {
+//           userId: user._id,
+//           name: user.name,
+//           role: user.role,
+//           attendanceStatus: "Absent",
+//         };
+//       }
+
+//       return {
+//         userId: user._id,
+//         name: user.name,
+//         role: user.role,
+
+//         punchInTime: record.punchIn?.time || null,
+//         punchOutTime: record.punchOut?.time || null,
+//         durationMinutes: record.totalDurationMinutes || null,
+
+//         workType: record.workType || null,
+//         attendanceStatus: record.attendanceStatus,
+
+//         location: record.punchIn?.location
+//           ? {
+//               latitude: record.punchIn.location.latitude,
+//               longitude: record.punchIn.location.longitude,
+//               distance: record.punchIn.distance,
+//             }
+//           : null,
+
+//         overriddenByAdmin: record.overriddenByAdmin || false,
+//         remarks: record.punchIn?.remarks || null,
+//       };
+//     });
+
+//     res.json({
+//       date: selectedDate,
+//       rows,
+//     });
+//   } catch (error) {
+//     res.status(500).json({ message: error.message });
+//   }
+// };
 
 const getMyAttendance = async (req, res) => {
   try {
     const { startDate, endDate } = req.query;
 
     const query = {
-      user: req.user.id,
+      user: req.user._id,
     };
 
-    // 🔹 Date range filter (optional)
-    if (startDate && endDate) {
-      const start = new Date(startDate);
-      const end = new Date(endDate);
+    /* ================= RANGE FILTER ================= */
 
-      start.setHours(0, 0, 0, 0);
-      end.setHours(23, 59, 59, 999);
+    if (startDate && endDate) {
+      const { start } = getISTStartAndEnd(startDate);
+      const { end } = getISTStartAndEnd(endDate);
 
       query.date = { $gte: start, $lte: end };
     }
 
     const attendance = await Attendance.find(query).sort({ date: -1 });
 
-    // 🔹 Today record (independent of range)
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
+    /* ================= TODAY (IST SAFE) ================= */
+
+    const { start: todayStart, end: todayEnd } = getISTStartAndEnd();
 
     const todayRecord = await Attendance.findOne({
-      user: req.user.id,
-      date: today,
+      user: req.user._id,
+      date: { $gte: todayStart, $lte: todayEnd },
     });
 
     res.json({
@@ -365,21 +531,26 @@ const getDailyAttendance = async (req, res) => {
   try {
     const { date } = req.query;
 
-    /* ================= DATE ================= */
-    const selectedDate = date ? new Date(date) : new Date();
-    selectedDate.setHours(0, 0, 0, 0);
+    /* ================= IST DATE RANGE ================= */
+    const { start, end } = getISTStartAndEnd(date);
 
-    const day = selectedDate.getDay();
+    // Determine day based on IST
+    const istDate = new Date(start);
+    const day = istDate.getUTCDay(); // safe because start is already IST-adjusted
 
-if (day === 0) {
-  return res.json({
-    date: selectedDate,
-    isSunday: true,
-    rows: [],
-  });
-}
+    // Sunday check
+    if (day === 0) {
+      return res.json({
+        date: start,
+        isSunday: true,
+        rows: [],
+      });
+    }
 
-    const holiday = await Holiday.findOne({ date: selectedDate });
+    /* ================= HOLIDAY CHECK ================= */
+    const holiday = await Holiday.findOne({
+      date: { $gte: start, $lte: end },
+    });
 
     let usersToFetch = [];
 
@@ -389,7 +560,7 @@ if (day === 0) {
     if (req.user.role === "admin") {
       const admin = await User.findById(req.user._id).populate(
         "teamMembers",
-        "name role",
+        "name role"
       );
 
       usersToFetch = admin.teamMembers || [];
@@ -403,34 +574,37 @@ if (day === 0) {
       }).select("name role");
     }
 
-    // 👤 MEMBER (optional handling)
+    // 👤 Others → denied
     else {
       return res.status(403).json({ message: "Access denied" });
     }
 
-    /* ================= ATTENDANCE ================= */
+    /* ================= ATTENDANCE FETCH ================= */
 
     const attendanceRecords = await Attendance.find({
       user: { $in: usersToFetch.map((u) => u._id) },
-      date: selectedDate,
+      date: { $gte: start, $lte: end }, // ✅ FIXED (range query)
     }).lean();
 
-    /* ================= RESPONSE ROWS ================= */
+    /* ================= RESPONSE BUILD ================= */
 
     const rows = usersToFetch.map((user) => {
       const record = attendanceRecords.find(
-        (a) => a.user.toString() === user._id.toString(),
+        (a) => a.user.toString() === user._id.toString()
       );
 
+      // 🔹 Holiday overrides everything
       if (holiday) {
         return {
           userId: user._id,
           name: user.name,
+          role: user.role,
           attendanceStatus: "Holiday",
           holidayName: holiday.name,
         };
       }
 
+      // 🔹 No record → Absent
       if (!record) {
         return {
           userId: user._id,
@@ -440,6 +614,7 @@ if (day === 0) {
         };
       }
 
+      // 🔹 Record exists
       return {
         userId: user._id,
         name: user.name,
@@ -465,49 +640,200 @@ if (day === 0) {
       };
     });
 
-    res.json({
-      date: selectedDate,
+    return res.json({
+      date: start, // return IST-normalized date
       rows,
     });
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    return res.status(500).json({ message: error.message });
   }
 };
+
+// const getTeamAttendanceAnalytics = async (req, res) => {
+//   try {
+//     const { startDate, endDate } = req.query;
+
+//     /* ================= DATE RANGE ================= */
+
+//     const start = new Date(startDate);
+//     start.setHours(0, 0, 0, 0);
+
+//     const rawEnd = new Date(endDate);
+//     rawEnd.setHours(23, 59, 59, 999);
+
+//     // 🔹 Clamp end date to TODAY
+//     const today = new Date();
+//     today.setHours(23, 59, 59, 999);
+
+//     const effectiveEnd = rawEnd > today ? today : rawEnd;
+
+//     let usersToAnalyze = [];
+
+//     /* ================= ROLE LOGIC ================= */
+
+//     // 🔵 ADMIN → Only team members
+//     if (req.user.role === "admin") {
+//       const admin = await User.findById(req.user._id).populate(
+//         "teamMembers",
+//         "name email role",
+//       );
+
+//       usersToAnalyze = admin.teamMembers || [];
+//     }
+
+//     // 🟣 SUPERADMIN → All admins + members
+//     else if (req.user.role === "superadmin") {
+//       usersToAnalyze = await User.find({
+//         role: { $in: ["admin", "member"] },
+//         emailVerified: true,
+//       }).select("name email role");
+//     } else {
+//       return res.status(403).json({ message: "Access denied" });
+//     }
+
+//     /* ================= FETCH ATTENDANCE ================= */
+
+//     const attendanceRecords = await Attendance.find({
+//       user: { $in: usersToAnalyze.map((u) => u._id) },
+//       date: { $gte: start, $lte: effectiveEnd },
+//     }).lean();
+
+//     /* ================= FETCH HOLIDAY================= */
+
+//     const holidays = await Holiday.find({
+//       date: { $gte: start, $lte: effectiveEnd },
+//     }).lean();
+
+//     const holidayMap = {};
+//     holidays.forEach((h) => {
+//       holidayMap[new Date(h.date).toDateString()] = true;
+//     });
+
+//     /* ================= BUILD RESPONSE ================= */
+
+//     const result = usersToAnalyze.map((user) => {
+//       const memberRecords = attendanceRecords.filter(
+//         (a) => a.user.toString() === user._id.toString(),
+//       );
+
+//       /* 🔹 Build date range till effectiveEnd */
+//       const allDates = [];
+//       const cursor = new Date(start);
+
+//       while (cursor <= effectiveEnd) {
+//         allDates.push(new Date(cursor));
+//         cursor.setDate(cursor.getDate() + 1);
+//       }
+
+//       /* 🔹 Map attendance by date */
+//       const recordMap = {};
+//       memberRecords.forEach((a) => {
+//         recordMap[new Date(a.date).toDateString()] = a;
+//       });
+
+//       let presentDays = 0;
+//       let absentDays = 0;
+//       let delayedDays = 0;
+
+//       // allDates.forEach((d) => {
+//       //   const rec = recordMap[d.toDateString()];
+
+//       //   if (!rec) {
+//       //     absentDays++;
+//       //   } else if (rec.attendanceStatus === "Present") {
+//       //     presentDays++;
+//       //   } else if (rec.attendanceStatus === "Delayed") {
+//       //     delayedDays++;
+//       //   } else {
+//       //     absentDays++;
+//       //   }
+//       // });
+
+//       allDates.forEach((d) => {
+//         const rec = recordMap[d.toDateString()];
+//         const day = d.getDay();
+
+//         if (day === 0) return;
+//         // 🔥 Skip holidays completely
+//         if (holidayMap[d.toDateString()]) {
+//           return; // do not count absent or present
+//         }
+
+//         if (!rec) {
+//           absentDays++;
+//         } else if (rec.attendanceStatus === "Present") {
+//           presentDays++;
+//         } else if (rec.attendanceStatus === "Delayed") {
+//           delayedDays++;
+//         } else {
+//           absentDays++;
+//         }
+//       });
+
+//       const calendar = memberRecords.map((a) => ({
+//         attendanceId: a._id,
+//         date: a.date,
+//         status: a.attendanceStatus,
+//         overriddenByAdmin: a.overriddenByAdmin || false,
+//       }));
+
+//       return {
+//         userId: user._id,
+//         name: user.name,
+//         role: user.role,
+//         stats: {
+//           presentDays,
+//           absentDays,
+//           delayedDays,
+//         },
+//         calendar,
+//       };
+//     });
+
+//     res.json({
+//       range: {
+//         startDate: start,
+//         endDate: effectiveEnd,
+//       },
+//        holidays: holidays.map(h => ({
+//           date: h.date,
+//           name: h.name,
+//         })),
+//       members: result,
+//     });
+//   } catch (error) {
+//     res.status(500).json({ message: error.message });
+//   }
+// };
 
 const getTeamAttendanceAnalytics = async (req, res) => {
   try {
     const { startDate, endDate } = req.query;
 
-    /* ================= DATE RANGE ================= */
+    if (!startDate || !endDate) {
+      return res.status(400).json({ message: "Start and end date required" });
+    }
 
-    const start = new Date(startDate);
-    start.setHours(0, 0, 0, 0);
+    /* ================= IST DATE RANGE ================= */
 
-    const rawEnd = new Date(endDate);
-    rawEnd.setHours(23, 59, 59, 999);
+    const { start: startIST } = getISTStartAndEnd(startDate);
+    const { end: endIST } = getISTStartAndEnd(endDate);
 
-    // 🔹 Clamp end date to TODAY
-    const today = new Date();
-    today.setHours(23, 59, 59, 999);
-
-    const effectiveEnd = rawEnd > today ? today : rawEnd;
+    // Clamp end to TODAY (IST)
+    const { end: todayEndIST } = getISTStartAndEnd();
+    const effectiveEnd = endIST > todayEndIST ? todayEndIST : endIST;
 
     let usersToAnalyze = [];
 
     /* ================= ROLE LOGIC ================= */
 
-    // 🔵 ADMIN → Only team members
     if (req.user.role === "admin") {
       const admin = await User.findById(req.user._id).populate(
         "teamMembers",
-        "name email role",
+        "name email role"
       );
-
       usersToAnalyze = admin.teamMembers || [];
-    }
-
-    // 🟣 SUPERADMIN → All admins + members
-    else if (req.user.role === "superadmin") {
+    } else if (req.user.role === "superadmin") {
       usersToAnalyze = await User.find({
         role: { $in: ["admin", "member"] },
         emailVerified: true,
@@ -520,69 +846,60 @@ const getTeamAttendanceAnalytics = async (req, res) => {
 
     const attendanceRecords = await Attendance.find({
       user: { $in: usersToAnalyze.map((u) => u._id) },
-      date: { $gte: start, $lte: effectiveEnd },
+      date: { $gte: startIST, $lte: effectiveEnd },
     }).lean();
 
-    /* ================= FETCH HOLIDAY================= */
+    /* ================= FETCH HOLIDAYS ================= */
 
     const holidays = await Holiday.find({
-      date: { $gte: start, $lte: effectiveEnd },
+      date: { $gte: startIST, $lte: effectiveEnd },
     }).lean();
 
+    // Create IST-safe holiday map using ISO date part only
     const holidayMap = {};
     holidays.forEach((h) => {
-      holidayMap[new Date(h.date).toDateString()] = true;
+      const key = h.date.toISOString().split("T")[0];
+      holidayMap[key] = true;
     });
 
     /* ================= BUILD RESPONSE ================= */
 
     const result = usersToAnalyze.map((user) => {
       const memberRecords = attendanceRecords.filter(
-        (a) => a.user.toString() === user._id.toString(),
+        (a) => a.user.toString() === user._id.toString()
       );
 
-      /* 🔹 Build date range till effectiveEnd */
+      /* 🔹 Build IST date range properly */
       const allDates = [];
-      const cursor = new Date(start);
+      let cursor = new Date(startIST);
 
       while (cursor <= effectiveEnd) {
         allDates.push(new Date(cursor));
-        cursor.setDate(cursor.getDate() + 1);
+        cursor = new Date(cursor.getTime() + 24 * 60 * 60 * 1000); // add 1 day safely
       }
 
-      /* 🔹 Map attendance by date */
+      /* 🔹 Map attendance by ISO date (timezone safe) */
       const recordMap = {};
       memberRecords.forEach((a) => {
-        recordMap[new Date(a.date).toDateString()] = a;
+        const key = a.date.toISOString().split("T")[0];
+        recordMap[key] = a;
       });
 
       let presentDays = 0;
       let absentDays = 0;
       let delayedDays = 0;
 
-      // allDates.forEach((d) => {
-      //   const rec = recordMap[d.toDateString()];
-
-      //   if (!rec) {
-      //     absentDays++;
-      //   } else if (rec.attendanceStatus === "Present") {
-      //     presentDays++;
-      //   } else if (rec.attendanceStatus === "Delayed") {
-      //     delayedDays++;
-      //   } else {
-      //     absentDays++;
-      //   }
-      // });
-
       allDates.forEach((d) => {
-        const rec = recordMap[d.toDateString()];
-        const day = d.getDay();
+        const key = d.toISOString().split("T")[0];
+        const rec = recordMap[key];
 
+        const day = d.getUTCDay(); // safe because boundaries are IST-normalized
+
+        // Skip Sundays
         if (day === 0) return;
-        // 🔥 Skip holidays completely
-        if (holidayMap[d.toDateString()]) {
-          return; // do not count absent or present
-        }
+
+        // Skip holidays
+        if (holidayMap[key]) return;
 
         if (!rec) {
           absentDays++;
@@ -617,13 +934,13 @@ const getTeamAttendanceAnalytics = async (req, res) => {
 
     res.json({
       range: {
-        startDate: start,
+        startDate: startIST,
         endDate: effectiveEnd,
       },
-       holidays: holidays.map(h => ({
-          date: h.date,
-          name: h.name,
-        })),
+      holidays: holidays.map((h) => ({
+        date: h.date,
+        name: h.name,
+      })),
       members: result,
     });
   } catch (error) {
@@ -661,6 +978,43 @@ const updateAttendanceStatus = async (req, res) => {
   }
 };
 
+// const adminOverrideAttendance = async (req, res) => {
+//   try {
+//     const { userId, date, attendanceStatus, reason } = req.body;
+
+//     if (!userId || !date || !attendanceStatus) {
+//       return res.status(400).json({ message: "Missing fields" });
+//     }
+
+//     const targetDate = new Date(`${date}T00:00:00.000Z`);
+
+//     targetDate.setHours(0, 0, 0, 0);
+
+//     const attendance = await Attendance.findOneAndUpdate(
+//       { user: userId, date: targetDate },
+//       {
+//         user: userId,
+//         date: targetDate,
+//         attendanceStatus,
+//         overriddenByAdmin: true,
+//         overrideReason: reason || "",
+//       },
+//       {
+//         upsert: true, // ✅ create if missing
+//         new: true,
+//         setDefaultsOnInsert: true,
+//       },
+//     );
+
+//     res.json({
+//       message: "Attendance updated",
+//       attendance,
+//     });
+//   } catch (err) {
+//     res.status(500).json({ message: err.message });
+//   }
+// };
+
 const adminOverrideAttendance = async (req, res) => {
   try {
     const { userId, date, attendanceStatus, reason } = req.body;
@@ -669,24 +1023,36 @@ const adminOverrideAttendance = async (req, res) => {
       return res.status(400).json({ message: "Missing fields" });
     }
 
-    const targetDate = new Date(`${date}T00:00:00.000Z`);
+    // 🔐 Optional role protection (recommended)
+    if (!["admin", "superadmin"].includes(req.user.role)) {
+      return res.status(403).json({ message: "Access denied" });
+    }
 
-    targetDate.setHours(0, 0, 0, 0);
+    if (!["Present", "Absent", "Delayed"].includes(attendanceStatus)) {
+      return res.status(400).json({ message: "Invalid attendance status" });
+    }
+
+    /* ================= IST SAFE DATE ================= */
+
+    const { start } = getISTStartAndEnd(date);
 
     const attendance = await Attendance.findOneAndUpdate(
-      { user: userId, date: targetDate },
       {
         user: userId,
-        date: targetDate,
+        date: { $gte: start, $lte: start }, // exact IST day match
+      },
+      {
+        user: userId,
+        date: start, // always store IST midnight
         attendanceStatus,
         overriddenByAdmin: true,
         overrideReason: reason || "",
       },
       {
-        upsert: true, // ✅ create if missing
+        upsert: true,
         new: true,
         setDefaultsOnInsert: true,
-      },
+      }
     );
 
     res.json({
@@ -697,7 +1063,6 @@ const adminOverrideAttendance = async (req, res) => {
     res.status(500).json({ message: err.message });
   }
 };
-
 module.exports = {
   punchIn,
   punchOut,
