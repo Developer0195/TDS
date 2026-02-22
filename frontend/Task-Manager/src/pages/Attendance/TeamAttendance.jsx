@@ -411,7 +411,6 @@ const getMonthRange = () => {
 //   return dates;
 // };
 
-
 const buildDateRange = (start, end) => {
   const dates = [];
   let cursor = moment(start).tz("Asia/Kolkata").startOf("day");
@@ -451,12 +450,10 @@ const EditAttendanceModal = ({
   // });
 
   const holidayMap = {};
-holidays.forEach((h) => {
-  const key = moment(h.date)
-    .tz("Asia/Kolkata")
-    .format("YYYY-MM-DD");
-  holidayMap[key] = h.name;
-});
+  holidays.forEach((h) => {
+    const key = moment(h.date).tz("Asia/Kolkata").format("YYYY-MM-DD");
+    holidayMap[key] = h.name;
+  });
 
   // const today = new Date();
   // today.setHours(0, 0, 0, 0);
@@ -471,9 +468,8 @@ holidays.forEach((h) => {
   const statusByDate = {};
   calendar.forEach((c) => {
     // statusByDate[new Date(c.date).toDateString()] = c.status;
-    statusByDate[
-  moment(c.date).tz("Asia/Kolkata").format("YYYY-MM-DD")
-] = c.status;
+    statusByDate[moment(c.date).tz("Asia/Kolkata").format("YYYY-MM-DD")] =
+      c.status;
   });
 
   if (!open) return null;
@@ -490,9 +486,9 @@ holidays.forEach((h) => {
     // }
 
     if (selectedDate.isAfter(today)) {
-  toast.error("Cannot edit future dates");
-  return;
-}
+      toast.error("Cannot edit future dates");
+      return;
+    }
 
     // const dateString = `${selectedDate.getFullYear()}-${String(
     //   selectedDate.getMonth() + 1,
@@ -553,12 +549,11 @@ holidays.forEach((h) => {
 
           {allDates.map((d) => {
             // const key = d.toDateString();
-          const key = d.format("YYYY-MM-DD");
-const isSunday = d.day() === 0;
+            const key = d.format("YYYY-MM-DD");
+            const isSunday = d.day() === 0;
             // const isSelected =
             //   selectedDate && d.toDateString() === selectedDate.toDateString();
-            const isSelected =
-  selectedDate && d.isSame(selectedDate, "day");
+            const isSelected = selectedDate && d.isSame(selectedDate, "day");
 
             // let cellStyle = "bg-gray-200";
 
@@ -568,15 +563,31 @@ const isSunday = d.day() === 0;
             //   cellStyle = statusStyles["Absent"];
             // }
 
+            // let cellStyle = "bg-gray-200";
+            // const isHoliday = holidayMap[key];
+            // // const isSunday = d.getDay() === 0;
+
+            // if (isHoliday || isSunday) {
+            //   cellStyle = "bg-yellow-300 text-black";
+            // } else if (statusByDate[key]) {
+            //   cellStyle = statusStyles[statusByDate[key]];
+            // } else if (d < today) {
+            //   cellStyle = statusStyles["Absent"];
+            // }
+
             let cellStyle = "bg-gray-200";
             const isHoliday = holidayMap[key];
-            // const isSunday = d.getDay() === 0;
 
-            if (isHoliday || isSunday) {
-              cellStyle = "bg-yellow-300 text-black";
-            } else if (statusByDate[key]) {
+            // ✅ 1. If attendance exists → always show it
+            if (statusByDate[key]) {
               cellStyle = statusStyles[statusByDate[key]];
-            } else if (d < today) {
+            }
+            // ✅ 2. If no attendance but holiday/sunday → yellow
+            else if (isHoliday || isSunday) {
+              cellStyle = "bg-yellow-300 text-black";
+            }
+            // ✅ 3. If past and no attendance → absent
+            else if (d.isBefore(today)) {
               cellStyle = statusStyles["Absent"];
             }
 
@@ -666,13 +677,11 @@ const TeamAttendance = () => {
       setLoading(true);
       const res = await axiosInstance.get(API_PATHS.ATTENDANCE.TEAM_ANALYTICS, {
         params: {
-  startDate: moment(range.start)
-    .tz("Asia/Kolkata")
-    .format("YYYY-MM-DD"),
-  endDate: moment(range.end)
-    .tz("Asia/Kolkata")
-    .format("YYYY-MM-DD"),
-}
+          startDate: moment(range.start)
+            .tz("Asia/Kolkata")
+            .format("YYYY-MM-DD"),
+          endDate: moment(range.end).tz("Asia/Kolkata").format("YYYY-MM-DD"),
+        },
       });
       setMembers(res.data.members || []);
       setHolidays(res.data.holidays || []);
@@ -778,83 +787,83 @@ const TeamAttendance = () => {
         </div>
       </div>
 
-     {/* ================= TABLE ================= */}
-<div className="bg-white border border-gray-300 rounded-lg">
-  <div className="w-full overflow-x-auto mobile-scroll touch-pan-x">
-    <table className="min-w-[720px] w-full text-sm">
-      <thead className="bg-gray-50">
-        <tr>
-          <th className="px-4 py-3 text-left whitespace-nowrap">
-            Member
-          </th>
-          <th className="px-4 py-3 text-center whitespace-nowrap">
-            Present
-          </th>
-          <th className="px-4 py-3 text-center whitespace-nowrap">
-            Absent
-          </th>
-          <th className="px-4 py-3 text-center whitespace-nowrap">
-            Delayed
-          </th>
-          <th className="px-4 py-3 text-center whitespace-nowrap">
-            Edit
-          </th>
-        </tr>
-      </thead>
-
-
-      <tbody>
-        {loading ? (
-          <tr>
-            <td colSpan="5" className="p-4 whitespace-nowrap text-center">
-              Loading…
-            </td>
-          </tr>
-        ) : members.length === 0 ? (
-          <tr>
-            <td colSpan="5" className="p-4 whitespace-nowrap text-center text-gray-400">
-              No data available
-            </td>
-          </tr>
-        ) : (
-          members.map((m) => (
-            <tr key={m.userId} className="border-t border-gray-300">
-              <td className="px-4 py-3 whitespace-nowrap font-medium">
-                {m.name}
-              </td>
-
-              <td className="px-4 py-3 text-center whitespace-nowrap">
-                {m.stats.presentDays}
-              </td>
-
-              <td className="px-4 py-3 text-center whitespace-nowrap">
-                {m.stats.absentDays}
-              </td>
-
-              <td className="px-4 py-3 text-center whitespace-nowrap">
-                {m.stats.delayedDays}
-              </td>
-
-              <td className="px-4 py-3 text-center whitespace-nowrap">
-                <button
-                  onClick={() => {
-                    setEditMember(m);
-                    setEditOpen(true);
-                  }}
-                  className="text-blue-600 text-xs hover:underline"
-                >
+      {/* ================= TABLE ================= */}
+      <div className="bg-white border border-gray-300 rounded-lg">
+        <div className="w-full overflow-x-auto mobile-scroll touch-pan-x">
+          <table className="min-w-[720px] w-full text-sm">
+            <thead className="bg-gray-50">
+              <tr>
+                <th className="px-4 py-3 text-left whitespace-nowrap">
+                  Member
+                </th>
+                <th className="px-4 py-3 text-center whitespace-nowrap">
+                  Present
+                </th>
+                <th className="px-4 py-3 text-center whitespace-nowrap">
+                  Absent
+                </th>
+                <th className="px-4 py-3 text-center whitespace-nowrap">
+                  Delayed
+                </th>
+                <th className="px-4 py-3 text-center whitespace-nowrap">
                   Edit
-                </button>
-              </td>
-            </tr>
-          ))
-        )}
-      </tbody>
+                </th>
+              </tr>
+            </thead>
 
-    </table>
-  </div>
-</div>
+            <tbody>
+              {loading ? (
+                <tr>
+                  <td colSpan="5" className="p-4 whitespace-nowrap text-center">
+                    Loading…
+                  </td>
+                </tr>
+              ) : members.length === 0 ? (
+                <tr>
+                  <td
+                    colSpan="5"
+                    className="p-4 whitespace-nowrap text-center text-gray-400"
+                  >
+                    No data available
+                  </td>
+                </tr>
+              ) : (
+                members.map((m) => (
+                  <tr key={m.userId} className="border-t border-gray-300">
+                    <td className="px-4 py-3 whitespace-nowrap font-medium">
+                      {m.name}
+                    </td>
 
+                    <td className="px-4 py-3 text-center whitespace-nowrap">
+                      {m.stats.presentDays}
+                    </td>
+
+                    <td className="px-4 py-3 text-center whitespace-nowrap">
+                      {m.stats.absentDays}
+                    </td>
+
+                    <td className="px-4 py-3 text-center whitespace-nowrap">
+                      {m.stats.delayedDays}
+                    </td>
+
+                    <td className="px-4 py-3 text-center whitespace-nowrap">
+                      <button
+                        onClick={() => {
+                          setEditMember(m);
+                          setEditOpen(true);
+                        }}
+                        className="text-blue-600 text-xs hover:underline"
+                      >
+                        Edit
+                      </button>
+                    </td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
+        </div>
+      </div>
 
       {editOpen && (
         <EditAttendanceModal

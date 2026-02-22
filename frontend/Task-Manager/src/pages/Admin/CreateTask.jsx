@@ -227,7 +227,8 @@ const CreateTask = () => {
       clearData();
     } catch (error) {
       console.error("Error updating task:", error);
-      toast.error("Failed to update task");
+      // toast.error("Failed to update task");
+      toast.error(error.response?.data?.message || "Failed to update task");
     } finally {
       setLoading(false);
     }

@@ -515,17 +515,43 @@ const updateTask = async (req, res) => {
         });
       }
 
-      task.todoCheckList = updatedChecklist;
-    } else {
-      // If checklist not sent, still clean existing subtasks if members removed
-      if (removedMembers.length > 0) {
-        task.todoCheckList = task.todoCheckList.filter((subtask) => {
-          if (!subtask.assignedTo) return true;
+        if (updatedChecklist.length === 0) {
+    return res.status(400).json({
+      message:
+        "All subtasks were removed due to member removal. Please add at least one new subtask.",
+    });
+  }
 
-          return !removedMembers.includes(subtask.assignedTo.toString());
-        });
-      }
+      task.todoCheckList = updatedChecklist;
+}
+    // } else {
+    //   // If checklist not sent, still clean existing subtasks if members removed
+    //   if (removedMembers.length > 0) {
+    //     task.todoCheckList = task.todoCheckList.filter((subtask) => {
+    //       if (!subtask.assignedTo) return true;
+
+    //       return !removedMembers.includes(subtask.assignedTo.toString());
+    //     });
+    //   }
+    // }
+    else {
+  if (removedMembers.length > 0) {
+    const cleanedChecklist = task.todoCheckList.filter((subtask) => {
+      if (!subtask.assignedTo) return true;
+      return !removedMembers.includes(subtask.assignedTo.toString());
+    });
+
+    // 🚨 VALIDATION HERE TOO
+    if (cleanedChecklist.length === 0) {
+      return res.status(400).json({
+        message:
+          "Removing this member would leave the task without any subtasks. Please add a new subtask before updating.",
+      });
     }
+
+    task.todoCheckList = cleanedChecklist;
+  }
+}
 
     /* ===============================
        ADD LOG
