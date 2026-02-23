@@ -10,6 +10,8 @@ const Location = require("../models/Location");
 const Holiday = require("../models/Holiday");
 const { getISTStartAndEnd } = require("../utils/istDate");
 
+const moment = require("moment-timezone");
+
 
 
 const punchIn = async (req, res) => {
@@ -535,17 +537,21 @@ const getDailyAttendance = async (req, res) => {
     const { start, end } = getISTStartAndEnd(date);
 
     // Determine day based on IST
-    const istDate = new Date(start);
-    const day = istDate.getUTCDay(); // safe because start is already IST-adjusted
+    // const istDate = new Date(start);
+    // const day = istDate.getUTCDay(); // safe because start is already IST-adjusted
+
+
+// const day = moment.tz(date, "Asia/Kolkata").day();
+const day = moment(start).tz("Asia/Kolkata").day();
 
     // Sunday check
-    if (day === 0) {
-      return res.json({
-        date: start,
-        isSunday: true,
-        rows: [],
-      });
-    }
+    // if (day === 0) {
+    //   return res.json({
+    //     date: start,
+    //     isSunday: true,
+    //     rows: [],
+    //   });
+    // }
 
     /* ================= HOLIDAY CHECK ================= */
     const holiday = await Holiday.findOne({
@@ -858,7 +864,8 @@ const getTeamAttendanceAnalytics = async (req, res) => {
     // Create IST-safe holiday map using ISO date part only
     const holidayMap = {};
     holidays.forEach((h) => {
-      const key = h.date.toISOString().split("T")[0];
+      // const key = h.date.toISOString().split("T")[0];
+      const key = moment(h.date).tz("Asia/Kolkata").format("YYYY-MM-DD");
       holidayMap[key] = true;
     });
 
@@ -881,7 +888,8 @@ const getTeamAttendanceAnalytics = async (req, res) => {
       /* 🔹 Map attendance by ISO date (timezone safe) */
       const recordMap = {};
       memberRecords.forEach((a) => {
-        const key = a.date.toISOString().split("T")[0];
+        // const key = a.date.toISOString().split("T")[0];
+        const key = moment(a.date).tz("Asia/Kolkata").format("YYYY-MM-DD");
         recordMap[key] = a;
       });
 
@@ -889,29 +897,52 @@ const getTeamAttendanceAnalytics = async (req, res) => {
       let absentDays = 0;
       let delayedDays = 0;
 
+      // allDates.forEach((d) => {
+      //   // const key = d.toISOString().split("T")[0];
+      //   const key = moment(d).tz("Asia/Kolkata").format("YYYY-MM-DD");
+      //   const day = moment(d).tz("Asia/Kolkata").day();
+      //   const rec = recordMap[key];
+
+      //   // const day = d.getUTCDay(); // safe because boundaries are IST-normalized
+
+      //   // Skip Sundays
+      //   if (day === 0) return;
+
+      //   // Skip holidays
+      //   if (holidayMap[key]) return;
+
+      //   if (!rec) {
+      //     absentDays++;
+      //   } else if (rec.attendanceStatus === "Present") {
+      //     presentDays++;
+      //   } else if (rec.attendanceStatus === "Delayed") {
+      //     delayedDays++;
+      //   } else {
+      //     absentDays++;
+      //   }
+      // });
+
       allDates.forEach((d) => {
-        const key = d.toISOString().split("T")[0];
-        const rec = recordMap[key];
+  const key = moment(d).tz("Asia/Kolkata").format("YYYY-MM-DD");
+  const rec = recordMap[key];
+  const day = moment(d).tz("Asia/Kolkata").day();
+  const isHoliday = holidayMap[key];
+  const isSunday = day === 0;
 
-        const day = d.getUTCDay(); // safe because boundaries are IST-normalized
+  // ✅ If attendance exists → ALWAYS count it
+  if (rec) {
+    if (rec.attendanceStatus === "Present") presentDays++;
+    else if (rec.attendanceStatus === "Delayed") delayedDays++;
+    else absentDays++;
+    return;
+  }
 
-        // Skip Sundays
-        if (day === 0) return;
+  // ⛔ If no record and holiday/sunday → ignore
+  if (isHoliday || isSunday) return;
 
-        // Skip holidays
-        if (holidayMap[key]) return;
-
-        if (!rec) {
-          absentDays++;
-        } else if (rec.attendanceStatus === "Present") {
-          presentDays++;
-        } else if (rec.attendanceStatus === "Delayed") {
-          delayedDays++;
-        } else {
-          absentDays++;
-        }
-      });
-
+  // 🔴 No record on working day → absent
+  absentDays++;
+});
       const calendar = memberRecords.map((a) => ({
         attendanceId: a._id,
         date: a.date,
