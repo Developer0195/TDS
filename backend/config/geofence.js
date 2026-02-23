@@ -1,7 +1,7 @@
 module.exports = {
     OFFICE_LOCATION: {
-        latitude: 28.6139,
-        longitude: 77.2090,
+        latitude: 30.7097697,
+        longitude: 76.6856694,
     },
     RADIUS_METERS: 100,
 };
