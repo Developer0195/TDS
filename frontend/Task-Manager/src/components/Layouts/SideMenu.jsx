@@ -98,8 +98,9 @@ const SideMenu = ({ activeMenu }) => {
       </div>
 
       {/* ================= LOGOUT (SAME STYLE, STICKY) ================= */}
-      {logoutItem && (
-        <div className="">
+     {/* ================= LOGOUT ================= */}
+{logoutItem && (
+  <div className="mt-auto border-t border-gray-200">
           <button
             onClick={() => handleClick(logoutItem)}
             className="w-full flex items-center gap-4 text-[15px] py-3 px-6 cursor-pointer font-semibold bg-blue-50"

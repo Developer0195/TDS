@@ -120,19 +120,19 @@ const CreateTask = () => {
         return;
       }
 
-       const todoList = taskData.todoCheckList.map((item) =>
+      const todoList = taskData.todoCheckList.map((item) =>
         typeof item === "string"
           ? {
               text: item,
               completed: false,
               assignedTo: null,
-              document: null
+              document: null,
             }
           : {
               text: item.text,
               completed: item.completed ?? false,
               assignedTo: item.assignedTo || null,
-              document: item.document || null
+              document: item.document || null,
             },
       );
 
@@ -141,7 +141,10 @@ const CreateTask = () => {
         project: taskData.project || null,
         dueDate: taskData.dueDate,
         todoCheckList: todoList,
-        attachments: aiAttachment ? [aiAttachment] : [],
+        // attachments: aiAttachment ? [aiAttachment] : [],
+        attachments: aiAttachment
+          ? [...taskData.attachments, aiAttachment]
+          : taskData.attachments,
       };
 
       const response = await axiosInstance.post(
@@ -204,11 +207,17 @@ const CreateTask = () => {
           throw new Error("Each subtask must have an assignee");
         }
 
+        // return {
+        //   text: item.text,
+        //   completed: item.completed ?? false,
+        //   assignedTo: item.assignedTo,
+        //   document: item.document || null, // 👈 KEEP DOCUMENT
+        // };
         return {
+          _id: item._id, // 🔥 MUST SEND
           text: item.text,
-          completed: item.completed ?? false,
           assignedTo: item.assignedTo,
-          document: item.document || null, // 👈 KEEP DOCUMENT
+          document: item.document || null,
         };
       });
 
@@ -320,11 +329,18 @@ const CreateTask = () => {
           : null,
         assignedTo: taskInfo.assignedTo.map((u) => u._id),
         project: taskInfo.project?._id || null,
+        // todoCheckList: taskInfo.todoCheckList.map((t) => ({
+        //   text: t.text,
+        //   completed: t.completed,
+        //   assignedTo: t.assignedTo?._id,
+        //   document: t.document || null
+        // })),
         todoCheckList: taskInfo.todoCheckList.map((t) => ({
+          _id: t._id, // 🔥 VERY IMPORTANT
           text: t.text,
           completed: t.completed,
           assignedTo: t.assignedTo?._id,
-          document: t.document || null
+          document: t.document || null,
         })),
         attachments: taskInfo.attachments || [],
       });

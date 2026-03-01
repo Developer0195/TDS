@@ -41,26 +41,19 @@ const ViewTaskDetails = () => {
   };
 
   const handleDeleteComment = async (commentId) => {
-  try {
-    await axiosInstance.delete(
-      API_PATHS.TASKS.DELETE_COMMENT(id, commentId)
-    );
+    try {
+      await axiosInstance.delete(API_PATHS.TASKS.DELETE_COMMENT(id, commentId));
 
-    toast.success("Comment deleted");
+      toast.success("Comment deleted");
 
-    // Refresh task after deletion
-    const res = await axiosInstance.get(
-      API_PATHS.TASKS.GET_TASK_BY_ID(id)
-    );
+      // Refresh task after deletion
+      const res = await axiosInstance.get(API_PATHS.TASKS.GET_TASK_BY_ID(id));
 
-    setTask(res.data);
-  } catch (error) {
-    toast.error(
-      error.response?.data?.message || "Failed to delete comment"
-    );
-  }
-};
-
+      setTask(res.data);
+    } catch (error) {
+      toast.error(error.response?.data?.message || "Failed to delete comment");
+    }
+  };
 
   if (!task) return null;
   console.log("task: ", task);
@@ -85,37 +78,35 @@ const ViewTaskDetails = () => {
             >
               {task.status}
             </div>
-
-         
           </div>
 
-            {task?.attachments?.length > 0 && (
-  <div className="mt-4 border-t border-blue-50 pt-4">
-    <p className="text-xs font-semibold text-gray-500 mb-2">
-      Attachments
-    </p>
+          {task?.attachments?.length > 0 && (
+            <div className="mt-4 border-t border-blue-50 pt-4">
+              <p className="text-xs font-semibold text-gray-500 mb-2">
+                Attachments
+              </p>
 
-    <div className="space-y-2">
-      {task.attachments.map((attachment, index) => (
-        <div
-          key={index}
-          className="flex items-center gap-2 text-xs text-blue-600"
-        >
-          <LuFileText size={14} />
+              <div className="space-y-2">
+                {task.attachments.map((attachment, index) => (
+                  <div
+                    key={index}
+                    className="flex items-center gap-2 text-xs text-blue-600"
+                  >
+                    <LuFileText size={14} />
 
-          <a
-            href={attachment.url}
-            target="_blank"
-            rel="noreferrer"
-            className="underline hover:text-blue-800"
-          >
-            {attachment.name}
-          </a>
-        </div>
-      ))}
-    </div>
-  </div>
-)}
+                    <a
+                      href={attachment.url}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="underline hover:text-blue-800"
+                    >
+                      {attachment.name}
+                    </a>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
 
           {/* META */}
           <div className="grid grid-cols-4 gap-6 mt-4 text-xs text-gray-600">
@@ -185,42 +176,42 @@ const ViewTaskDetails = () => {
           <div className="mt-8 border-t border-blue-50 pt-6">
             <p className="text-xs font-semibold text-gray-500 mb-3">Comments</p>
 
-          {task.comments?.map((c) => (
-  <div
-    key={c._id}
-    className="group border border-blue-100 bg-blue-50/30 rounded-lg p-3 mb-3 flex justify-between items-start hover:bg-blue-50 transition"
-  >
-    <div className="flex-1">
-      <div className="flex items-center gap-2 mb-1">
-        <img
-          src={c.commentedBy?.profileImageUrl}
-          alt=""
-          className="w-6 h-6 rounded-full"
-        />
-        <span className="text-xs font-medium text-gray-700">
-          {c.commentedBy?.name}
-        </span>
-        <span className="text-[10px] text-gray-400">
-          {moment(c.createdAt).fromNow()}
-        </span>
-      </div>
+            {task.comments?.map((c) => (
+              <div
+                key={c._id}
+                className="group border border-blue-100 bg-blue-50/30 rounded-lg p-3 mb-3 flex justify-between items-start hover:bg-blue-50 transition"
+              >
+                <div className="flex-1">
+                  <div className="flex items-center gap-2 mb-1">
+                    <img
+                      src={c.commentedBy?.profileImageUrl}
+                      alt=""
+                      className="w-6 h-6 rounded-full"
+                    />
+                    <span className="text-xs font-medium text-gray-700">
+                      {c.commentedBy?.name}
+                    </span>
+                    <span className="text-[10px] text-gray-400">
+                      {moment(c.createdAt).fromNow()}
+                    </span>
+                  </div>
 
-      <p className="text-xs text-gray-700">{c.message}</p>
-    </div>
+                  <p className="text-xs text-gray-700">{c.message}</p>
+                </div>
 
-    {/* DELETE BUTTON */}
-    {(user.role === "admin" ||
-      c.commentedBy?._id === user_id) && (
-      <button
-        onClick={() => handleDeleteComment(c._id)}
-        className="opacity-0 group-hover:opacity-100 text-gray-400 hover:text-red-500 transition ml-2"
-      >
-        <LuTrash2 size={16} />
-      </button>
-    )}
-  </div>
-))}
-
+                {/* DELETE BUTTON */}
+                {(user.role === "admin" || c.commentedBy?._id === user_id) && (
+                  <button
+                    onClick={() => handleDeleteComment(c._id)}
+                    // className="opacity-0 group-hover:opacity-100 text-gray-400 hover:text-red-500 transition ml-2"
+                  className="text-gray-400 hover:text-red-500 transition ml-2
+           opacity-100 sm:opacity-0 sm:group-hover:opacity-100"
+                  >
+                    <LuTrash2 size={16} />
+                  </button>
+                )}
+              </div>
+            ))}
 
             <CommentBox taskId={id} onUpdated={setTask} />
           </div>
@@ -247,7 +238,6 @@ const SubtaskCard = ({ item, taskId, userId, onUpdated }) => {
   const [loading, setLoading] = useState(false);
 
   const hasChanges = completed !== item.completed || file !== null;
-
 
   const handleUpdate = async () => {
     if (!isAssignedToMe || !hasChanges) return;
@@ -318,7 +308,7 @@ const SubtaskCard = ({ item, taskId, userId, onUpdated }) => {
       )}
 
       {isAssignedToMe && (
-        <div className="mt-4 flex items-center gap-3">
+        <div className="mt-4 flex flex-wrap items-center gap-3">
           <label className="cursor-pointer flex items-center gap-2 text-xs bg-white border border-blue-200 px-3 py-1.5 rounded-md hover:bg-blue-50 transition">
             <LuUpload size={14} />
             Choose File

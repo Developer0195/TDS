@@ -202,12 +202,12 @@ const TaskListTable = ({ tableData }) => {
             </th>
 
             {/* ASSIGNED BY */}
-            <th className="py-3 px-4 text-gray-800 font-medium text-[13px] hidden md:table-cell">
+            <th className="py-3 px-4 text-gray-800 font-medium text-[13px] ">
               Assigned By
             </th>
 
             {/* CREATED ON */}
-            <th className="py-3 px-4 text-gray-800 font-medium text-[13px] hidden md:table-cell">
+            <th className="py-3 px-4 text-gray-800 font-medium text-[13px] ">
               Created On
             </th>
           </tr>
@@ -255,7 +255,7 @@ const TaskListTable = ({ tableData }) => {
               </td>
 
               {/* ASSIGNED BY */}
-              <td className="py-4 px-4 hidden md:table-cell">
+              <td className="py-4 px-4 ">
                 {task.createdBy ? (
                   <div
                     className="px-2 py-1 text-xs rounded-full bg-gray-100 text-gray-700 inline-block"

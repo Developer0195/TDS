@@ -32,7 +32,7 @@ const TaskListTable = ({ tableData }) => {
     }
   };
 
-
+ console.log(tableData)
   return (
     <div className="overflow-x-auto p-0 rounded-lg mt-3">
       <table className="min-w-full">
@@ -65,7 +65,7 @@ const TaskListTable = ({ tableData }) => {
 
             {/* CREATED ON */}
             <th className="py-3 px-4 text-gray-800 font-medium text-[13px]">
-              Created On
+              Due On
             </th>
           </tr>
         </thead>
@@ -133,9 +133,16 @@ const TaskListTable = ({ tableData }) => {
               </td>
 
               {/* CREATED DATE */}
-              <td className="py-4 px-4 text-gray-700 text-[13px] ">
+              {/* <td className="py-4 px-4 text-gray-700 text-[13px] ">
                 {task.createdAt
                   ? moment(task.createdAt).tz("Asia/Kolkata").format("DD MMM YYYY")
+                  : "N/A"}
+              </td> */}
+
+                  {/* DUE DATE */}
+               <td className="py-4 px-4 text-gray-700 text-[13px] ">
+                {task?.dueDate
+                  ? moment(task.dueDate).tz("Asia/Kolkata").format("DD MMM YYYY")
                   : "N/A"}
               </td>
             </tr>

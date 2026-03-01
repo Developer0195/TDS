@@ -199,11 +199,18 @@ const CreateTask = () => {
           throw new Error("Each subtask must have an assignee");
         }
 
-        return {
+        // return {
+        //   text: item.text,
+        //   completed: item.completed ?? false,
+        //   assignedTo: item.assignedTo,
+        //     document: item.document || null, 
+        // };
+
+         return {
+          _id: item._id, // 🔥 MUST SEND
           text: item.text,
-          completed: item.completed ?? false,
           assignedTo: item.assignedTo,
-            document: item.document || null, 
+          document: item.document || null,
         };
       });
 
@@ -323,12 +330,20 @@ const CreateTask = () => {
         //   completed: t.completed,
         //   assignedTo: t.assignedTo?._id,
         // })),
-        todoCheckList: taskInfo.todoCheckList.map((t) => ({
-  text: t.text,
-  completed: t.completed,
-  assignedTo: t.assignedTo?._id,
-  document: t.document || null,   // 👈 ADD THIS
-})),
+//         todoCheckList: taskInfo.todoCheckList.map((t) => ({
+//   text: t.text,
+//   completed: t.completed,
+//   assignedTo: t.assignedTo?._id,
+//   document: t.document || null,   // 👈 ADD THIS
+// })),
+
+ todoCheckList: taskInfo.todoCheckList.map((t) => ({
+          _id: t._id, // 🔥 VERY IMPORTANT
+          text: t.text,
+          completed: t.completed,
+          assignedTo: t.assignedTo?._id,
+          document: t.document || null,
+        })),
         attachments: taskInfo.attachments || [],
       });
     };

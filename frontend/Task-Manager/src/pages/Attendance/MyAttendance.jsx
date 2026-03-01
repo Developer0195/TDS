@@ -124,19 +124,19 @@ setHistory(filteredAttendance);
   const submitRemarks = async (text) => {
     if (!text.trim()) return;
 
-    try {
-      await axiosInstance.post(API_PATHS.ATTENDANCE.PUNCH_IN, {
+    const res = await axiosInstance.post(API_PATHS.ATTENDANCE.PUNCH_IN, {
         ...pendingPayload,
         remarks: text,
       });
 
-      toast.success("Punch in successful");
-      setRemarksOpen(false);
-      setPendingPayload(null);
-      fetchMyAttendance();
-    } catch {
-      toast.error("Failed to submit remarks");
+    if(res){
+          toast.success("Punch in successful");
+          setRemarksOpen(false);
+          setPendingPayload(null);
+          fetchMyAttendance();
     }
+
+  
   };
 
   /* ================= UI ================= */

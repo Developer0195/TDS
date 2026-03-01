@@ -5,7 +5,6 @@ import { API_PATHS } from "../../utils/apiPaths";
 import toast from "react-hot-toast";
 import { FiX } from "react-icons/fi";
 
-
 const WeeklyTasks = () => {
   const [activeTab, setActiveTab] = useState("current");
   const [selectedTask, setSelectedTask] = useState(null);
@@ -21,7 +20,6 @@ const WeeklyTasks = () => {
   // pagination on task history
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
-
 
   /* ================= LOAD CURRENT WEEK ================= */
 
@@ -45,25 +43,23 @@ const WeeklyTasks = () => {
   /* ================= LOAD HISTORY ================= */
 
   const loadHistory = async (page = 1) => {
-  try {
-    const res = await axiosInstance.get(
-      `${API_PATHS.WEEKLY_TASKS.GET_MY_HISTORY}?page=${page}`
-    );
+    try {
+      const res = await axiosInstance.get(
+        `${API_PATHS.WEEKLY_TASKS.GET_MY_HISTORY}?page=${page}`,
+      );
 
-    setHistory(res.data.tasks);
-    setTotalPages(res.data.totalPages);
-    setCurrentPage(res.data.currentPage);
-  } catch (err) {
-    console.log(err);
-  }
-};
-
+      setHistory(res.data.tasks);
+      setTotalPages(res.data.totalPages);
+      setCurrentPage(res.data.currentPage);
+    } catch (err) {
+      console.log(err);
+    }
+  };
 
   useEffect(() => {
-  loadCurrentWeeklyTask();
-  loadHistory(currentPage);
-}, [currentPage]);
-
+    loadCurrentWeeklyTask();
+    loadHistory(currentPage);
+  }, [currentPage]);
 
   /* ================= HANDLE SUBTASK ================= */
 
@@ -75,7 +71,6 @@ const WeeklyTasks = () => {
     const updated = [...subtasks];
     updated[index].text = value;
     setSubtasks(updated);
-  
   };
 
   const removeSubtask = (index) => {
@@ -91,6 +86,15 @@ const WeeklyTasks = () => {
       return;
     }
 
+    const cleanedSubtasks = subtasks.filter(
+        (sub) => sub.text.trim() !== ""
+    );
+
+    if(cleanedSubtasks.length == 0){
+        toast.error("At least one subtask is required");
+        return;
+    }
+
     try {
       setLoading(true);
 
@@ -102,7 +106,7 @@ const WeeklyTasks = () => {
 
         toast.success(res.data.message);
         setTask(res.data.weeklyTask);
-        loadHistory(1)
+        loadHistory(1);
       } else {
         const res = await axiosInstance.post(API_PATHS.WEEKLY_TASKS.CREATE, {
           name,
@@ -151,25 +155,24 @@ const WeeklyTasks = () => {
         {activeTab === "current" && (
           <div className="bg-white border border-blue-100 rounded-xl p-6 shadow-sm">
             <div className="flex justify-between items-center">
-  <h2 className="text-lg font-semibold text-gray-800">
-    Weekly Task
-  </h2>
+              <h2 className="text-lg font-semibold text-gray-800">
+                Weekly Task
+              </h2>
 
-  {task && (
-    <span
-      className={`text-xs px-3 py-1 rounded-full ${
-        task.status === "Approved"
-          ? "bg-green-100 text-green-700"
-          : task.status === "Rejected"
-          ? "bg-red-100 text-red-700"
-          : "bg-yellow-100 text-yellow-700"
-      }`}
-    >
-      {task.status}
-    </span>
-  )}
-</div>
-
+              {task && (
+                <span
+                  className={`text-xs px-3 py-1 rounded-full ${
+                    task.status === "Approved"
+                      ? "bg-green-100 text-green-700"
+                      : task.status === "Rejected"
+                        ? "bg-red-100 text-red-700"
+                        : "bg-yellow-100 text-yellow-700"
+                  }`}
+                >
+                  {task.status}
+                </span>
+              )}
+            </div>
 
             <div className="mt-5 space-y-4">
               {/* Name */}
@@ -199,7 +202,10 @@ const WeeklyTasks = () => {
 
                 <div className="space-y-2 mt-2">
                   {subtasks.map((sub, index) => (
-                    <div key={index} className="flex gap-2">
+                    <div
+                      key={index}
+                      className="flex flex-col sm:flex-row sm:items-center gap-2"
+                    >
                       <input
                         className="flex-1 border border-blue-100 rounded-md p-2 text-sm"
                         value={sub.text}
@@ -209,7 +215,13 @@ const WeeklyTasks = () => {
                       {subtasks.length > 1 && (
                         <button
                           onClick={() => removeSubtask(index)}
-                          className="text-xs text-red-500"
+                          disabled={subtasks.length === 1}
+                          className={`px-3 py-2 text-xs font-medium rounded-md transition
+                          ${
+                            subtasks.length === 1
+                              ? "bg-gray-100 text-gray-400 cursor-not-allowed"
+                              : "bg-red-50 text-red-600 hover:bg-red-100"
+                          }`}
                         >
                           Remove
                         </button>
@@ -302,133 +314,120 @@ const WeeklyTasks = () => {
                     ))}
                   </tbody>
                 </table>
-
-                
               </div>
             )}
-
-            
           </div>
         )}
       </div>
 
       {/* ================= DETAIL CARD ================= */}
       {/* ================= CENTER MODAL ================= */}
-{selectedTask && (
-  <div className="fixed inset-0 z-50 flex items-center justify-center">
+      {selectedTask && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center">
+          {/* Backdrop */}
+          <div
+            className="absolute inset-0 bg-black/50 bg-opacity-40"
+            onClick={() => setSelectedTask(null)}
+          />
 
-    {/* Backdrop */}
-    <div
-      className="absolute inset-0 bg-black/50 bg-opacity-40"
-      onClick={() => setSelectedTask(null)}
-    />
+          {/* Modal */}
+          <div className="relative bg-white w-full max-w-lg mx-4 rounded-xl shadow-xl p-6 animate-fadeIn">
+            {/* Header */}
+            <div className="flex justify-between items-center mb-4">
+              <h3 className="text-lg font-semibold text-gray-800">
+                Weekly Task Details
+              </h3>
 
-    {/* Modal */}
-    <div className="relative bg-white w-full max-w-lg mx-4 rounded-xl shadow-xl p-6 animate-fadeIn">
+              <button
+                onClick={() => setSelectedTask(null)}
+                className="text-gray-500 hover:text-gray-700 transition"
+              >
+                <FiX size={20} />
+              </button>
+            </div>
 
-      {/* Header */}
-      <div className="flex justify-between items-center mb-4">
-        <h3 className="text-lg font-semibold text-gray-800">
-          Weekly Task Details
-        </h3>
+            <div className="space-y-4 max-h-[60vh] overflow-y-auto">
+              {/* Title */}
+              <div>
+                <p className="text-xs text-gray-500">Title</p>
+                <p className="text-sm font-medium text-gray-800">
+                  {selectedTask.name}
+                </p>
+              </div>
 
-        <button
-          onClick={() => setSelectedTask(null)}
-          className="text-gray-500 hover:text-gray-700 transition"
-        >
-          <FiX size={20} />
-        </button>
-      </div>
+              {/* Description */}
+              <div>
+                <p className="text-xs text-gray-500">Description</p>
+                <p className="text-sm text-gray-700">
+                  {selectedTask.description || "—"}
+                </p>
+              </div>
 
-      <div className="space-y-4 max-h-[60vh] overflow-y-auto">
+              {/* Subtasks */}
+              <div>
+                <p className="text-xs text-gray-500 mb-2">Subtasks</p>
 
-        {/* Title */}
-        <div>
-          <p className="text-xs text-gray-500">Title</p>
-          <p className="text-sm font-medium text-gray-800">
-            {selectedTask.name}
-          </p>
+                {selectedTask.subtasks.length === 0 ? (
+                  <p className="text-sm text-gray-400">No subtasks</p>
+                ) : (
+                  <ul className="list-disc list-inside text-sm text-gray-700 space-y-1">
+                    {selectedTask.subtasks.map((sub, i) => (
+                      <li key={i}>{sub.text}</li>
+                    ))}
+                  </ul>
+                )}
+              </div>
+
+              {/* Status */}
+              <div>
+                <p className="text-xs text-gray-500">Status</p>
+                <span
+                  className={`inline-block text-xs px-3 py-1 rounded-full mt-1 ${
+                    selectedTask.status === "Approved"
+                      ? "bg-green-100 text-green-700"
+                      : "bg-yellow-100 text-yellow-700"
+                  }`}
+                >
+                  {selectedTask.status}
+                </span>
+              </div>
+
+              {/* Date */}
+              <div>
+                <p className="text-xs text-gray-500">Submitted On</p>
+                <p className="text-sm text-gray-700">
+                  {new Date(selectedTask.createdAt).toLocaleString()}
+                </p>
+              </div>
+            </div>
+          </div>
         </div>
+      )}
 
-        {/* Description */}
-        <div>
-          <p className="text-xs text-gray-500">Description</p>
-          <p className="text-sm text-gray-700">
-            {selectedTask.description || "—"}
-          </p>
-        </div>
-
-        {/* Subtasks */}
-        <div>
-          <p className="text-xs text-gray-500 mb-2">Subtasks</p>
-
-          {selectedTask.subtasks.length === 0 ? (
-            <p className="text-sm text-gray-400">No subtasks</p>
-          ) : (
-            <ul className="list-disc list-inside text-sm text-gray-700 space-y-1">
-              {selectedTask.subtasks.map((sub, i) => (
-                <li key={i}>{sub.text}</li>
-              ))}
-            </ul>
-          )}
-        </div>
-
-        {/* Status */}
-        <div>
-          <p className="text-xs text-gray-500">Status</p>
-          <span
-            className={`inline-block text-xs px-3 py-1 rounded-full mt-1 ${
-              selectedTask.status === "Approved"
-                ? "bg-green-100 text-green-700"
-                : "bg-yellow-100 text-yellow-700"
-            }`}
+      {/* ================= PAGINATION ================= */}
+      {totalPages > 1 && (
+        <div className="flex justify-center items-center gap-2 p-4">
+          <button
+            disabled={currentPage === 1}
+            onClick={() => setCurrentPage((prev) => prev - 1)}
+            className="px-3 py-1 text-sm border rounded disabled:opacity-40"
           >
-            {selectedTask.status}
+            Previous
+          </button>
+
+          <span className="text-sm text-gray-600">
+            Page {currentPage} of {totalPages}
           </span>
+
+          <button
+            disabled={currentPage === totalPages}
+            onClick={() => setCurrentPage((prev) => prev + 1)}
+            className="px-3 py-1 text-sm border rounded disabled:opacity-40"
+          >
+            Next
+          </button>
         </div>
-
-        {/* Date */}
-        <div>
-          <p className="text-xs text-gray-500">Submitted On</p>
-          <p className="text-sm text-gray-700">
-            {new Date(selectedTask.createdAt).toLocaleString()}
-          </p>
-        </div>
-
-      </div>
-    </div>
-  </div>
-)}
-
-{/* ================= PAGINATION ================= */}
-{totalPages > 1 && (
-  <div className="flex justify-center items-center gap-2 p-4">
-
-    <button
-      disabled={currentPage === 1}
-      onClick={() => setCurrentPage((prev) => prev - 1)}
-      className="px-3 py-1 text-sm border rounded disabled:opacity-40"
-    >
-      Previous
-    </button>
-
-    <span className="text-sm text-gray-600">
-      Page {currentPage} of {totalPages}
-    </span>
-
-    <button
-      disabled={currentPage === totalPages}
-      onClick={() => setCurrentPage((prev) => prev + 1)}
-      className="px-3 py-1 text-sm border rounded disabled:opacity-40"
-    >
-      Next
-    </button>
-
-  </div>
-)}
-
-
-
+      )}
     </DashboardLayout>
   );
 };
